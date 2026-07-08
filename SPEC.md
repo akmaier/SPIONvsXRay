@@ -88,7 +88,14 @@ installed pyconrad version** before writing the pipeline.
 - **Core model:** magnetite Fe₃O₄ (ρ ≈ 5.17 g/cm³) for particle↔Fe-mass
   conversion; the X-ray model uses **Fe mass fraction directly**, so the
   polymorph choice does not affect attenuation.
-- **SPION suspension @ c:** water + Fe at `c` mg Fe/ml (CONRAD mixture recipe).
+- **Iron-loaded tumor @ c:** the tumor host medium is the **same ICRU soft
+  tissue** as the phantom background, with Fe **added** at `c` mg/ml (density
+  raised by 0.001·c g/cm³, mass negligible; high-Z iron drives the contrast).
+  The iron is **not diluted in water** — this keeps **c = 0 ≡ background
+  (ΔHU = 0)**, so all measured contrast is attributable to iron and the
+  tumor-free soft-tissue reference ROI is a true iron-free control.
+- *(An aqueous water+Fe model would instead represent an in-vitro vial of
+  suspension and reintroduce a water-vs-tissue baseline offset; not used here.)*
 
 ### 5.3 Spectrum & dose
 

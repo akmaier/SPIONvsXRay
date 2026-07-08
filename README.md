@@ -21,11 +21,12 @@ SPION suspensions          multi-vial phantom        C-arm cone-beam scan
                                           HU vs. concentration, CNR  ◄── FDK reco
 ```
 
-Because X-ray attenuation of a dilute suspension is dominated by its **iron
-content**, each concentration is modeled as *water + Fe* at the matching mass
-fraction (CONRAD custom-material "mixture" recipe), imaged polychromatically and
-reconstructed, then the reconstructed contrast (Hounsfield Units) and
-contrast-to-noise ratio are measured per insert.
+Because X-ray attenuation is dominated by **iron content**, the tumor is modeled
+as **iron-loaded soft tissue** — the same soft-tissue matrix as the rabbit
+background with Fe added at `c` mg/ml (not diluted in water), so a zero-iron
+tumor is indistinguishable from background and all contrast is attributable to
+iron. The phantom is imaged polychromatically, reconstructed, and the contrast
+(Hounsfield Units) and contrast-to-noise ratio are measured in the tumor ROI.
 
 ## Method summary
 

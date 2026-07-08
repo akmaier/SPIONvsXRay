@@ -4,6 +4,17 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — Material model corrected: iron in tissue, not water
+
+- Caught an inconsistency: modeling the tumor as *water + Fe* would give a
+  spurious ~40 HU water-vs-tissue offset at c = 0, confounding ΔHU/CNR.
+- **Decision (user):** model the tumor as **iron-loaded ICRU soft tissue** (same
+  matrix as background + Fe @ c mg/ml). The contrast is **not diluted in water**.
+  → c = 0 ≡ background (ΔHU = 0); all contrast attributable to iron; tumor-free
+  soft tissue is a true iron-free reference. Updated SPEC §5.2 and README.
+
+---
+
 ## 2026-07-08 — Experimental design finalized
 
 **Decided (user input)**
