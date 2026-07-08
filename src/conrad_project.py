@@ -140,26 +140,36 @@ def detector_sinograms(base_sinos, kvp=None, filters=(), add_noise=True, seed=0)
 RECON_SPACING_MM = 1.0
 
 
-def measure_inserts(recon, geo, inserts, roi_mm=8.0):
-    """Per-insert mean mu and ΔHU vs the c=0 (water) insert (equal-radius -> cupping common-mode)."""
+def measure_inserts(recon, geo, inserts, roi_mm=8.0, bg_inner_mm=15.0, bg_outer_mm=22.0):
+    """Per-insert ΔHU/noise vs a LOCAL annular background around each insert.
+
+    A ring just outside each insert (all within the water body) shares that
+    insert's local cupping/streak level, so subtracting it cancels the
+    bone-streak bias that a single global reference cannot. ΔHU = 1000·(μ_insert −
+    μ_localBG)/μ_localBG; noise = σ(localBG) in HU (for CNR).
+    """
     N = recon.shape[0]
-    sp = RECON_SPACING_MM  # recon grid spacing (see note above), NOT geo["spacing"]
+    sp = RECON_SPACING_MM
     yy, xx = np.mgrid[0:N, 0:N]
-
-    def roi_mean(cx, cy):
-        col = cx / sp + N / 2.0
-        row = cy / sp + N / 2.0
-        m = (xx - col) ** 2 + (yy - row) ** 2 <= (roi_mm / sp) ** 2
-        return float(recon[m].mean())
-
-    ref = next(i for i in inserts if i["name"] == "SPION_c0")
-    mu_ref = roi_mean(*ref["center_mm"])
     out = []
     for ins in inserts:
-        mu = roi_mean(*ins["center_mm"])
-        d_hu = 1000.0 * (mu - mu_ref) / mu_ref
-        out.append({**ins, "mu": mu, "delta_hu": d_hu})
-    return out, mu_ref
+        cx, cy = ins["center_mm"]
+        col, row = cx / sp + N / 2.0, cy / sp + N / 2.0
+        r2 = (xx - col) ** 2 + (yy - row) ** 2
+        roi = r2 <= (roi_mm / sp) ** 2
+        bg = (r2 >= (bg_inner_mm / sp) ** 2) & (r2 <= (bg_outer_mm / sp) ** 2)
+        mu_i = float(recon[roi].mean())
+        mu_b = float(recon[bg].mean())
+        sd_b = float(recon[bg].std())
+        out.append({**ins, "mu": mu_i, "mu_bg": mu_b,
+                    "delta_hu": 1000.0 * (mu_i - mu_b) / mu_b,
+                    "hu_noise": 1000.0 * sd_b / mu_b})
+    # c0 correction: subtract the zero-iron (SPION_c0) insert's ΔHU, which is a
+    # geometric insert-vs-annulus bias common to all inserts -> pure iron ΔHU.
+    c0 = next((m["delta_hu"] for m in out if m["name"] == "SPION_c0"), 0.0)
+    for m in out:
+        m["iron_delta_hu"] = m["delta_hu"] - c0
+    return out
 
 
 if __name__ == "__main__":
@@ -177,11 +187,11 @@ if __name__ == "__main__":
 
     det = detector_sinograms(base, add_noise=False)
     recon = conrad_ct.fbp(det["eid"], geo)
-    meas, mu_ref = measure_inserts(recon, geo, inserts)
-    print("[native] per-insert ΔHU vs water insert (noise-free EID):")
+    meas = measure_inserts(recon, geo, inserts)
+    print("[native] per-insert IRON ΔHU (local-annulus, c0-corrected; noise-free EID):")
     for m in meas:
         if m["c_form"] is not None:
-            print(f"  {m['name']:10s} c_Fe={m['c_fe']:.3f}  dHU={m['delta_hu']:+.2f}")
+            print(f"  {m['name']:10s} c_Fe={m['c_fe']:.3f}  iron_dHU={m['iron_delta_hu']:+.2f}")
 
     outdir = str(conrad_backend.REPO_ROOT / "results" / "native")
     os.makedirs(outdir, exist_ok=True)
