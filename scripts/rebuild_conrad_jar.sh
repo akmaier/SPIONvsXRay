@@ -12,7 +12,7 @@ REPO="$(pwd)"
 CONRAD="${CONRAD_SRC:-$HOME/Documents/CONRAD}"
 [ -d "$CONRAD/src" ] || { echo "CONRAD source not found at $CONRAD (set CONRAD_SRC)"; exit 1; }
 
-JH="$(ls -d .jdk8/zulu*/Contents/Home 2>/dev/null | head -1)"
+JH="$(ls -d "$REPO"/.jdk8/zulu*/Contents/Home 2>/dev/null | head -1)"
 [ -n "$JH" ] || { echo "arm64 JDK 8 not found (run scripts/install_jdk8.sh)"; exit 1; }
 BASEJAR="$(ls .venv/lib/python3.12/site-packages/pyconrad/'CONRAD 1.1.0'/conrad_1.1.0.jar)"
 
@@ -23,10 +23,14 @@ JAVA=(
   "edu/stanford/rsl/conrad/data/numeric/NumericPointwiseOperators.java"
   "edu/stanford/rsl/conrad/data/numeric/opencl/OpenCLGridOperators.java"
   "edu/stanford/rsl/tutorial/fan/FanBeamBackprojector2D.java"
+  "edu/stanford/rsl/conrad/physics/detector/OpenCLSpectralDetector.java"
+  "edu/stanford/rsl/conrad/physics/detector/OpenCLEnergyIntegratingDetector.java"
+  "edu/stanford/rsl/conrad/physics/detector/OpenCLPhotonCountingDetector.java"
 )
 RES=(
   "edu/stanford/rsl/conrad/data/numeric/opencl/PointwiseOperators.cl"
   "edu/stanford/rsl/tutorial/fan/FanBeamBackProjectorPixel.cl"
+  "edu/stanford/rsl/conrad/physics/detector/SpectralDetector.cl"
 )
 
 OUT="$(mktemp -d)"; trap 'rm -rf "$OUT"' EXIT

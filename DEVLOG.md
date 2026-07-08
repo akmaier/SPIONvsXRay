@@ -4,6 +4,27 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-09 — CONRAD GPU spectral detectors (Layer 2) upstreamed
+
+- Added on-device polychromatic detectors so the whole spectral projection stays
+  on the GPU, pushed to **akmaier/CONRAD master (`fdf5365`)**:
+  - `physics/detector/SpectralDetector.cl` — fused `energyIntegratingDetector` /
+    `photonCountingDetector` kernels (self-contained Philox/Poisson).
+  - `OpenCLSpectralDetector` (shared base: samples the spectrum, builds
+    per-material linear-attenuation tables identical to
+    `PolychromaticAbsorptionModel`, uploads once) + two subclasses
+    `OpenCLEnergyIntegratingDetector` and `OpenCLPhotonCountingDetector` (kept
+    separate — different detector concepts, per AM).
+  - Noise is applied **per energy** on the photon counts (before energy weighting
+    / binning) — physically correct: EID variance = ΣE²·n, which Poisson(ΣE·n)
+    cannot reproduce (AM's correctness requirement).
+- **Verified on the M1 GPU** vs a reference from CONRAD's own spectrum + material
+  attenuation: EID matches to 1.4e-7, PCD bins exactly; noisy EID variance
+  = 1.25e8 ≈ ΣE²·n (1.26e8), not ~mean (1.9e6).
+- Regenerated the full re-release jar (`publish/conrad/`, sha `6d41971c3f5d`) with
+  all four contributions (exp/log, backprojector, RNG, spectral detectors);
+  `scripts/rebuild_conrad_jar.sh` updated. Hosting still pending (see RELEASE.md).
+
 ## 2026-07-09 — CONRAD GPU noise generators (Layer 1) upstreamed
 
 Goal (AM): give CONRAD OpenCL-native noise generators, photon counter, and
