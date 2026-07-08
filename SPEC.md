@@ -193,24 +193,25 @@ Per tumor ROI vs. soft-tissue reference, for every factor cell:
 
 Iron has **no usable K-edge** (7.1 keV, far below the diagnostic window), so all
 contrast is **photoelectric** and lives at low energy. Computed with
-`src/spectral.py` (matched-filter / optimal energy-weighting framework, fixed
-70 000 air photons/pixel, realistic 6 mg dose through ~10 cm tissue):
+`src/spectral.py` on the **real CONRAD standard spectrum (90 kVp)** (matched-filter
+/ optimal energy-weighting framework, fixed 70 000 air photons/pixel, realistic
+6 mg dose through ~10 cm tissue):
 
 - **Optimal monochromatic energy ≈ 30 keV** (lower = more contrast, but the body
   extinguishes flux below ~30 keV).
-- **kVp:** lower is better — 60 kVp gives **1.26×**, 80 kVp **1.15×** the ideal
-  CNR of the 120 kVp baseline (fixed air flux).
-- **Filters:** hardening filters HURT iron contrast — Cu 0.3 mm → 0.70×,
-  Sn 0.5 mm → **0.42×**. (They are for spectral *separation*, not low-Z contrast.)
-  Softening / thin quasi-mono filters give little at fixed air flux; the win is
-  keeping low energy, not adding a K-edge filter.
-- **Detector weighting is the biggest lever:** EID captures only **51%** of the
-  ideal CNR; an ideal photon-counter with **optimal low-energy weighting ≈ 2×**
-  the EID CNR (≈ 4× dose-equivalent).
-- **Optimal PCD thresholds (120 kVp, through rabbit):** 2-bin split at **40 keV**
-  (1.78× vs EID, 90% of ideal); 3-bin at **35 / 47.5 keV** (1.87× vs EID, 95%).
-  Thresholds isolate the photoelectric-rich low band from the Compton high band;
-  **not** placed at a K-edge. Refine against the real spectrum at M3.
+- **kVp:** lower is better — 60 kVp gives **1.34×**, 80 kVp **1.09×** the ideal
+  CNR of the 90 kVp standard; 120 kVp is **0.85×** (harder = worse).
+- **Filters:** hardening filters HURT iron contrast — Cu 0.3 mm → 0.82×,
+  Sn 0.5 mm → **0.58×**. (They are for spectral *separation*, not low-Z contrast.)
+  Extra Al softening gives little (0.96×); the win is keeping low energy, not
+  adding a K-edge filter.
+- **Detector weighting still helps:** on the softer 90 kVp standard, EID already
+  captures **72%** of ideal CNR, so optimal photon-counting weighting gives
+  **≈1.35× the EID CNR** (vs ~2× on a harder 120 kVp beam).
+- **Optimal PCD thresholds (real 90 kVp spectrum, through rabbit):** 2-bin split
+  at **47.5 keV** (1.31× vs EID, 94% of ideal); 3-bin at **37.5 / 50 keV**
+  (1.35× vs EID, 97%). Thresholds isolate the photoelectric-rich low band from
+  the Compton high band; **not** at a K-edge.
 
 Added study dimension: sweep `KVP_LEVELS` and `FILTER_CONFIGS` (config.py) and
 report EID vs PCD-unweighted vs PCD-optimal-weighted CNR.

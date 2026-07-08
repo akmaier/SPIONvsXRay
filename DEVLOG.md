@@ -4,6 +4,24 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — M3 COMPLETE ✅ (real CONRAD spectrum + refined optimization)
+
+- `src/spectrum.py`: wraps `PolychromaticXRaySpectrum`. The no-arg ctor = CONRAD
+  **standard spectrum = 90 kVp** (not 120 as placeholder), 10–150 keV @0.5,
+  mean 55.4 keV, W anode, peak flux at the 59.5 keV characteristic line.
+  Parameterized `conrad_spectrum(kvp)` + `apply_filters` for the sweep.
+- Rewired `spectral.py` to use the **real spectra**. Refined results:
+  60 kVp = 1.34× / 80 = 1.09× / 120 = 0.85× the 90 kVp ideal CNR; hardening
+  filters still hurt (Sn 0.58×). On the softer 90 kVp, EID already gets 72% of
+  ideal, so optimal PCD weighting = **1.35× EID** (3-bin @ **37.5/50 keV**,
+  97% of ideal; 2-bin @ 47.5). Updated config (kVp=90, thresholds) + SPEC §5.8.
+- Dashboard spectrum/pcd_bins figures now show the real CONRAD spectrum.
+
+**Next (M4):** 500-proj cone-beam forward projection (polychromatic, EID +
+multi-bin PCD) using the phantom component volumes + real spectrum.
+
+---
+
 ## 2026-07-08 — M2 COMPLETE ✅ (round geometric phantom)
 
 - `src/phantom.py`: analytic geometry (soft-tissue cylinder + bone rod + tumor

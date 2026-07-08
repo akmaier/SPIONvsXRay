@@ -24,6 +24,7 @@ from __future__ import annotations
 import numpy as np
 
 import materials
+import spectrum as spec
 from config import tumor_iron_conc
 
 # Geometry for the detection task (SPEC §5.1): background ray ~10 cm soft tissue,
@@ -34,26 +35,15 @@ C_FE_REALISTIC = 1e-3 * tumor_iron_conc(10.0)   # g/cm^3 at the 6 mg dose
 N0_AIR = 70000.0                                # photons/pixel in air (post-filter)
 
 
-def bremsstrahlung(E, kvp):
-    """Kramers thin-target bremsstrahlung shape (unnormalized), 0 above kVp."""
-    s = np.where(E < kvp, (kvp - E) / E, 0.0)
-    return np.clip(s, 0.0, None)
-
-
-def filter_transmission(E, filters):
-    """Product of exp(-mu(E) t) for a list of (material_name, thickness_mm)."""
-    T = np.ones_like(E)
-    for name, t_mm in filters:
-        mu = materials.linear_attenuation(name, E)   # 1/cm
-        T *= np.exp(-mu * (t_mm / 10.0))             # mm -> cm
-    return T
-
-
-def spectrum(E, kvp=120.0, filters=(("aluminium", 2.5),)):
-    """Normalized photon energy distribution s(E) (sums to 1)."""
-    s = bremsstrahlung(E, kvp) * filter_transmission(E, list(filters))
-    tot = np.trapezoid(s, E)
-    return s / tot if tot > 0 else s
+def real_spectrum(kvp=None, filters=()):
+    """Real CONRAD spectrum as (E[keV], s_normalized). kvp=None -> standard (90)."""
+    if kvp is None:
+        E, flux, _ = spec.standard_spectrum()
+    else:
+        E, flux = spec.conrad_spectrum(kvp)
+    if filters:
+        flux = spec.apply_filters(E, flux, list(filters))
+    return E, spec.normalized(E, flux)
 
 
 def _metrics(E, s):
@@ -87,7 +77,7 @@ def snr2_bins(E, Nt_d, c, thresholds):
 def optimize_thresholds(E, Nt_d, c, n_bins, grid=None):
     """Brute-force optimal interior thresholds maximizing binned SNR^2."""
     if grid is None:
-        grid = np.arange(25, 115, 2.5)
+        grid = np.arange(20, 90, 2.5)   # thresholds within the 90 kVp spectrum
     best, best_snr2 = None, -1.0
     if n_bins == 2:
         for t in grid:
@@ -114,20 +104,20 @@ def report():
     d = np.exp(-mu_tissue * L_BODY_CM) * (murho_ox ** 2)
     print(f"  argmax over 15-120 keV: E* = {E[np.argmax(d)]:.1f} keV")
 
-    print("\n== Filter / kVp comparison (relative ideal CNR at fixed air flux) ==")
+    print("\n== Filter / kVp comparison on REAL CONRAD spectra (rel. ideal CNR, fixed air flux) ==")
     configs = [
-        ("120 kVp, 2.5 mm Al (baseline)", 120, (("aluminium", 2.5),)),
-        ("120 kVp, 0.5 mm Al (soft)",     120, (("aluminium", 0.5),)),
-        ("80 kVp, 2.5 mm Al",              80, (("aluminium", 2.5),)),
-        ("60 kVp, 2.5 mm Al",              60, (("aluminium", 2.5),)),
-        ("120 kVp, +0.3 mm Cu (hard)",    120, (("aluminium", 2.5), ("copper", 0.3))),
-        ("120 kVp, +0.5 mm Sn (hard)",    120, (("aluminium", 2.5), ("tin", 0.5))),
-        ("120 kVp, 0.1 mm Er (quasi-mono)",120,(("aluminium", 1.0), ("erbium", 0.1))),
+        ("standard (90 kVp)",              None, ()),
+        ("80 kVp",                          80,  ()),
+        ("60 kVp",                          60,  ()),
+        ("120 kVp",                         120, ()),
+        ("standard +0.3 mm Cu (hard)",     None, (("copper", 0.3),)),
+        ("standard +0.5 mm Sn (hard)",     None, (("tin", 0.5),)),
+        ("standard +2 mm Al (soft filter)",None, (("aluminium", 2.0),)),
     ]
     base = None
     for label, kvp, filt in configs:
-        s = spectrum(E, kvp, filt)
-        mm = _metrics(E, s)
+        Es, s = real_spectrum(kvp, filt)
+        mm = _metrics(Es, s)
         cnr = np.sqrt(mm["ideal"])
         if base is None:
             base = cnr
@@ -135,9 +125,9 @@ def report():
               f"EID/ideal={np.sqrt(mm['eid']/mm['ideal']):.2f}  "
               f"PCD1/ideal={np.sqrt(mm['pcd1']/mm['ideal']):.2f}")
 
-    print("\n== Optimal PCD thresholds (120 kVp, 2.5 mm Al, through rabbit) ==")
-    s = spectrum(E, 120, (("aluminium", 2.5),))
-    mm = _metrics(E, s)
+    print("\n== Optimal PCD thresholds on the REAL standard (90 kVp) spectrum, through rabbit ==")
+    Es, s = real_spectrum(None, ())
+    mm = _metrics(Es, s)
     for nb in (2, 3):
         thr, snr2 = optimize_thresholds(mm["E"], mm["Nt"], mm["c"], nb)
         gain_vs_eid = np.sqrt(snr2 / mm["eid"])
@@ -159,33 +149,31 @@ def figures(outdir: str = None):
     if outdir is None:
         outdir = str(conrad_backend.REPO_ROOT / "results" / "spectral")
     os.makedirs(outdir, exist_ok=True)
-    E = np.arange(15.0, 120.5, 0.5)
 
-    # (1) spectra under different filters/kVp
+    # (1) real CONRAD spectra (standard + kVp variants)
     fig, ax = plt.subplots(figsize=(7, 4.2))
-    for label, kvp, filt in [
-        ("120 kVp, 2.5 mm Al", 120, (("aluminium", 2.5),)),
-        ("60 kVp, 2.5 mm Al", 60, (("aluminium", 2.5),)),
-        ("120 kVp +0.5 mm Sn", 120, (("aluminium", 2.5), ("tin", 0.5))),
-    ]:
-        ax.plot(E, spectrum(E, kvp, filt), lw=1.8, label=label)
+    for label, kvp in [("standard (90 kVp)", None), ("60 kVp", 60), ("120 kVp", 120)]:
+        Es, s = real_spectrum(kvp, ())
+        ax.plot(Es, s, lw=1.8, label=label)
+    ax.set_xlim(10, 125)
     ax.set_xlabel("energy [keV]"); ax.set_ylabel("normalized photon fluence")
-    ax.set_title("Beam spectra: filter / kVp shaping"); ax.legend(fontsize=8)
+    ax.set_title("CONRAD polychromatic spectra (W anode, characteristic lines)")
+    ax.legend(fontsize=8)
     fig.tight_layout(); fig.savefig(f"{outdir}/spectrum.png", dpi=130); plt.close(fig)
 
-    # (2) per-energy detectability density with optimal PCD thresholds
-    s = spectrum(E, 120, (("aluminium", 2.5),)); mm = _metrics(E, s)
+    # (2) per-energy detectability density with optimal PCD thresholds (real spectrum)
+    Es, s = real_spectrum(None, ()); mm = _metrics(Es, s)
+    thr3, _ = optimize_thresholds(mm["E"], mm["Nt"], mm["c"], 3)
     d = mm["Nt"] * mm["c"] ** 2
     fig, ax = plt.subplots(figsize=(7, 4.2))
-    ax.fill_between(E, d, color="#c0392b", alpha=0.5)
-    ax.plot(E, d, color="#c0392b", lw=1.5, label=r"iron CNR$^2$ density")
-    for t in (35.0, 47.5):
+    ax.fill_between(Es, d, color="#c0392b", alpha=0.5)
+    ax.plot(Es, d, color="#c0392b", lw=1.5, label=r"iron CNR$^2$ density")
+    for t in thr3:
         ax.axvline(t, color="#2c3e50", ls="--", lw=1.2)
-    ax.text(24, ax.get_ylim()[1]*0.8, "bin 1\n(high contrast)", fontsize=8, ha="center")
-    ax.text(41, ax.get_ylim()[1]*0.8, "bin 2", fontsize=8, ha="center")
-    ax.text(80, ax.get_ylim()[1]*0.8, "bin 3\n(low contrast)", fontsize=8, ha="center")
+    ax.set_xlim(10, 95)
     ax.set_xlabel("energy [keV]"); ax.set_ylabel("detectability contribution")
-    ax.set_title("Where iron contrast lives + optimal PCD thresholds (35 / 47.5 keV)")
+    ax.set_title(f"Where iron contrast lives + optimal PCD thresholds "
+                 f"({' / '.join(f'{t:g}' for t in thr3)} keV)")
     ax.legend(fontsize=8); fig.tight_layout()
     fig.savefig(f"{outdir}/pcd_bins.png", dpi=130); plt.close(fig)
     print("[ok] wrote", outdir, "-> spectrum.png, pcd_bins.png")

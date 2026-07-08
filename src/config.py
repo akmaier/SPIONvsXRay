@@ -85,10 +85,12 @@ class Recon:
 # --------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Spectrum:
-    kvp: float = 120.0            # nominal C-arm peak voltage; confirm CONRAD default at M3
+    # CONRAD standard spectrum (confirmed at M3): 90 kVp, 10-150 keV, 0.5 keV,
+    # mean 55.4 keV, W anode with characteristic lines (peak flux at 59.5 keV).
+    kvp: float = 90.0
     e_min_kev: float = 10.0
-    e_max_kev: float = 120.0
-    e_delta_kev: float = 1.0
+    e_max_kev: float = 150.0
+    e_delta_kev: float = 0.5
     photons_per_pixel: float = 70000.0   # unattenuated I0 for Poisson noise
 
 
@@ -101,12 +103,12 @@ class Detectors:
     pcd_num_bins: int = 3
     # Iron has NO usable K-edge (7.1 keV), so thresholds are NOT placed at a
     # K-edge. They separate the photoelectric-rich low band (high iron contrast)
-    # from the Compton high band. Optimized for iron via src/spectral.py:
-    #   3-bin edges 15/35/47.5/120 keV -> ~1.87x CNR vs EID (95% of ideal),
-    #   2-bin split at 40 keV          -> ~1.78x CNR vs EID.
-    # Refine against the real CONRAD standard spectrum at M3.
-    pcd_bin_edges_kev: tuple = (15.0, 35.0, 47.5, 120.0)
-    pcd_bin_edges_2_kev: tuple = (15.0, 40.0, 120.0)
+    # from the Compton high band. Optimized on the REAL CONRAD standard (90 kVp)
+    # spectrum through the rabbit via src/spectral.py (M3):
+    #   3-bin edges 10/37.5/50/90 keV -> 1.35x CNR vs EID (97% of ideal),
+    #   2-bin split at 47.5 keV        -> 1.31x CNR vs EID.
+    pcd_bin_edges_kev: tuple = (10.0, 37.5, 50.0, 90.0)
+    pcd_bin_edges_2_kev: tuple = (10.0, 47.5, 90.0)
 
 
 # --------------------------------------------------------------------------
