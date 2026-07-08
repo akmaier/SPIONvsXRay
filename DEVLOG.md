@@ -22,6 +22,19 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — CONRAD-native phantom built (src/conrad_phantom.py)
+
+- Real CONRAD `AnalyticPhantom` (PrioritizableScene) built at runtime via pyconrad:
+  water body Cylinder + 7 SPION insert Cylinders on a circle + bone insert (9
+  PhysicalObjects). Inserts added after the body → PriorityRayTracer overrides.
+- Registered magnetite SPION `Mixture` materials (H2O + Fe3O4 per c_Fe) via the
+  CreateCustomMaterial pattern (WeightedAtomicComposition + MaterialsDB.put).
+- **Cross-validated:** CONRAD material μ@60keV rises 0.20584 (c=0=water) → 0.20723
+  (c=20), matching the independent materials.py oxide model to 5 decimals.
+- Next: src/conrad_project.py (PriorityRayTracer fan-beam base-material sinograms).
+
+---
+
 ## 2026-07-08 — PATH A IMPLEMENTED ✅ (CONRAD OpenCL on the M1 GPU)
 
 Wired Path A (user go-ahead). Now working:
