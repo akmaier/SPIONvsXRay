@@ -29,3 +29,6 @@ data/*.npy
 
 # Local arm64 JDK 8 (Zulu) for pyconrad/JVM — not committed
 .jdk8/
+
+# Local OpenCL shim (Path A GPU enablement)
+.jogamp/

@@ -63,6 +63,16 @@ python src/conrad_backend.py             # smoke test: starts JVM, round-trips a
 pipeline needs no manual environment setup. On Intel/Linux a system Java 8 also
 works; set `JAVA_HOME` if you don't use the bundled JDK.
 
+**Optional GPU (OpenCL) acceleration** — on Apple Silicon, enable CONRAD's
+OpenCL projectors (~4000× faster forward projection on the M1 GPU):
+
+```bash
+bash scripts/install_opencl.sh          # jogamp 2.6.0 + OpenCL.framework shim
+```
+
+`conrad_backend.opencl_available()` reports status; the pipeline auto-uses the
+GPU forward projector when present and falls back to CPU otherwise.
+
 ## Experimental design (finalized)
 
 A factorial **effects study** on an in-vivo-like rabbit phantom (soft tissue +

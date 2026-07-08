@@ -17,6 +17,26 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _JDK_GLOB = str(REPO_ROOT / ".jdk8" / "zulu*" / "Contents" / "Home")
 
 _started = False
+OPENCL_AVAILABLE = None   # set True/False after setup() probes it
+
+
+def _enable_opencl_env():
+    """Point dyld at the local OpenCL reexport shim (Path A GPU enablement).
+
+    The jogamp 2.6.0 jars (universal arm64 natives) live in the pyconrad bundle
+    dir so they're globbed onto the classpath before conrad_1.1.0.jar, shadowing
+    the stale 2.3.2 JOCL. Apple's OpenCL.framework isn't on JOCL's macOS search
+    list, so .jogamp/libOpenCL.dylib re-exports it; dyld finds it via
+    DYLD_LIBRARY_PATH. Must be set before the JVM starts. See scripts/install_opencl.sh.
+    """
+    shim_dir = REPO_ROOT / ".jogamp"
+    if (shim_dir / "libOpenCL.dylib").exists():
+        cur = os.environ.get("DYLD_LIBRARY_PATH", "")
+        parts = [p for p in cur.split(":") if p]
+        if str(shim_dir) not in parts:
+            os.environ["DYLD_LIBRARY_PATH"] = ":".join([str(shim_dir)] + parts)
+        return True
+    return False
 
 
 def _find_local_jdk8() -> str | None:
@@ -49,11 +69,26 @@ def setup(max_ram: str = "8G"):
     """Start the JVM and initialise CONRAD (idempotent). Returns the pyconrad module."""
     global _started
     ensure_java_home()
+    _enable_opencl_env()                 # before JVM start
     import pyconrad  # imported after JAVA_HOME is set
     if not _started:
         pyconrad.setup_pyconrad(max_ram=max_ram)
         _started = True
     return pyconrad
+
+
+def opencl_available() -> bool:
+    """Probe (once) whether CONRAD OpenCL initialises on this machine (Path A)."""
+    global OPENCL_AVAILABLE
+    if OPENCL_AVAILABLE is None:
+        setup()
+        try:
+            OCU = class_getter("edu.stanford.rsl.conrad.opencl").OpenCLUtil
+            OCU.getStaticContext()
+            OPENCL_AVAILABLE = True
+        except Exception:
+            OPENCL_AVAILABLE = False
+    return OPENCL_AVAILABLE
 
 
 def class_getter(package: str):

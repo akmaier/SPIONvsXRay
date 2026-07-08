@@ -22,6 +22,26 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — PATH A IMPLEMENTED ✅ (CONRAD OpenCL on the M1 GPU)
+
+Wired Path A (user go-ahead). Now working:
+- `scripts/install_opencl.sh`: fetches jogamp 2.6.0 (universal arm64 natives)
+  into the pyconrad bundle dir (globbed onto the classpath before conrad_1.1.0.jar
+  → shadows the stale 2.3.2 JOCL) and builds the `.jogamp/libOpenCL.dylib`
+  reexport shim for Apple's OpenCL.framework.
+- `conrad_backend.setup()` sets DYLD_LIBRARY_PATH to `.jogamp` before JVM start;
+  `conrad_backend.opencl_available()` probes `OpenCLUtil.getStaticContext()`.
+- **Verified:** OpenCL init → Apple M1 Max, 32 CUs, GPU. CONRAD CL fan **forward
+  projector** matches CPU to **0.03%** and is **~4000× faster** (88.4 s → 0.02 s
+  for a 512² × 500-view projection). `conrad_ct.project(...)` uses it with CPU
+  fallback.
+- **Caveat:** `backprojectPixelDrivenCL` reconstructs incorrectly here (output
+  inverted vs CPU — a convention/setup mismatch); FBP stays on the validated CPU
+  backprojector for now (TODO(opencl) to fix). Forward projection was the
+  bottleneck, so the win is captured.
+
+---
+
 ## 2026-07-08 — OpenCL PATH A PROVEN VIABLE (subagent investigation)
 
 Correction to the note below: the true root cause is a **pure-Java gluegen guard**
