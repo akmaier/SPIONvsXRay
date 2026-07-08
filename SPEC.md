@@ -79,21 +79,26 @@ Decision 2026-07-08: run the study on **both** backgrounds and compare.
 cylinder, ~10–12 cm diameter (rabbit trunk), inside the **20 cm FOV**, with a
 cortical-bone rod. Clean, reproducible; isolates the detector/spectral variables.
 
-**(B) ROBY digital rabbit phantom** — the Segars/Duke XCAT-family rabbit for
-anatomical realism. **Same NURBS spline format as XCAT/MOBY**, which CONRAD reads
-natively: `edu.stanford.rsl.conrad.phantom.xcat.XCatScene` loads named splines
-(`generateFromSplineName`/`getSplines`), maps spline→material via
-`getSplineNameMaterialNameLUT`, tessellates, and projects through
-`AnalyticPhantomProjector`. *Caveat:* `XCatScene`/`XCatMaterialGenerator` are
-hard-wired to XCAT's human organ names, so ROBY needs one of:
-  1. **Adapt the scene** — feed ROBY's `.nrb` splines + a ROBY spline→material
-     LUT (replicate XCatScene for rabbit anatomy). Analytic, faithful.
-  2. **STL/mesh route** — tessellate ROBY NURBS → per-organ STL, load via
-     `AsciiSTLMeshPhantom`, assign materials. Format-agnostic, simplest.
-Preferred: the analytic NURBS route (exact surfaces, no background partial
-volume). *ROBY is licensed (Duke/XCAT) — the user supplies the files.* Which
-form determines the loader: NURBS `.nrb` splines (→ analytic) vs voxelized
-output (→ voxel-volume adapter). Until supplied, the batch runs on (A).
+**(B) Realistic-anatomy background — CORRECTION (2026-07-08):** there is **no
+digital rabbit** in the Segars/RADAR family. **MOBY = mouse, ROBY = *rat*** (RADAR
+animal series, Keenan/Stabin/Segars, JNM 2010;51:471, has only these two). A true
+rabbit phantom does not exist as a standard resource; rabbit voxel models in the
+literature are one-off segmentations of **real rabbit CT**. Options for arm (B),
+pending user decision:
+  - **Real rabbit CT** (preferred for a *rabbit*) — segment tissue/bone, embed the
+    tumor. The SEON co-authors' in-vivo work may provide one. Realistic at true
+    rabbit scale (~11 cm).
+  - **ROBY (rat)** — a licensed, ready digital phantom, but rat-scale (~5 cm),
+    NOT rabbit-scale; changes path length/beam hardening/dose. Only if a rodent is
+    acceptable. Licensed via Duke CVIT (paul.segars@duke.edu,
+    https://cvit.duke.edu/resource/moby-roby-phantoms/); ships as NURBS + voxel.
+  - Drop arm (B), keep only the round geometric rabbit-scale phantom (A).
+
+CONRAD-side integration (still valid for any Segars/NURBS or real-CT input):
+NURBS via `XCatScene` (`getSplineNameMaterialNameLUT`, tessellate) →
+`AnalyticPhantomProjector`, or STL meshes via `AsciiSTLMeshPhantom`, or a
+voxelized volume adapter. Until arm (B) is chosen and supplied, the batch runs
+on (A).
 
 Both backgrounds carry the **same tumor** (homogeneous, and the Study-B vessel
 variant) and run the same factorial, so anatomy's effect is directly measured.

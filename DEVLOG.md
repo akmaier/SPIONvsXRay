@@ -4,6 +4,23 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — CORRECTION: ROBY is a RAT; no digital rabbit exists
+
+- Verified via literature: RADAR realistic animal series (Keenan/Stabin/Segars,
+  JNM 2010;51:471) = **MOBY (mouse) + ROBY (RAT)** only. **No rabbit** in the
+  RADAR/Segars/XCAT family. My earlier "ROBY = rabbit" was wrong.
+- MOBY/ROBY are licensed via **Duke CVIT** (paul.segars@duke.edu,
+  https://cvit.duke.edu/resource/moby-roby-phantoms/), NURBS + voxel — NOT from
+  doseinfo-radar.com (that only describes them; cert broken).
+- A realistic **rabbit** needs a **real rabbit CT** (one-off in the literature,
+  e.g. PubMed 25971772 / 34487228). SEON co-authors may have one.
+- Corrected SPEC §5.1 and config: arm (B) background is now **pending user
+  decision** (real rabbit CT [preferred] vs ROBY rat [rat-scale, licensed] vs
+  drop). Batch runs on (A) round geometric meanwhile. Config
+  `PHANTOM_BACKGROUNDS=['round']`, `REALISTIC` paths for rabbit-CT/ROBY.
+
+---
+
 ## 2026-07-08 — Two phantom backgrounds: round geometric + ROBY
 
 - Decision (user): use **both** a round geometric phantom (cylinder + bone) and

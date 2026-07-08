@@ -134,20 +134,26 @@ class Evaluation:
 
 
 # Phantom backgrounds and tumor distribution models (SPEC §5.1 / §5.9)
-PHANTOM_BACKGROUNDS = ["round", "roby"]      # (A) geometric cylinder, (B) ROBY rabbit
+# NOTE: ROBY is the Segars *rat* phantom (MOBY=mouse); there is NO digital rabbit
+# in the RADAR/Segars family. A realistic RABBIT requires a real rabbit CT.
+# Arm (B) background is pending user decision (real rabbit CT vs ROBY rat vs none).
+PHANTOM_BACKGROUNDS = ["round"]              # (A) geometric cylinder; (B) added once chosen
 TUMOR_MODELS = ["homogeneous", "vessel"]     # Study A (uniform), Study B (150 µm vessels @10%)
 
 
 @dataclass(frozen=True)
-class Roby:
-    """ROBY digital rabbit — licensed (Duke/XCAT); user supplies generated files."""
-    volume_path: str = "data/roby/roby_atn_1.bin"   # raw float attenuation/label volume
-    log_path: str = "data/roby/roby_log"            # ROBY log with dims + voxel size
-    dim: tuple = (256, 256, 350)                    # override from the log
-    voxel_mm: float = 0.5                           # override from the log
+class RealisticPhantom:
+    """Arm (B) realistic background: a real rabbit CT or a Segars voxel/NURBS model.
+
+    Supply files under data/rabbit/ (CT) or data/roby/ (ROBY rat, licensed).
+    """
+    ct_volume_path: str = "data/rabbit/rabbit_ct.nii.gz"   # real rabbit CT (preferred)
+    roby_volume_path: str = "data/roby/roby_atn_1.bin"      # ROBY rat (licensed, rat-scale)
+    dim: tuple = (256, 256, 350)                            # override from source header
+    voxel_mm: float = 0.5                                   # override from source header
 
 
-ROBY = Roby()
+REALISTIC = RealisticPhantom()
 
 # Study B vessel model (SPEC §5.9)
 VESSEL_DIAMETER_UM = 150.0
