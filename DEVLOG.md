@@ -22,6 +22,31 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — OpenCL PATH A PROVEN VIABLE (subagent investigation)
+
+Correction to the note below: the true root cause is a **pure-Java gluegen guard**
+(`RuntimeException: Please port CPU detection to your platform (mac os x/aarch64)`)
+that throws in a static initializer before any native loads — the 2015 jogamp has
+no aarch64 CPU-detection case. (Wrong-arch natives were only a secondary issue.)
+
+**Path A proven working on this M1 Max** (subagent tested end-to-end):
+- jogamp **2.6.0** ships universal (x86_64+arm64) gluegen/JOCL natives.
+- Apple's OpenCL.framework isn't on JOCL's macOS search list → add a 1-line
+  reexport shim `libOpenCL.dylib` (`clang -dynamiclib -Wl,-reexport_framework,
+  OpenCL -framework OpenCL`) discoverable via `DYLD_LIBRARY_PATH`.
+- With that: CONRAD's own `OpenCLUtil.getStaticContext()` runs on the 32-CU GPU
+  and a CONRAD OpenCL kernel executes correctly. **No CONRAD recompile** (JOCL
+  high-level API binary-compatible 2.3.2→2.6.0). Non-invasive: prepend the 2.6.0
+  jars + set DYLD_LIBRARY_PATH in conrad_backend.setup().
+- GPU projectors are drop-in: `projectRayDrivenCL` / `backprojectPixelDrivenCL`.
+
+**Cost:** Path A ≈ ½ day, low risk, ~10–30× (2D) / ~50–100× (3D) payoff. Path B
+(x86_64 Rosetta) worse. Path C (CPU) fine for THIS study, blocks 3D.
+**Plan:** CPU path stays the baseline for the SPION study; wire Path A as an
+optional GPU accelerator (pending user go-ahead) since it pays off long-term.
+
+---
+
 ## 2026-07-08 — OpenCL check: not available on this Mac (arch, not hardware)
 
 User asked whether CONRAD's OpenCL runs here (it's OpenCL, not CUDA). Tested:
