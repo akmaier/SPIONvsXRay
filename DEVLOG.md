@@ -22,6 +22,32 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — CL fan backprojector FIXED in-place + 0.5 mm GPU recon
+
+- Subagent root-caused + fixed the OpenCL fan backprojector (kernel never got
+  pixel spacing + `//FIXME` sign/guard hacks). Verified: matches CPU ~1e-5,
+  spacing knob exact (0.5 mm marker ratio 1.998), ~850× faster.
+- Per user ("we have versioning, no new class"): folded the fix into the
+  **original** `edu.stanford.rsl.tutorial.fan.FanBeamBackprojector2D` + its
+  `FanBeamBackProjectorPixel.cl` (added `setSpacing`, spacing kernel args, and
+  the corrected 2DCL detector geometry; 1DCL untouched). Source lives in
+  `conrad_ext/` (git-tracked, contributable); `scripts/build_conrad_ext.sh`
+  compiles it against the 1.1.0 jar; `conrad_backend` puts `conrad_ext/out` on
+  the classpath (CONRAD_DEV_DIRS) so it **shadows** the jar class. Verified the
+  patched class loads from `conrad_ext/out/` and has `setSpacing`.
+- `conrad_ct.fbp` now uses the GPU backprojector with `setSpacing(voxel_mm)`;
+  `config.RECON_VOXEL_MM = 0.5`. **Full native pipeline at 0.5 mm on GPU** →
+  correct monotonic ΔHU (c20 → +7.14, matching the CPU/1 mm result). This solved
+  BOTH the CL-backprojector fix and the 0.5 mm voxel request; the separate
+  "config-aware reconstruction" route is no longer needed.
+- Dashboard evidence: clbp_fixed_disk.png, clbp_spacing_marker.png.
+
+**Geometry plan (user):** rabbit case = full 3D cone-beam at the real RabbitCT
+C-arm geometry (496 proj matrices); disc phantom study = 2D fan matching the same
+C-arm (SID/SDD/detector/angular range). Feasible; next.
+
+---
+
 ## 2026-07-08 — RabbitCT data (real rabbit CT) located + fetched from LME
 
 - Sven's tip: rabbit CT is the **RabbitCT benchmark** (Erlangen group), on lme31 at

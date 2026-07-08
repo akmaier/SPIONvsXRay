@@ -65,11 +65,26 @@ def ensure_java_home() -> str:
     )
 
 
+def _enable_conrad_ext():
+    """Put our compiled CONRAD extension (fixed CL fan backprojector) on the
+    classpath BEFORE conrad_1.1.0.jar via CONRAD_DEV_DIRS (pyconrad prepends it).
+    Built by scripts/build_conrad_ext.sh."""
+    out = REPO_ROOT / "conrad_ext" / "out"
+    if (out / "edu" / "stanford" / "rsl" / "tutorial" / "fan").exists():
+        cur = os.environ.get("CONRAD_DEV_DIRS", "")
+        parts = [p for p in cur.split(";") if p]
+        if str(out) not in parts:
+            os.environ["CONRAD_DEV_DIRS"] = ";".join([str(out)] + parts)
+        return True
+    return False
+
+
 def setup(max_ram: str = "8G"):
     """Start the JVM and initialise CONRAD (idempotent). Returns the pyconrad module."""
     global _started
     ensure_java_home()
     _enable_opencl_env()                 # before JVM start
+    _enable_conrad_ext()                 # before JVM start
     import pyconrad  # imported after JAVA_HOME is set
     if not _started:
         pyconrad.setup_pyconrad(max_ram=max_ram)

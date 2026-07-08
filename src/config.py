@@ -146,6 +146,10 @@ VESSEL_DIAMETER_UM = 150.0
 VESSEL_VOLUME_FRACTION = 0.10        # vessels occupy 10% of tumor volume
 # mass-conserved: local vessel iron concentration = tumor mean / volume fraction (10x)
 
+# Reconstruction voxel size (isotropic). The fixed CL fan backprojector
+# (conrad_ext) honors this via setSpacing; 512 px * 0.5 mm = 256 mm recon FOV.
+RECON_VOXEL_MM = 0.5
+
 PHANTOM = Phantom()
 GEOMETRY = Geometry()
 RECON = Recon()

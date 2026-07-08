@@ -37,3 +37,6 @@ data/*.npy
 data/rabbitct/
 data/RabbitCT/
 *.rctd
+
+# Compiled CONRAD extension (build artifacts; source is tracked)
+conrad_ext/out/

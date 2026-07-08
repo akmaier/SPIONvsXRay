@@ -60,19 +60,25 @@ def grid2d_to_np(g) -> np.ndarray:
     return buf.reshape(h, w)
 
 
-def fan_geometry(fov_mm=FOV_MM, n_pix=None):
-    """Return (focalLength, maxBeta, deltaBeta, maxT, deltaT, imgN, spacing_mm)."""
+def fan_geometry(fov_mm=FOV_MM, n_pix=None, voxel_mm=None):
+    """Fan-beam geometry. Recon = n_pix x n_pix at `voxel_mm` (fixed CL backprojector).
+
+    voxel_mm defaults to config.RECON_VOXEL_MM (0.5 mm); recon FOV = n_pix*voxel_mm.
+    """
+    from config import RECON_VOXEL_MM
     if n_pix is None:
         n_pix = 512
-    spacing = fov_mm / n_pix
-    # detector must cover the FOV magnified to the detector plane
+    if voxel_mm is None:
+        voxel_mm = RECON_VOXEL_MM
+    # detector must cover the physical FOV magnified to the detector plane
     mag = SDD_MM / SID_MM
     maxT = fov_mm * mag * 1.15
     deltaT = maxT / (n_pix * 2)
     maxBeta = 2.0 * np.pi
     deltaBeta = maxBeta / N_VIEWS
     return dict(focal=SDD_MM, maxBeta=maxBeta, deltaBeta=deltaBeta,
-               maxT=maxT, deltaT=deltaT, imgN=n_pix, spacing=spacing)
+               maxT=maxT, deltaT=deltaT, imgN=n_pix, spacing=voxel_mm,
+               voxel_mm=voxel_mm)
 
 
 def use_cl():
@@ -108,14 +114,20 @@ def fbp(sino_np, geo, bh_correction=False, bh_c2=0.10):
     sino_f = ramp_filter_sino(sino_w, geo["deltaT"])
     sino = np_to_grid2d(sino_f)
     sino.setSpacing(geo["deltaT"], geo["deltaBeta"])
+    # Patched FanBeamBackprojector2D (conrad_ext, shadows the jar): its CL kernel
+    # now receives the reconstruction pixel spacing that upstream omitted
+    # ("// TODO: Spacing"), so setSpacing(vox) gives configurable voxel size and
+    # backprojectPixelDrivenCL is correct + ~850x faster. Falls back to CPU.
+    vox = geo.get("voxel_mm", 1.0)
     BP = _cls("edu.stanford.rsl.tutorial.fan", "FanBeamBackprojector2D")
     bp = BP(geo["focal"], geo["deltaT"], geo["deltaBeta"], geo["imgN"], geo["imgN"])
-    # CPU backprojector only. The CL backprojector (backprojectPixelDrivenCL) is
-    # INCOMPLETE upstream: its kernel is never passed the image pixel spacing
-    # ("// TODO: Spacing :)" in FanBeamBackprojector2D.java), so its pixel<->world
-    # mapping is inconsistent with the CPU path -> looks fine on a uniform disk
-    # but corrupts sub-HU quantitative measurements. Forward projection uses CL.
-    return grid2d_to_np(bp.backprojectPixelDriven(sino))             # CPU (correct)
+    if use_cl():
+        try:
+            bp.setSpacing(float(vox))
+            return grid2d_to_np(bp.backprojectPixelDrivenCL(sino))   # GPU, spacing-aware
+        except Exception:
+            pass
+    return grid2d_to_np(bp.backprojectPixelDriven(sino))             # CPU fallback
 
 
 if __name__ == "__main__":

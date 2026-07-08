@@ -134,12 +134,6 @@ def detector_sinograms(base_sinos, kvp=None, filters=(), add_noise=True, seed=0)
     return dict(eid=p_eid, pcd=p_pcd, edges=edges)
 
 
-# FanBeamBackprojector2D writes into a plain Grid2D whose spacing defaults to
-# 1.0 mm/px (it does not derive spacing from the FOV). Verified with the bone
-# marker: (35.4,35.4) mm -> pixel offset (35,35). So the recon grid is 1.0 mm/px.
-RECON_SPACING_MM = 1.0
-
-
 def measure_inserts(recon, geo, inserts, roi_mm=8.0, bg_inner_mm=15.0, bg_outer_mm=22.0):
     """Per-insert ΔHU/noise vs a LOCAL annular background around each insert.
 
@@ -149,7 +143,7 @@ def measure_inserts(recon, geo, inserts, roi_mm=8.0, bg_inner_mm=15.0, bg_outer_
     μ_localBG)/μ_localBG; noise = σ(localBG) in HU (for CNR).
     """
     N = recon.shape[0]
-    sp = RECON_SPACING_MM
+    sp = geo.get("voxel_mm", 1.0)   # recon grid spacing (mm/px), set by fbp
     yy, xx = np.mgrid[0:N, 0:N]
     out = []
     for ins in inserts:
