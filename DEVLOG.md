@@ -48,6 +48,19 @@ C-arm (SID/SDD/detector/angular range). Feasible; next.
 
 ---
 
+## 2026-07-08 — RabbitCT re-published to Zenodo (DRAFT, CC BY 4.0)
+
+Uploaded the RabbitCT -v2 dataset from lme31 (python3 uploader; lme31 lacks
+curl/jq) to a Zenodo **draft** (id 21267885, PRODUCTION, not published):
+rabbitct_512-v2.rctd (2.5 GB) + rabbitct_1024-v2.rctd (4.5 GB) + reference_256.vol
++ dev kit + README. Metadata: 4 authors (Rohkohl/Keck/Hofmann/Hornegger),
+CC BY 4.0, isDocumentedBy doi:10.1118/1.3180956, post-mortem ethics note.
+Decision: publish v2 only (originals not added). AWAITING user review + Publish
+at https://zenodo.org/uploads/21267885. Token stays in git-ignored
+publish/rabbitct/zenodo_secrets.env.
+
+---
+
 ## 2026-07-08 — RabbitCT data (real rabbit CT) located + fetched from LME
 
 - Sven's tip: rabbit CT is the **RabbitCT benchmark** (Erlangen group), on lme31 at
