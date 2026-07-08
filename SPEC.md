@@ -177,6 +177,58 @@ Per tumor ROI vs. soft-tissue reference, for every factor cell:
   minimum meaningful ΔHU — reported separately for EID vs each PCD bin, and for
   BH-correction off vs on.
 
+### 5.8 Spectral optimization (filters, kVp, PCD thresholds)
+
+Iron has **no usable K-edge** (7.1 keV, far below the diagnostic window), so all
+contrast is **photoelectric** and lives at low energy. Computed with
+`src/spectral.py` (matched-filter / optimal energy-weighting framework, fixed
+70 000 air photons/pixel, realistic 6 mg dose through ~10 cm tissue):
+
+- **Optimal monochromatic energy ≈ 30 keV** (lower = more contrast, but the body
+  extinguishes flux below ~30 keV).
+- **kVp:** lower is better — 60 kVp gives **1.26×**, 80 kVp **1.15×** the ideal
+  CNR of the 120 kVp baseline (fixed air flux).
+- **Filters:** hardening filters HURT iron contrast — Cu 0.3 mm → 0.70×,
+  Sn 0.5 mm → **0.42×**. (They are for spectral *separation*, not low-Z contrast.)
+  Softening / thin quasi-mono filters give little at fixed air flux; the win is
+  keeping low energy, not adding a K-edge filter.
+- **Detector weighting is the biggest lever:** EID captures only **51%** of the
+  ideal CNR; an ideal photon-counter with **optimal low-energy weighting ≈ 2×**
+  the EID CNR (≈ 4× dose-equivalent).
+- **Optimal PCD thresholds (120 kVp, through rabbit):** 2-bin split at **40 keV**
+  (1.78× vs EID, 90% of ideal); 3-bin at **35 / 47.5 keV** (1.87× vs EID, 95%).
+  Thresholds isolate the photoelectric-rich low band from the Compton high band;
+  **not** placed at a K-edge. Refine against the real spectrum at M3.
+
+Added study dimension: sweep `KVP_LEVELS` and `FILTER_CONFIGS` (config.py) and
+report EID vs PCD-unweighted vs PCD-optimal-weighted CNR.
+
+### 5.9 Study B — vascular (vessel) tumor phantom
+
+Realistic alternative to the homogeneous tumor: the contrast agent resides in
+**tumor vasculature — 150 µm vessels occupying 10 % of the tumor volume** — not
+uniformly dissolved. Same delivered iron mass, now confined to 10 % of the
+volume → **10× local vessel concentration**.
+
+Key physics: the CT voxel (~390 µm) **cannot resolve** 150 µm vessels, so each
+tumor voxel partial-volume-averages vessel + tissue. With mass conserved the
+**mean tumor iron per voxel is unchanged**, so first-order the mean ΔHU/CNR
+matches Study A. The study tests the **second-order** effects that the
+homogeneous model misses:
+1. **Beam-hardening nonlinearity** — rays through 10× iron harden more than
+   proportionally, so the projection mean ≠ projection of the mean (interacts
+   with the BH-correction factor).
+2. **Structural noise** — per-voxel vessel fraction varies (binomial), adding
+   texture that can degrade detectability.
+3. **Resolution/partial-volume** sensitivity.
+
+Modeling: build the tumor as a **sub-resolution voxelized two-compartment
+texture** (10 % vessel voxels at 10× conc, 90 % iron-free tissue), forward-
+project at fine resolution, reconstruct at the CT grid, then apply the **same
+detectability analysis**. Study B runs the **full factorial** (7 conc × 2 det ×
+2 BH × 10 noise) **× all filters/kVp**, mirroring Study A, so the two phantoms
+are directly comparable. (Requires the M4–M6 projector/FDK pipeline.)
+
 ## 6. Deliverables
 
 - `src/materials.py` — build/register SPION materials for a list of concentrations.

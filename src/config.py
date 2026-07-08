@@ -99,9 +99,29 @@ class Spectrum:
 class Detectors:
     types: tuple = ("EID", "PCD")        # energy-integrating, photon-counting
     pcd_num_bins: int = 3
-    # Bin edges default to thirds of [e_min, e_max]; finalized once the standard
-    # spectrum is known (M3).
-    pcd_bin_edges_kev: tuple = (10.0, 47.0, 83.0, 120.0)
+    # Iron has NO usable K-edge (7.1 keV), so thresholds are NOT placed at a
+    # K-edge. They separate the photoelectric-rich low band (high iron contrast)
+    # from the Compton high band. Optimized for iron via src/spectral.py:
+    #   3-bin edges 15/35/47.5/120 keV -> ~1.87x CNR vs EID (95% of ideal),
+    #   2-bin split at 40 keV          -> ~1.78x CNR vs EID.
+    # Refine against the real CONRAD standard spectrum at M3.
+    pcd_bin_edges_kev: tuple = (15.0, 35.0, 47.5, 120.0)
+    pcd_bin_edges_2_kev: tuple = (15.0, 40.0, 120.0)
+
+
+# --------------------------------------------------------------------------
+# Spectral optimization sweep (filters + tube voltage) — see src/spectral.py.
+# Iron contrast is photoelectric -> favors LOW energy. Hardening filters
+# (Cu/Sn) HURT iron contrast; lower kVp and optimal PCD weighting help most.
+# --------------------------------------------------------------------------
+KVP_LEVELS = [60.0, 80.0, 100.0, 120.0]
+FILTER_CONFIGS = {
+    "Al2.5_baseline": [("aluminium", 2.5)],
+    "Al0.5_soft":     [("aluminium", 0.5)],
+    "Cu0.3_hard":     [("aluminium", 2.5), ("copper", 0.3)],
+    "Sn0.5_hard":     [("aluminium", 2.5), ("tin", 0.5)],
+    "Er0.1_quasimono":[("aluminium", 1.0), ("erbium", 0.1)],
+}
 
 
 # --------------------------------------------------------------------------

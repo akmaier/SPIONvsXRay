@@ -4,6 +4,29 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — Spectral optimization + Study B (vessel phantom) designed
+
+**Contrast optimization (`src/spectral.py`, matched-filter framework):**
+- Iron has no usable K-edge (7.1 keV) → contrast is photoelectric, lives low.
+  Optimal mono energy ≈ **30 keV**.
+- kVp: 60 kVp → **1.26×**, 80 kVp → 1.15× the 120 kVp baseline ideal CNR.
+- Hardening filters HURT: Cu 0.3 mm → 0.70×, **Sn 0.5 mm → 0.42×**.
+- **Detector weighting dominates:** EID = 51% of ideal CNR; optimal PCD weighting
+  ≈ **2× EID** (≈4× dose-equivalent).
+- **Optimal PCD thresholds:** 2-bin @ **40 keV** (1.78× vs EID); 3-bin @
+  **35 / 47.5 keV** (1.87× vs EID, 95% of ideal). Updated config.py defaults.
+- Figures (`spectrum.png`, `pcd_bins.png`) added to `docs/assets/` → dashboard
+  Spectrum panel now shows real data. Added kVp/filter sweep to the study.
+
+**Study B — vascular tumor phantom (designed, SPEC §5.9):** contrast confined to
+150 µm vessels at 10 % tumor volume (10× local conc, mass conserved). Vessels are
+sub-resolution (390 µm voxels) → mean ΔHU ≈ Study A; the study isolates
+second-order effects (beam-hardening nonlinearity, structural noise, partial
+volume). Runs the full factorial × filters/detectors through the M4–M6 pipeline
+once built.
+
+---
+
 ## 2026-07-08 — M1 COMPLETE ✅ (materials + first real result)
 
 - Introspected the CONRAD material API from the live JVM: `MaterialsDB.getMaterial`
