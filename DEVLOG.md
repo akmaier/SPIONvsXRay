@@ -4,6 +4,25 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — M1 COMPLETE ✅ (materials + first real result)
+
+- Introspected the CONRAD material API from the live JVM: `MaterialsDB.getMaterial`
+  serves elements + `water`/`bone`/`iron`; `Material.getAttenuation(E_keV, TYPE)`.
+- **Units gotcha caught & fixed:** `getAttenuation` returns **linear** μ [1/cm],
+  not mass. Verified: water@60keV=0.206 (ρ=1), iron@60keV=9.48=1.205×7.87. So
+  `mass_attenuation = getAttenuation / density`. After the fix iron μ/ρ@60keV =
+  **1.2050** = NIST 1.205 exactly.
+- `src/materials.py`: soft tissue = water proxy (no ICRU-44 XML in CONRAD);
+  iron-loaded tumor via the mixture rule `μ_soft + c_Fe[g/cm³]·(μ/ρ)_Fe`.
+- **Key finding:** at the realistic 6 mg dose (0.543 mg Fe/ml) the tumor is only
+  **~2.9 HU** above background (≈5.7 HU at 2× dose) — quantitatively at the CT
+  detection floor. Figures (`mu_vs_energy.png`, `hu_vs_conc.png`) copied into
+  `docs/assets/` — the dashboard's Materials panels now show real data.
+
+**Next (M2):** rabbit phantom (soft tissue + bone + 8 cm³ tumor); then M3 spectrum.
+
+---
+
 ## 2026-07-08 — M0 COMPLETE ✅ (pyconrad bridge working)
 
 Working environment on Apple Silicon nailed down after three blockers:
