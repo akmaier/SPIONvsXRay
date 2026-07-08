@@ -88,6 +88,10 @@ installed pyconrad version** before writing the pipeline.
 
 - **Core model:** magnetite **Fe₃O₄** (ρ ≈ 5.17 g/cm³, **Fe mass fraction
   0.724**). "6 mg of SPIONs" = whole-particle mass; iron content = 0.724 × mass.
+- **Attenuation uses the OXIDE, not pure Fe:** contrast is modeled as magnetite —
+  per gram of iron, `Δμ = c_Fe·[(μ/ρ)_Fe + 0.382·(μ/ρ)_O]` (0.382 g bound O per
+  g Fe). Oxygen is near tissue-equivalent, so it adds ~+7% over pure iron
+  (realistic-dose tumor HU 2.85 → 3.04) — small but included for correctness.
 - **Iron-loaded tumor:** the tumor host medium is the **same ICRU soft tissue**
   as the phantom background, with Fe **added** (density raised by 0.001·c_Fe
   g/cm³, mass negligible; high-Z iron drives the contrast). The iron is **not

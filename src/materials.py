@@ -20,6 +20,22 @@ from config import C_FORM_LEVELS, tumor_iron_conc, SPECTRUM
 RHO_SOFT = 1.0      # water proxy for soft tissue
 RHO_WATER = 1.0
 
+# The particles are iron OXIDE (magnetite Fe3O4), not pure iron. Per gram of
+# iron, magnetite carries this mass of bound oxygen (4*O / 3*Fe):
+_M_FE, _M_O = 55.845, 15.999
+MAGNETITE_O_PER_FE = (4.0 * _M_O) / (3.0 * _M_FE)   # = 0.382 g O per g Fe
+
+
+def oxide_contrast_massatten(energies_kev: np.ndarray) -> np.ndarray:
+    """Effective mass attenuation [cm^2/g] of magnetite PER GRAM OF IRON.
+
+    = (mu/rho)_Fe + 0.382*(mu/rho)_O, so the tumor contrast for iron mass
+    concentration c_Fe is  d_mu = c_Fe * oxide_contrast_massatten(E).
+    Oxygen is nearly tissue-equivalent, so it adds only a few % over pure Fe.
+    """
+    return (mass_attenuation("iron", energies_kev)
+            + MAGNETITE_O_PER_FE * mass_attenuation("oxygen", energies_kev))
+
 _AT = None
 _DB = None
 _DENS: dict = {}
@@ -80,10 +96,10 @@ def linear_attenuation_tumor(c_form: float, energies_kev: np.ndarray) -> np.ndar
 
     Mixture rule: soft-tissue matrix + iron at c_Fe (mg Fe/ml == 1e-3 g/cm^3).
     """
-    c_fe_gcm3 = 1e-3 * tumor_iron_conc(c_form)          # mg/ml -> g/cm^3
+    c_fe_gcm3 = 1e-3 * tumor_iron_conc(c_form)          # mg/ml -> g/cm^3 iron
     mu_soft = linear_attenuation_soft(energies_kev)
-    mu_fe_mass = mass_attenuation("iron", energies_kev)  # (mu/rho)_Fe
-    return mu_soft + c_fe_gcm3 * mu_fe_mass
+    # magnetite (Fe3O4): iron + bound oxygen, per gram of iron
+    return mu_soft + c_fe_gcm3 * oxide_contrast_massatten(energies_kev)
 
 
 def hu(mu: np.ndarray, mu_water: np.ndarray) -> np.ndarray:

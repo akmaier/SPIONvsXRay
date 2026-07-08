@@ -59,9 +59,9 @@ def spectrum(E, kvp=120.0, filters=(("aluminium", 2.5),)):
 def _metrics(E, s):
     """Return CNR figures for a given normalized spectrum s(E)."""
     mu_tissue = materials.linear_attenuation("water", E)          # 1/cm
-    murho_fe = materials.mass_attenuation("iron", E)              # cm^2/g
+    murho_ox = materials.oxide_contrast_massatten(E)             # magnetite, per g Fe
     Nt = N0_AIR * s * np.exp(-mu_tissue * L_BODY_CM)              # transmitted bkg photons/energy
-    c = C_FE_REALISTIC * murho_fe * L_TUMOR_CM                    # per-energy contrast (line integral)
+    c = C_FE_REALISTIC * murho_ox * L_TUMOR_CM                    # per-energy contrast (line integral)
 
     dE = np.gradient(E)
     Nt_d = Nt * dE                                               # photons per bin
@@ -109,9 +109,9 @@ def report():
 
     print("== CNR-optimal monochromatic energy (per-photon detectability) ==")
     mu_tissue = materials.linear_attenuation("water", E)
-    murho_fe = materials.mass_attenuation("iron", E)
+    murho_ox = materials.oxide_contrast_massatten(E)
     # detectability density for a flat (fixed air-photon) source, mono:
-    d = np.exp(-mu_tissue * L_BODY_CM) * (murho_fe ** 2)
+    d = np.exp(-mu_tissue * L_BODY_CM) * (murho_ox ** 2)
     print(f"  argmax over 15-120 keV: E* = {E[np.argmax(d)]:.1f} keV")
 
     print("\n== Filter / kVp comparison (relative ideal CNR at fixed air flux) ==")

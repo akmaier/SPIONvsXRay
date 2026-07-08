@@ -4,6 +4,18 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — Correctness: model iron OXIDE (magnetite), not pure Fe
+
+- Caught: attenuation used pure elemental Fe. Fixed to magnetite Fe₃O₄ — added
+  the bound oxygen (0.382 g O per g Fe) via `oxide_contrast_massatten(E) =
+  (μ/ρ)_Fe + 0.382·(μ/ρ)_O` in `materials.py`, propagated to `spectral.py`.
+- Effect: realistic-dose tumor HU **2.85 → 3.04** (+7%); optimal PCD thresholds
+  unchanged (35/47.5 keV), gains 1.83× vs EID. Dashboard figures refreshed.
+- Open: soft-tissue matrix still water proxy (CONRAD lacks ICRU-44 XML); could
+  build ICRU-44 by composition later. Rabbit background still geometric (see below).
+
+---
+
 ## 2026-07-08 — Spectral optimization + Study B (vessel phantom) designed
 
 **Contrast optimization (`src/spectral.py`, matched-filter framework):**
