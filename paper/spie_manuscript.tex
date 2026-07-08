@@ -234,6 +234,30 @@ noise realizations. A separate sweep varies the tube voltage
 ($60$--$120\,\mathrm{kVp}$) and adds hardening filters, to test the spectral
 dependence predicted by the photoelectric nature of iron.
 
+\begin{table}[ht]
+\caption{Simulation parameters.}
+\label{tab:params}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Parameter & Value \\
+\midrule
+Spectrum & CONRAD standard, $90\,\mathrm{kVp}$ (mean $55.4\,\mathrm{keV}$), W anode \\
+Photons per pixel & $70{,}000$ (Poisson) \\
+Geometry & C-arm cone beam, $500$ projections, short scan \\
+Source-to-isocenter / detector & $750\,\mathrm{mm}$ / $1200\,\mathrm{mm}$ \\
+Field of view & $200\,\mathrm{mm}$ \\
+Reconstruction & FBP, $0.5\,\mathrm{mm}$ isotropic voxels \\
+Phantom & $110\,\mathrm{mm}$ soft-tissue cylinder + cortical-bone rod \\
+Tumor & $8\,\mathrm{cm}^3$ ($r=12.4\,\mathrm{mm}$), iron-loaded \\
+Detectors & EID; 3-bin PCD, thresholds $37.5/50\,\mathrm{keV}$ \\
+Dose levels & $c_{\mathrm{Fe}} \in \{0.027,\dots,1.086\}\,\mathrm{mg/ml}$ (Table~\ref{tab:dose}) \\
+Noise realizations & $30$ per cell \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
 \section{RESULTS}
 \label{sec:results}
 
@@ -332,6 +356,38 @@ voltages and added filters. Lower tube voltage helps; hardening filters hurt.
 \label{fig:sweep}
 \end{figure}
 
+\subsection{Heterogeneous (vascular) uptake}
+Real uptake is vascular, not uniform, so we also test a two-compartment tumor in
+which the same delivered iron mass is confined to $150\,\mu\mathrm{m}$ vessels
+occupying $10\%$ of the tumor volume -- a tenfold local concentration. The decisive
+fact is one of scale: a $0.5\,\mathrm{mm}$ voxel is more than three times wider than
+a vessel, so each voxel partial-volume-averages many vessels. With mass conserved,
+the volume-averaged iron per voxel is therefore unchanged, and the tumor-ROI
+contrast is identical to the homogeneous case; our simulation confirms a ROI-mean
+iron concentration equal to the homogeneous mean at every voxel size we tested, and
+a per-voxel peak that reaches the true tenfold value only as the voxel shrinks
+toward the vessel size (Fig.~\ref{fig:studyb}). Two second-order effects that the
+homogeneous model omits both prove negligible here: the beam-hardening
+nonlinearity from concentrating iron into vessels is below $10^{-3}\,$HU even at
+five times the reference dose, because iron is such a small perturbation of the
+line integral; and although the per-voxel vessel count is binomial and adds
+substantial texture ($\sim\!90\%$ relative per-voxel at $0.5\,\mathrm{mm}$, with
+$\sim\!11$ vessels per voxel), this averages out over the tumor ROI. In short, at
+realistic resolution and dose, vascular uptake is CT-indistinguishable from
+homogeneous uptake, and the simpler homogeneous model is adequate for the
+detectability question.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.58\linewidth]{fig_study_b.pdf}
+\caption{Vascular uptake and partial-volume averaging. The ROI-mean iron
+concentration is invariant (mass conservation), while the per-voxel peak approaches
+the resolved tenfold value only as the voxel shrinks toward the
+$150\,\mu\mathrm{m}$ vessel size; at the $0.5\,\mathrm{mm}$ CT voxel the vessels are
+unresolved.}
+\label{fig:studyb}
+\end{figure}
+
 \section{DISCUSSION}
 \label{sec:discussion}
 
@@ -360,9 +416,10 @@ anatomy -- no standard digital rabbit phantom exists -- so beam hardening and
 scatter are idealized; results are reported for a central slice. Soft tissue is a
 water proxy, since CONRAD ships no ICRU-44 soft-tissue definition, and the residual
 bone-streak bias is suppressed but not eliminated by the local-background and
-zero-iron subtraction. Finally, we assume homogeneous tumor uptake; real uptake is
-vascular and heterogeneous, which concentrates iron locally and could raise peak
-contrast. A vessel-based uptake model is the natural next step.
+zero-iron subtraction. The homogeneous-uptake assumption is relaxed by the vascular
+model of Sec.~\ref{sec:results}, which shows that sub-resolution vessels do not
+change detectability at the same total dose; what remains is the absence of true
+anatomy and a full three-dimensional study.
 
 \section{CONCLUSION}
 \label{sec:conclusion}
