@@ -4,6 +4,27 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — SPIE Medical Imaging paper plan
+
+- Downloaded the **official SPIE Proceedings LaTeX template** (spie.cls v3.4,
+  2015/08/14) from the arXiv source of the SPIE style guide; kept spie.cls,
+  spiebib.bst, the guide (`spie_template.tex`) and its two demo figures under
+  `paper/template/`. **Verified it compiles** locally (`latexmk -pdf`, exit 0).
+- Wrote `paper_plan.md`: target = SPIE Medical Imaging, *Physics of Medical
+  Imaging* track (~8 pp.); working titles; full section-by-section structure;
+  figure/table plan; result-dependent-claim placeholders; template usage notes.
+  Flagged TODOs: confirm SPIE MI 2027 dates + track, confirm co-authors (SEON
+  nanoparticle group).
+- Added a **writing-style analysis of Andreas Maier** (from *A Gentle
+  Introduction to Deep Learning in Medical Image Processing*, arXiv:1810.05401):
+  11 observed traits with quoted evidence, distilled into concrete "Maier voice"
+  rules for drafting this paper, plus anti-patterns to avoid.
+
+**Next:** run the simulation (M0→M7) to produce the figures/tables, then draft
+`paper/spie_manuscript.tex` from the template applying the style rules.
+
+---
+
 ## 2026-07-08 — Dose model: delivered mass, anchored at 6 mg / 10 mg-ml
 
 - **Decision (user):** the dose is a *delivered SPION mass*, not a fixed vial

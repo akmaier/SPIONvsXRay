@@ -89,11 +89,13 @@ reporting).
 ## Repository layout
 
 ```
-SPEC.md      Full experimental plan and milestones
-README.md    This file
-DEVLOG.md    Running development log
-src/         Simulation & analysis code (to be added)
-results/     Generated outputs (git-ignored)
+SPEC.md          Full experimental plan and milestones
+README.md        This file
+DEVLOG.md        Running development log
+paper_plan.md    SPIE Medical Imaging paper plan + Maier writing-style analysis
+paper/template/  Official SPIE Proceedings LaTeX template (spie.cls v3.4, verified)
+src/             Simulation & analysis code (to be added)
+results/         Generated outputs (git-ignored)
 ```
 
 ## License / attribution
