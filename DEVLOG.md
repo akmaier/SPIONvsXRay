@@ -22,6 +22,32 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — Investigation: CL backprojector + voxel spacing (user questions)
+
+**CL backprojector — root cause found.** `FanBeamBackprojector2D.backprojectPixelDrivenCL`
+never passes the image pixel spacing to its kernel — literally `// TODO: Spacing :)`
+in the source. So its pixel↔world mapping is inconsistent with the CPU path:
+looks fine on a uniform disk (differs by a scale) but **corrupts sub-HU
+measurements** (per-insert ΔHU came out 196 HU, non-monotonic). Reverted: forward
+projection uses CL (validated), **backprojection stays CPU** (correct). GPU thus
+does NOT accelerate the reconstruction step (the factorial bottleneck) as-is.
+
+**Voxel spacing — where it lives.** CONRAD's *global Configuration* DOES hold
+voxel spacing (`Configuration.java` default `setVoxelSpacingX(1.0)`; `Trajectory`
+has get/setVoxelSpacingX/Y/Z + getReconDimension*), and the MAIN reconstruction
+pipeline reads it. BUT the **tutorial** `FanBeamBackprojector2D` we use ignores
+the config and hardcodes 1 mm via `Translation(-imgSize/2,-imgSize/2,-1)`. So the
+observed 1.0 mm is the tutorial hardcode (coincidentally == the config default).
+To get 0.5 mm properly: set the global Configuration + use a config-aware
+reconstructor, or a self-contained geometry rescale.
+
+**Factorial (24 cells, CPU backproj, 17 min):** EID CNR rises to ~3.9 at the top
+dose (1.09 mg Fe/ml) — just below Rose 5 → SPIONs **borderline-undetectable**
+(the expected headline). PCD path is currently BROKEN (CNR≈0/neg) — a bug in my
+per-bin combination to fix.
+
+---
+
 ## 2026-07-08 — CONRAD-native pipeline COMPLETE end-to-end (src/conrad_project.py)
 
 Full native chain working: CONRAD AnalyticPhantom → PriorityRayTracer fan-beam

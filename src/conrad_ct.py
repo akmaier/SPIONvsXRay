@@ -96,8 +96,11 @@ def project(image_np, geo, gpu=None):
     return grid2d_to_np(fp.projectRayDriven(g))               # CPU
 
 
-def fbp(sino_np, geo):
-    """Fan-beam FBP: cosine weighting -> ramp filter -> CONRAD distance-weighted BP."""
+def fbp(sino_np, geo, bh_correction=False, bh_c2=0.10):
+    """Fan-beam FBP: (optional water beam-hardening precorrection ->) cosine ->
+    ramp filter -> CONRAD distance-weighted backprojection."""
+    if bh_correction:
+        sino_np = sino_np + bh_c2 * sino_np ** 2      # nominal water precorrection
     n_ang, n_det = sino_np.shape
     t = (np.arange(n_det) - (n_det - 1) / 2.0) * geo["deltaT"]
     cos_w = geo["focal"] / np.sqrt(geo["focal"] ** 2 + t ** 2)   # fan cosine weight
@@ -107,11 +110,11 @@ def fbp(sino_np, geo):
     sino.setSpacing(geo["deltaT"], geo["deltaBeta"])
     BP = _cls("edu.stanford.rsl.tutorial.fan", "FanBeamBackprojector2D")
     bp = BP(geo["focal"], geo["deltaT"], geo["deltaBeta"], geo["imgN"], geo["imgN"])
-    # NB: backprojectPixelDrivenCL currently reconstructs incorrectly here (a
-    # convention/setup mismatch — output inverted vs the CPU result), so we use
-    # the validated CPU backprojector. The GPU FORWARD projector (projectRayDrivenCL)
-    # is validated (0.03% vs CPU) and is the big win; backprojection is cheaper.
-    # TODO(opencl): fix the CL backprojector conventions, then enable here.
+    # CPU backprojector only. The CL backprojector (backprojectPixelDrivenCL) is
+    # INCOMPLETE upstream: its kernel is never passed the image pixel spacing
+    # ("// TODO: Spacing :)" in FanBeamBackprojector2D.java), so its pixel<->world
+    # mapping is inconsistent with the CPU path -> looks fine on a uniform disk
+    # but corrupts sub-HU quantitative measurements. Forward projection uses CL.
     return grid2d_to_np(bp.backprojectPixelDriven(sino))             # CPU (correct)
 
 
