@@ -1,146 +1,127 @@
-"""M2 — round geometric rabbit-scale phantom.
+"""M2 (rev.) — ED-phantom-style module: concentration inserts on a circle.
 
-Analytic geometry (soft-tissue cylinder + cortical-bone rod + iron-loaded tumor
-sphere) plus a voxelizer that returns three component volumes so polychromatic
-projection (M4) can integrate each material's path length independently:
+Like a CT calibration (electron-density) phantom: a soft-tissue cylinder with the
+SPION concentration inserts arranged on a circle at EQUAL radius, plus a
+cortical-bone insert. All concentrations are imaged in one scan and sit at the
+same radial position, so beam-hardening cupping affects them equally and they are
+directly comparable. Each insert is a 2.5 cm disk (~8 cm^3-equivalent tumor).
 
-    mu(E; ray) = L_soft·mu_soft(E) + L_bone·mu_bone(E) + (∫c_Fe dl)·oxide(E)
+Returns 2D component maps (soft fraction, bone fraction, iron mg/ml) for fan-beam
+projection, and the insert table for ROI measurement.
 
-Two tumor distributions (SPEC §5.1/§5.9):
-  * 'homogeneous' — uniform iron through the sphere (Study A).
-  * 'vessel'      — iron confined to 150 µm vessels at 10% volume, mass conserved
-                    -> 10x local conc. Vessels are sub-resolution, so per-voxel
-                    effective conc has mean = c_Fe with binomial partial-volume
-                    variance (structural noise). (Study B)
+Tumor models (per insert):
+  'homogeneous' — uniform iron; 'vessel' — 150 um vessels @10% (mass conserved,
+  10x local conc, sub-resolution -> per-voxel binomial partial-volume variance).
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 
 import conrad_backend
-from config import PHANTOM, tumor_iron_conc, VESSEL_DIAMETER_UM, VESSEL_VOLUME_FRACTION
+from config import (C_FORM_LEVELS, tumor_iron_conc,
+                    VESSEL_DIAMETER_UM, VESSEL_VOLUME_FRACTION)
 
-_RNG = np.random.default_rng(20260708)   # fixed seed for reproducibility
+_RNG = np.random.default_rng(20260708)
+
+BODY_RADIUS_MM = 80.0        # fits inside the 20 cm FOV
+INSERT_CIRCLE_MM = 50.0      # radius of the ring of inserts
+INSERT_RADIUS_MM = 12.5      # 2.5 cm dia ~ 8 cm^3-equivalent
+BONE_RADIUS_MM = 12.5
 
 
 @dataclass
-class ComponentVolumes:
-    """Per-voxel material composition (all arrays share the same grid)."""
-    soft: np.ndarray      # soft-tissue fraction in [0,1]
-    bone: np.ndarray      # cortical-bone fraction in [0,1]
-    iron_mgml: np.ndarray # iron concentration [mg Fe/ml] (tumor voxels only)
-    voxel_mm: float
-    origin_mm: tuple      # (x0,y0,z0) of voxel-index (0,0,0) center
+class EDPhantom:
+    soft: np.ndarray
+    bone: np.ndarray
+    iron: np.ndarray            # mg Fe/ml per pixel
+    voxel_cm: float
+    inserts: list = field(default_factory=list)   # dicts: name, center_mm, radius_mm, c_form, c_fe
 
 
-def _grid(dim, voxel_mm):
-    nx, ny, nz = dim
-    # centered coordinates [mm]
-    x = (np.arange(nx) - (nx - 1) / 2.0) * voxel_mm
-    y = (np.arange(ny) - (ny - 1) / 2.0) * voxel_mm
-    z = (np.arange(nz) - (nz - 1) / 2.0) * voxel_mm
-    return np.meshgrid(x, y, z, indexing="ij")
+def _disk(X, Y, cx, cy, r):
+    return (X - cx) ** 2 + (Y - cy) ** 2 <= r ** 2
 
 
-def build_components(c_form: float, model: str = "homogeneous",
-                     dim=(256, 256, 192), voxel_mm: float = 0.78) -> ComponentVolumes:
-    """Voxelize the phantom for one formulation concentration and tumor model."""
-    X, Y, Z = _grid(dim, voxel_mm)
-    ph = PHANTOM
+def build_ed_phantom(model="homogeneous", N=512, fov_mm=200.0) -> EDPhantom:
+    voxel_mm = fov_mm / N
+    ax = (np.arange(N) - (N - 1) / 2.0) * voxel_mm
+    X, Y = np.meshgrid(ax, ax, indexing="ij")   # X=axis0(rows), Y=axis1(cols)
 
-    # body cylinder (axis along z)
-    body_r = ph.body_diameter_mm / 2.0
-    in_body = (X**2 + Y**2 <= body_r**2) & (np.abs(Z) <= ph.body_height_mm / 2.0)
+    soft = _disk(X, Y, 0, 0, BODY_RADIUS_MM).astype(np.float32)
+    bone = np.zeros((N, N), np.float32)
+    iron = np.zeros((N, N), np.float32)
 
-    # cortical-bone rod (cylinder along z)
-    bx, by, _ = ph.bone_center_mm
-    in_bone = in_body & ((X - bx)**2 + (Y - by)**2 <= ph.bone_radius_mm**2)
+    inserts = []
+    n_conc = len(C_FORM_LEVELS)
+    n_slots = n_conc + 1                       # + bone
+    for k, c_form in enumerate(C_FORM_LEVELS):
+        theta = 2 * np.pi * k / n_slots + np.pi / 2   # start at top
+        cx = INSERT_CIRCLE_MM * np.cos(theta)
+        cy = INSERT_CIRCLE_MM * np.sin(theta)
+        mask = _disk(X, Y, cx, cy, INSERT_RADIUS_MM)
+        c_fe = tumor_iron_conc(c_form)
+        _fill_iron(iron, mask, c_fe, model, voxel_mm)
+        inserts.append(dict(name=f"c{c_form:g}", center_mm=(float(cx), float(cy)),
+                            radius_mm=INSERT_RADIUS_MM, c_form=float(c_form), c_fe=float(c_fe)))
 
-    # tumor sphere
-    tx, ty, tz = ph.tumor_center_mm
-    tr = ph.tumor_radius_mm
-    in_tumor = (X - tx)**2 + (Y - ty)**2 + (Z - tz)**2 <= tr**2
+    # bone insert in the last slot
+    theta = 2 * np.pi * n_conc / n_slots + np.pi / 2
+    bx, by = INSERT_CIRCLE_MM * np.cos(theta), INSERT_CIRCLE_MM * np.sin(theta)
+    bmask = _disk(X, Y, bx, by, BONE_RADIUS_MM)
+    bone[bmask] = 1.0
+    soft[bmask] = 0.0
+    inserts.append(dict(name="bone", center_mm=(float(bx), float(by)),
+                        radius_mm=BONE_RADIUS_MM, c_form=None, c_fe=0.0))
 
-    soft = np.where(in_body & ~in_bone, 1.0, 0.0).astype(np.float32)
-    bone = np.where(in_bone, 1.0, 0.0).astype(np.float32)
-
-    c_fe = tumor_iron_conc(c_form)   # mean tumor iron [mg Fe/ml]
-    iron = np.zeros(dim, dtype=np.float32)
-    if c_fe > 0:
-        if model == "homogeneous":
-            iron[in_tumor] = c_fe
-        elif model == "vessel":
-            # per-voxel effective conc: 10% vessels at 10x conc, mass conserved.
-            # sub-voxels per CT voxel ~ (voxel / vessel)^3, capped for stability.
-            vessel_mm = VESSEL_DIAMETER_UM / 1000.0
-            m = max(1, int(round((voxel_mm / vessel_mm) ** 3)))
-            m = min(m, 4000)
-            n_tumor = int(in_tumor.sum())
-            vessel_frac = _RNG.binomial(m, VESSEL_VOLUME_FRACTION, size=n_tumor) / m
-            local = vessel_frac * (c_fe / VESSEL_VOLUME_FRACTION)   # 10x conc where vessels
-            iron[in_tumor] = local.astype(np.float32)
-        else:
-            raise ValueError(f"unknown tumor model {model!r}")
-
-    origin = (-(dim[0] - 1) / 2.0 * voxel_mm,
-              -(dim[1] - 1) / 2.0 * voxel_mm,
-              -(dim[2] - 1) / 2.0 * voxel_mm)
-    return ComponentVolumes(soft, bone, iron, voxel_mm, origin)
+    return EDPhantom(soft, bone, iron, voxel_mm / 10.0, inserts)
 
 
-def summary_stats(cv: ComponentVolumes) -> dict:
-    tumor = cv.iron_mgml[cv.iron_mgml > 0]
-    return dict(
-        soft_voxels=int(cv.soft.sum()),
-        bone_voxels=int(cv.bone.sum()),
-        tumor_voxels=int((cv.iron_mgml > 0).sum()),
-        iron_mean=float(cv.iron_mgml[cv.iron_mgml >= 0].mean()) if cv.iron_mgml.size else 0.0,
-        tumor_iron_mean=float(tumor.mean()) if tumor.size else 0.0,
-        tumor_iron_std=float(tumor.std()) if tumor.size else 0.0,
-        tumor_iron_max=float(tumor.max()) if tumor.size else 0.0,
-    )
+def _fill_iron(iron, mask, c_fe, model, voxel_mm):
+    if c_fe <= 0:
+        return
+    if model == "homogeneous":
+        iron[mask] = c_fe
+    elif model == "vessel":
+        vessel_mm = VESSEL_DIAMETER_UM / 1000.0
+        m = int(np.clip(round((voxel_mm / vessel_mm) ** 3), 1, 4000))
+        nvox = int(mask.sum())
+        frac = _RNG.binomial(m, VESSEL_VOLUME_FRACTION, size=nvox) / m
+        iron[mask] = (frac * (c_fe / VESSEL_VOLUME_FRACTION)).astype(np.float32)
+    else:
+        raise ValueError(f"unknown tumor model {model!r}")
 
 
-def visualize(outdir: str = None, c_form: float = 20.0):
-    """Render axial slices for homogeneous vs vessel tumor -> dashboard figures."""
-    import os
-    import matplotlib
+def visualize(outdir=None):
+    import os, matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     if outdir is None:
         outdir = str(conrad_backend.REPO_ROOT / "results" / "phantom")
     os.makedirs(outdir, exist_ok=True)
-
-    dim = (256, 256, 64)
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4.3))
-    cv = build_components(c_form, "homogeneous", dim=dim)
-    kz = dim[2] // 2
-
-    # composite material map: soft=0.3, bone=1.0, tumor outlined by iron>0
-    comp = cv.soft[:, :, kz] * 0.3 + cv.bone[:, :, kz] * 1.0
-    comp[cv.iron_mgml[:, :, kz] > 0] = 0.6
-    axes[0].imshow(comp.T, cmap="bone", origin="lower")
-    axes[0].set_title("Phantom (soft + bone + tumor)"); axes[0].axis("off")
-
-    # tumor iron map: homogeneous vs vessel (zoom on tumor)
-    tx = int(round(PHANTOM.tumor_center_mm[0] / cv.voxel_mm + (dim[0] - 1) / 2))
-    ty = int(round(PHANTOM.tumor_center_mm[1] / cv.voxel_mm + (dim[1] - 1) / 2))
-    r = int(round(PHANTOM.tumor_radius_mm / cv.voxel_mm)) + 3
-    for ax, model in zip(axes[1:], ["homogeneous", "vessel"]):
-        cvi = build_components(c_form, model, dim=dim)
-        sl = cvi.iron_mgml[tx - r:tx + r, ty - r:ty + r, kz]
-        im = ax.imshow(sl.T, cmap="inferno", origin="lower", vmin=0)
-        ax.set_title(f"tumor iron [mg Fe/ml] — {model}"); ax.axis("off")
-        plt.colorbar(im, ax=ax, fraction=0.046)
-    fig.suptitle(f"Round geometric phantom (c_form={c_form:g} mg/ml)")
+    ph = build_ed_phantom("homogeneous", N=512)
+    comp = ph.soft * 0.3 + ph.bone * 1.0
+    comp[ph.iron > 0] = 0.6
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    ax[0].imshow(comp.T, cmap="bone", origin="lower")
+    ax[0].set_title("ED phantom: soft + bone + concentration inserts")
+    im = ax[1].imshow(ph.iron.T, cmap="inferno", origin="lower")
+    ax[1].set_title("iron [mg Fe/ml] per insert")
+    plt.colorbar(im, ax=ax[1], fraction=0.046)
+    for a in ax:
+        a.axis("off")
+    # annotate concentrations
+    for ins in ph.inserts:
+        cx, cy = ins["center_mm"]
+        px = cx / (ph.voxel_cm * 10) + 256
+        py = cy / (ph.voxel_cm * 10) + 256
+        lbl = "bone" if ins["name"] == "bone" else f"{ins['c_form']:g}"
+        ax[0].text(px, py, lbl, color="cyan", ha="center", va="center", fontsize=8)
     fig.tight_layout()
     fig.savefig(f"{outdir}/phantom_axial.png", dpi=130)
     plt.close(fig)
-    print("[ok] wrote", outdir, "-> phantom_axial.png")
+    print("[ok] wrote", outdir, "-> phantom_axial.png; inserts:",
+          [(i["name"], round(i["c_fe"], 3)) for i in ph.inserts])
 
 
 if __name__ == "__main__":
-    for model in ["homogeneous", "vessel"]:
-        cv = build_components(20.0, model, dim=(256, 256, 96))
-        print(f"[{model}]", summary_stats(cv))
     visualize()
