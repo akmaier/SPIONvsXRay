@@ -71,14 +71,23 @@ installed pyconrad version** before writing the pipeline.
 
 ## 5. Finalized Experimental Configuration
 
-### 5.1 Phantom (rabbit-scale, in-vivo-like)
+### 5.1 Phantom (rabbit-scale, in-vivo-like) — TWO backgrounds
 
-- **Nature:** a **geometric/analytic phantom sized to a rabbit**, NOT a real
-  rabbit CT (decision 2026-07-08). Deliberate: a clean, reproducible background
-  isolates the detector/spectral variables. State this as a limitation in the
-  paper (idealized anatomy → idealized beam hardening/scatter).
-- **Body:** homogeneous **ICRU soft-tissue** (water proxy) cylinder, ~10–12 cm
-  diameter (rabbit trunk), comfortably inside the **20 cm FOV**.
+Decision 2026-07-08: run the study on **both** backgrounds and compare.
+
+**(A) Round geometric phantom** — homogeneous **ICRU soft-tissue** (water proxy)
+cylinder, ~10–12 cm diameter (rabbit trunk), inside the **20 cm FOV**, with a
+cortical-bone rod. Clean, reproducible; isolates the detector/spectral variables.
+
+**(B) ROBY digital rabbit phantom** — the Segars/Duke XCAT-family voxelized
+rabbit (realistic organs + skeleton) for anatomical realism (realistic beam
+hardening/heterogeneity). *ROBY is licensed (Duke/XCAT) and cannot be
+auto-downloaded — the user provides the generated voxel volume; `src/phantom.py`
+adapts it (organ→material map) and embeds the tumor.* Until the files are
+supplied, the batch runs on (A); the ROBY adapter is ready to ingest (B).
+
+Both backgrounds carry the **same tumor** (homogeneous, and the Study-B vessel
+variant) and run the same factorial, so anatomy's effect is directly measured.
 - **Bone insert:** a cortical-bone rod (spine/rib surrogate) to create a genuine
   **beam-hardening** source — this makes the BH-correction on/off comparison
   meaningful.

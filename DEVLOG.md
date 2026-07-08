@@ -4,6 +4,22 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — Two phantom backgrounds: round geometric + ROBY
+
+- Decision (user): use **both** a round geometric phantom (cylinder + bone) and
+  the **ROBY** digital rabbit (Segars/Duke XCAT family) for anatomical realism.
+- ROBY is **licensed** (Duke/XCAT) → cannot auto-download. Plan: implement the
+  round phantom fully now; add a ROBY adapter (`src/phantom.py`) that ingests a
+  user-supplied ROBY voxel volume (organ→material map) and embeds the tumor.
+  Batch runs on `round` until ROBY files are provided under `data/roby/`.
+- config.py: `PHANTOM_BACKGROUNDS=['round','roby']`, `TUMOR_MODELS=
+  ['homogeneous','vessel']`, `ROBY` paths, vessel params. SPEC §5.1 updated.
+
+**ACTION FOR USER:** to enable the ROBY arm, drop the ROBY-generated volume +
+log into `data/roby/` (they're licensed; I can't fetch them).
+
+---
+
 ## 2026-07-08 — Correctness: model iron OXIDE (magnetite), not pure Fe
 
 - Caught: attenuation used pure elemental Fe. Fixed to magnetite Fe₃O₄ — added

@@ -133,6 +133,27 @@ class Evaluation:
     rose_cnr_threshold: float = 5.0      # detectable if CNR >= 3..5 (report both)
 
 
+# Phantom backgrounds and tumor distribution models (SPEC §5.1 / §5.9)
+PHANTOM_BACKGROUNDS = ["round", "roby"]      # (A) geometric cylinder, (B) ROBY rabbit
+TUMOR_MODELS = ["homogeneous", "vessel"]     # Study A (uniform), Study B (150 µm vessels @10%)
+
+
+@dataclass(frozen=True)
+class Roby:
+    """ROBY digital rabbit — licensed (Duke/XCAT); user supplies generated files."""
+    volume_path: str = "data/roby/roby_atn_1.bin"   # raw float attenuation/label volume
+    log_path: str = "data/roby/roby_log"            # ROBY log with dims + voxel size
+    dim: tuple = (256, 256, 350)                    # override from the log
+    voxel_mm: float = 0.5                           # override from the log
+
+
+ROBY = Roby()
+
+# Study B vessel model (SPEC §5.9)
+VESSEL_DIAMETER_UM = 150.0
+VESSEL_VOLUME_FRACTION = 0.10        # vessels occupy 10% of tumor volume
+# mass-conserved: local vessel iron concentration = tumor mean / volume fraction (10x)
+
 PHANTOM = Phantom()
 GEOMETRY = Geometry()
 RECON = Recon()
