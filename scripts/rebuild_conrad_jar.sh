@@ -16,8 +16,11 @@ JH="$(ls -d .jdk8/zulu*/Contents/Home 2>/dev/null | head -1)"
 [ -n "$JH" ] || { echo "arm64 JDK 8 not found (run scripts/install_jdk8.sh)"; exit 1; }
 BASEJAR="$(ls .venv/lib/python3.12/site-packages/pyconrad/'CONRAD 1.1.0'/conrad_1.1.0.jar)"
 
-# The four fixed files (2 compiled, 2 resource-only).
+# The fixed source files (compiled) and resource files (copied as-is). All
+# compiled .class outputs (incl. nested classes) are spliced automatically.
 JAVA=(
+  "edu/stanford/rsl/conrad/data/numeric/NumericGridOperator.java"
+  "edu/stanford/rsl/conrad/data/numeric/NumericPointwiseOperators.java"
   "edu/stanford/rsl/conrad/data/numeric/opencl/OpenCLGridOperators.java"
   "edu/stanford/rsl/tutorial/fan/FanBeamBackprojector2D.java"
 )
@@ -35,12 +38,10 @@ for r in "${RES[@]}"; do mkdir -p "$OUT/$(dirname "$r")"; cp "$CONRAD/src/$r" "$
 
 mkdir -p publish/conrad
 cp "$BASEJAR" publish/conrad/conrad_1.1.0.jar
+# splice every compiled class + every resource, relative to $OUT
 ( cd "$OUT" && "$JH/bin/jar" uf "$REPO/publish/conrad/conrad_1.1.0.jar" \
-    edu/stanford/rsl/conrad/data/numeric/opencl/OpenCLGridOperators.class \
-    'edu/stanford/rsl/conrad/data/numeric/opencl/OpenCLGridOperators$OpenCLSetup.class' \
-    edu/stanford/rsl/conrad/data/numeric/opencl/PointwiseOperators.cl \
-    edu/stanford/rsl/tutorial/fan/FanBeamBackprojector2D.class \
-    edu/stanford/rsl/tutorial/fan/FanBeamBackProjectorPixel.cl )
+    $(find . -name '*.class' | sed 's#^\./##') \
+    $(for r in "${RES[@]}"; do echo "$r"; done) )
 echo "Patched jar: publish/conrad/conrad_1.1.0.jar (sha1 $(shasum -a1 publish/conrad/conrad_1.1.0.jar | cut -c1-12))"
 
 # Optional: rebuild the FAU release zip if the canonical one is present alongside.

@@ -4,6 +4,29 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-09 — CONRAD GPU noise generators (Layer 1) upstreamed
+
+Goal (AM): give CONRAD OpenCL-native noise generators, photon counter, and
+detector models so the whole spectral projection can run on-device. Staged
+Layer 1 first (noise ops), verified, pushed to **akmaier/CONRAD master (`631fbed`)**.
+
+- **No GPU RNG existed in CONRAD** — noise was CPU-only (`StatisticsUtil`).
+- Added a **Philox4x32-10 counter-based RNG** (Random123) in
+  `PointwiseOperators.cl`: stateless, reproducible via a seed, no per-thread
+  state buffers. On it: `poisson` kernel (element = mean λ; Knuth for λ<30,
+  Hörmann **PTRS** transformed rejection for λ≥30 — exact across the range) and
+  `standardNormal` (Box–Muller).
+- CPU reference impls in `NumericGridOperator` (seeded `Random` + Lanczos
+  lgamma), GPU overrides in `OpenCLGridOperators`, static wrappers in
+  `NumericPointwiseOperators` — so `poisson(grid,seed)`/`standardNormal(grid,seed)`
+  dispatch to CPU or GPU by grid type like the other pointwise ops.
+- **Verified on the M1 GPU** (test jar, `conrad_ext` off): Poisson mean==var==λ
+  from 0.5→5000 (Knuth + PTRS), integer output, per-element λ, reproducible;
+  **chi-square goodness-of-fit vs the analytic PMF passes** (λ=5 and λ=50);
+  standard normal mean 0, std 1, ~0 skew/kurtosis.
+- **Next — Layer 2:** GPU polychromatic absorption model + photon-counting /
+  noisy detector classes (grid-resident), then one combined jar re-release.
+
 ## 2026-07-08 — CONRAD OpenCL fixes upstreamed to akmaier/CONRAD + jar re-release prep
 
 - Studied CONRAD's GPU stack to answer "can we run it all on GPU with OpenCL
