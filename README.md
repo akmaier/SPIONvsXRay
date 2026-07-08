@@ -91,14 +91,26 @@ reporting).
 ```
 SPEC.md          Full experimental plan and milestones
 README.md        This file
+LICENSE          MIT License
 DEVLOG.md        Running development log
 paper_plan.md    SPIE Medical Imaging paper plan + Maier writing-style analysis
 paper/template/  Official SPIE Proceedings LaTeX template (spie.cls v3.4, verified)
+docs/            GitHub Pages audit dashboard (index.html + assets/)
 src/             Simulation & analysis code (to be added)
 results/         Generated outputs (git-ignored)
 ```
 
+## Audit dashboard
+
+A public **GitHub Pages dashboard** presents all intermediate results — spectra,
+material attenuation, phantom, projections, reconstructions, and detectability
+curves — alongside **annotated code snippets for auditing** the methodology. It
+is regenerated from `results/` by `src/build_dashboard.py`.
+
+➡ **https://akmaier.github.io/SPIONvsXRay/** (source: `docs/`)
+
 ## License / attribution
 
-Simulation built on CONRAD (FAU Pattern Recognition Lab). The reference article
-PDF is not redistributed (git-ignored).
+Released under the **MIT License** — see [`LICENSE`](LICENSE). Simulation built on
+CONRAD (FAU Pattern Recognition Lab). The reference article PDF is not
+redistributed (git-ignored).

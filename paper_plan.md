@@ -208,6 +208,18 @@ with a concrete rule for our manuscript.
 
 ---
 
+## 9b. Reproducibility & audit dashboard (supports the paper)
+
+The project ships a public **GitHub Pages audit dashboard** (`docs/`,
+<https://akmaier.github.io/SPIONvsXRay/>) that shows every intermediate result —
+spectrum, material attenuation, phantom, projections, reconstructions,
+detectability curves — plus **annotated code snippets for auditing**. For the
+manuscript this gives us: (i) a citable reproducibility/data-availability
+statement, (ii) ready-made figure sources, and (iii) reviewer-facing
+transparency. The project is **MIT-licensed** (`LICENSE`), so code and figures
+can be reused/cited. Add a "Code and data availability" line to the paper linking
+the dashboard and repository.
+
 ## 10. Next actions
 
 1. Confirm SPIE MI 2027 dates + track; confirm co-authors.

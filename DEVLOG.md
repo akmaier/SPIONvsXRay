@@ -4,6 +4,23 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — MIT license + GitHub Pages audit dashboard
+
+- Added **MIT `LICENSE`** (© 2026 Andreas Maier); README + paper plan updated.
+- Built a **GitHub Pages audit dashboard** under `docs/` (`index.html`,
+  `assets/`, `.nojekyll`): sections for spectrum, materials/attenuation, phantom,
+  projections, reconstructions, detectability, an annotated **code-audit**
+  section, and reproducibility. Self-contained (inline CSS/JS); figure panels
+  show a "pending" placeholder until `docs/assets/*.png` exist, then auto-render.
+- Planned `src/build_dashboard.py` to regenerate `docs/` from `results/`
+  (added to SPEC deliverables + new milestone **M8**).
+- Enabled GitHub Pages (source = `main`/`docs/`) via `gh api`.
+  Live at <https://akmaier.github.io/SPIONvsXRay/>.
+
+**Next:** unchanged — run M0→M7, then M8 fills the dashboard with real figures.
+
+---
+
 ## 2026-07-08 — SPIE Medical Imaging paper plan
 
 - Downloaded the **official SPIE Proceedings LaTeX template** (spie.cls v3.4,

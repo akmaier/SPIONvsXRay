@@ -186,7 +186,14 @@ Per tumor ROI vs. soft-tissue reference, for every factor cell:
 - `src/reconstruct.py` — FDK reconstruction.
 - `src/analyze.py` — ROI HU/attenuation, contrast curve, CNR, detectability.
 - `run_experiment.py` — end-to-end driver; writes figures + a results table.
+- `src/build_dashboard.py` — regenerate the GitHub Pages audit dashboard
+  (`docs/`) from `results/`: copies figures into `docs/assets/`, fills the
+  detectability table, and stamps the commit hash.
 - `results/` — projection stacks, reconstructions, plots (git-ignored).
+- `docs/` — public **audit dashboard** (GitHub Pages) showing spectra, materials,
+  phantom, projections, reconstructions, detectability curves, and annotated
+  code snippets for auditing. Committed (images live in `docs/assets/`).
+- `LICENSE` — MIT.
 - Findings summarized back into `README.md` / `DEVLOG.md`.
 
 ## 7. Milestones
@@ -195,12 +202,16 @@ Per tumor ROI vs. soft-tissue reference, for every factor cell:
   `setup_pyconrad()` succeeds, JVM up, CONRAD.jar present. *(de-risks Mac/3.14.)*
 - **M1 — Materials**: register water + SPION@c materials; sanity-check linear
   attenuation vs. c at a fixed energy against NIST/known Fe values.
-- **M2 — Phantom**: build multi-vial phantom, verify material map visually.
+- **M2 — Phantom**: build rabbit-scale soft-tissue + bone phantom with the 8 cm³
+  iron-loaded tumor; verify material map visually.
 - **M3 — Forward model**: standard spectrum + single polychromatic projection.
 - **M4 — Full scan**: 500-projection C-arm acquisition.
 - **M5 — Reconstruction**: FDK volume, correct geometry/scaling.
 - **M6 — Analysis**: HU-vs-concentration curve, CNR, detectability threshold.
 - **M7 — Noise study**: repeat with photon noise; report detection limit.
+- **M8 — Dashboard**: `src/build_dashboard.py` populates the `docs/` audit
+  dashboard from `results/` (figures + detectability table + commit stamp);
+  GitHub Pages serves it publicly. *(Scaffold + Pages already live.)*
 
 ## 8. Status of Open Questions
 

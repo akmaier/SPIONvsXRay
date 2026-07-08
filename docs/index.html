@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPIONvsXRay — Audit Dashboard</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2b3440;
+    --fg:#e6edf3; --muted:#9aa7b4; --accent:#4aa8ff; --accent2:#63d6a0;
+    --warn:#e3b341; --code:#0b0f14; --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header{padding:48px 20px 36px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#12181f,#0e1116)}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+  h1{margin:0 0 6px;font-size:30px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:17px;margin:0 0 18px}
+  .badges span{display:inline-block;background:var(--panel2);border:1px solid var(--line);
+    border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted);margin:0 6px 6px 0}
+  .badges .ok{color:var(--accent2)}
+  nav{position:sticky;top:0;z-index:10;background:rgba(14,17,22,.9);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;flex-wrap:wrap;gap:14px;padding:12px 20px;font-size:14px}
+  nav a{color:var(--muted)}
+  section{padding:34px 0;border-bottom:1px solid var(--line)}
+  h2{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+  h2 .n{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:10px}
+  .lead{color:var(--muted);margin:0 0 18px;max-width:70ch}
+  .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  figure img{display:block;width:100%;height:auto;background:#fff}
+  figcaption{padding:10px 14px;color:var(--muted);font-size:13.5px;border-top:1px solid var(--line)}
+  .pending{display:flex;align-items:center;justify-content:center;text-align:center;
+    min-height:190px;padding:24px;color:var(--muted);background:
+    repeating-linear-gradient(45deg,#141a21,#141a21 12px,#171e26 12px,#171e26 24px);font-size:14px}
+  .pending code{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;
+    padding:16px;overflow:auto;font-size:13.5px;line-height:1.5}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre code{color:#d6dee8}
+  .audit{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:4px 18px 18px;margin:16px 0}
+  .audit h3{font-size:16px;margin:16px 0 6px}
+  .audit p{color:var(--muted);font-size:14.5px;margin:6px 0 12px}
+  .tag{font-size:12px;color:var(--warn);border:1px solid var(--line);border-radius:6px;
+    padding:2px 8px;background:var(--panel2)}
+  .note{background:#1a2230;border:1px solid var(--line);border-left:3px solid var(--warn);
+    border-radius:8px;padding:12px 16px;color:var(--muted);font-size:14px;margin:14px 0}
+  footer{padding:30px 20px 60px;color:var(--muted);font-size:13.5px}
+  ul.tight{margin:8px 0;padding-left:20px}
+  ul.tight li{margin:3px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>SPIONvsXRay — Audit Dashboard</h1>
+    <p class="sub">Can superparamagnetic iron-oxide nanoparticles (SPIONs) be seen in CT?
+      A fully reproducible CONRAD/pyconrad simulation study.</p>
+    <div class="badges">
+      <span class="ok">● Live intermediate results</span>
+      <span>License: MIT</span>
+      <span>Sim: CONRAD / pyconrad</span>
+      <span id="commit">commit: —</span>
+    </div>
+    <p style="margin-top:14px">
+      <a href="https://github.com/akmaier/SPIONvsXRay">Repository</a> &nbsp;·&nbsp;
+      <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/SPEC.md">SPEC</a> &nbsp;·&nbsp;
+      <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/paper_plan.md">Paper plan</a> &nbsp;·&nbsp;
+      <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/DEVLOG.md">Devlog</a>
+    </p>
+  </div>
+</header>
+
+<nav><div class="wrap">
+  <a href="#overview">Overview</a>
+  <a href="#spectrum">Spectrum</a>
+  <a href="#materials">Materials</a>
+  <a href="#phantom">Phantom</a>
+  <a href="#projections">Projections</a>
+  <a href="#recons">Reconstructions</a>
+  <a href="#detect">Detectability</a>
+  <a href="#audit">Code audit</a>
+  <a href="#repro">Reproducibility</a>
+</div></nav>
+
+<main class="wrap">
+
+  <section id="overview">
+    <h2><span class="n">01</span>Overview</h2>
+    <p class="lead">We image an iron-loaded tumor inside a rabbit-scale phantom and ask at
+      what iron dose the nanoparticles become detectable, and how detector type and
+      beam-hardening correction shift that limit. This page updates as the pipeline runs —
+      every figure below is regenerated from <code>results/</code> by
+      <code>src/build_dashboard.py</code>.</p>
+    <div class="note">Status: <strong>scaffold</strong> — simulation not yet run. Panels show
+      the target artifact path and switch to the real image once produced.</div>
+    <table>
+      <tr><th>Factor</th><th>Levels</th></tr>
+      <tr><td>Formulation conc. (delivered mass model)</td><td>0, 0.5, 1, 2, 5, 10, 20 mg SPION/ml</td></tr>
+      <tr><td>Detector</td><td>Energy-integrating (EID), Photon-counting multi-bin (PCD)</td></tr>
+      <tr><td>Beam-hardening correction</td><td>off, on</td></tr>
+      <tr><td>Noise realizations @ 70 000 ph/px</td><td>10</td></tr>
+      <tr><td>Geometry</td><td>C-arm cone-beam, 500 projections, 20 cm FOV</td></tr>
+    </table>
+  </section>
+
+  <section id="spectrum">
+    <h2><span class="n">02</span>X-ray spectrum</h2>
+    <p class="lead">CONRAD standard polychromatic spectrum used for the forward model, plus
+      the energy-bin thresholds used by the photon-counting detector.</p>
+    <div class="grid">
+      <figure><img src="assets/spectrum.png" alt="X-ray spectrum" onerror="markPending(this)">
+        <figcaption>Standard polychromatic spectrum (photon fluence vs. energy).</figcaption></figure>
+      <figure><img src="assets/pcd_bins.png" alt="PCD energy bins" onerror="markPending(this)">
+        <figcaption>Photon-counting energy bins overlaid on the spectrum.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="materials">
+    <h2><span class="n">03</span>Materials &amp; attenuation</h2>
+    <p class="lead">Iron is loaded into a soft-tissue matrix (not water) so a zero-iron tumor
+      matches background. These plots verify the attenuation model before imaging.</p>
+    <div class="grid">
+      <figure><img src="assets/mu_vs_energy.png" alt="mu vs energy" onerror="markPending(this)">
+        <figcaption>Linear attenuation μ(E) for soft tissue, bone, and iron-loaded tumor.</figcaption></figure>
+      <figure><img src="assets/hu_vs_conc.png" alt="HU vs concentration" onerror="markPending(this)">
+        <figcaption>Predicted tumor HU vs. iron concentration (sanity check vs. NIST).</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="phantom">
+    <h2><span class="n">04</span>Digital phantom</h2>
+    <p class="lead">Rabbit-scale ICRU soft-tissue cylinder with a cortical-bone insert
+      (beam-hardening source) and an 8&nbsp;cm³ iron-loaded tumor.</p>
+    <div class="grid">
+      <figure><img src="assets/phantom_axial.png" alt="phantom axial" onerror="markPending(this)">
+        <figcaption>Axial slice with labeled inserts and ROIs.</figcaption></figure>
+      <figure><img src="assets/phantom_3d.png" alt="phantom 3d" onerror="markPending(this)">
+        <figcaption>3-D rendering / material map.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="projections">
+    <h2><span class="n">05</span>Projections</h2>
+    <p class="lead">Polychromatic forward projections (500 views). One example projection and a
+      sinogram per detector.</p>
+    <div class="grid">
+      <figure><img src="assets/projection_eid.png" alt="projection EID" onerror="markPending(this)">
+        <figcaption>Example projection — energy-integrating detector.</figcaption></figure>
+      <figure><img src="assets/projection_pcd.png" alt="projection PCD" onerror="markPending(this)">
+        <figcaption>Example projection — photon-counting detector (summed bins).</figcaption></figure>
+      <figure><img src="assets/sinogram.png" alt="sinogram" onerror="markPending(this)">
+        <figcaption>Central-slice sinogram (500 views).</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="recons">
+    <h2><span class="n">06</span>Reconstructions</h2>
+    <p class="lead">FDK cone-beam reconstructions across the factor grid. The gallery below is
+      assembled automatically; rows = iron dose, columns = detector × beam-hardening.</p>
+    <div class="grid">
+      <figure><img src="assets/recon_grid.png" alt="reconstruction grid" onerror="markPending(this)">
+        <figcaption>Reconstruction gallery (dose × detector × BH-correction).</figcaption></figure>
+      <figure><img src="assets/recon_tumor_zoom.png" alt="tumor zoom" onerror="markPending(this)">
+        <figcaption>Tumor-region zoom at the realistic 6&nbsp;mg dose.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="detect">
+    <h2><span class="n">07</span>Detectability</h2>
+    <p class="lead">Contrast (ΔHU) and contrast-to-noise ratio vs. iron dose, with the
+      Rose detection threshold. The table lists the lowest detectable dose per condition.</p>
+    <div class="grid">
+      <figure><img src="assets/delta_hu.png" alt="delta HU" onerror="markPending(this)">
+        <figcaption>ΔHU vs. iron concentration (per detector / BH state).</figcaption></figure>
+      <figure><img src="assets/cnr.png" alt="CNR" onerror="markPending(this)">
+        <figcaption>CNR vs. dose with Rose threshold (CNR = 3–5).</figcaption></figure>
+    </div>
+    <table style="margin-top:18px">
+      <tr><th>Condition</th><th class="num">Detection threshold (mg Fe/ml)</th><th class="num">ΔHU @ 6 mg</th><th class="num">CNR @ 6 mg</th></tr>
+      <tr><td>EID, BH off</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+      <tr><td>EID, BH on</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+      <tr><td>PCD, BH off</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+      <tr><td>PCD, BH on</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+    </table>
+  </section>
+
+  <section id="audit">
+    <h2><span class="n">08</span>Code audit</h2>
+    <p class="lead">Annotated snippets of the key pipeline steps so a reviewer can audit the
+      methodology without reading the whole codebase. <span class="tag">illustrative — replaced
+      by permalinked source after implementation (M0–M7)</span></p>
+
+    <div class="audit">
+      <h3>Dose model — delivered mass → tumor iron concentration</h3>
+      <p>The independent variable is the formulation concentration; a fixed particle mass is
+        spread through the 8&nbsp;cm³ tumor and converted to iron via the magnetite Fe fraction.</p>
+<pre><code># c_form [mg SPION/ml] -> tumor iron concentration [mg Fe/ml]
+FE_FRACTION = 0.724          # magnetite Fe3O4
+DELIVERED_AT_10 = 6.0        # mg SPION delivered at c_form = 10 mg/ml
+TUMOR_VOL = 8.0              # cm^3
+
+def tumor_iron_conc(c_form):
+    m_spion = DELIVERED_AT_10 * (c_form / 10.0)   # delivered particle mass [mg]
+    c_spion = m_spion / TUMOR_VOL                 # tumor particle conc [mg/ml]
+    return FE_FRACTION * c_spion                  # = 0.0543 * c_form  [mg Fe/ml]
+</code></pre>
+    </div>
+
+    <div class="audit">
+      <h3>Custom materials — iron-loaded soft tissue</h3>
+      <p>Iron is added to the same soft-tissue matrix as the background so that c=0 ≡ background.</p>
+<pre><code># CONRAD custom material via pyconrad (JVM bridge) — API verified at M0
+material = mixture_of("soft_tissue", add_iron_mg_per_ml=c_fe)
+material.setDensity(RHO_SOFT_TISSUE + 1e-3 * c_fe)  # negligible mass, high-Z contrast
+MaterialsDB.put(material)
+</code></pre>
+    </div>
+
+    <div class="audit">
+      <h3>Polychromatic forward projection — 500 views, EID vs PCD</h3>
+      <p>Line integrals are evaluated through the standard spectrum; the detector model sets
+        whether photons are energy-weighted (EID) or counted per energy bin (PCD).</p>
+<pre><code>spectrum = PolychromaticXRaySpectrum(...)          # CONRAD standard spectrum
+model    = PolychromaticAbsorptionModel(); model.setInputSpectrum(spectrum)
+proj     = forward_project(phantom, geometry_500_views, model, detector=det)
+proj     = apply_poisson_noise(proj, I0=70_000)    # per-pixel photon count
+</code></pre>
+    </div>
+
+    <div class="audit">
+      <h3>Reconstruction &amp; analysis — FDK, ΔHU, CNR</h3>
+      <p>Beam-hardening correction is toggled here; metrics come from tumor vs. reference ROIs.</p>
+<pre><code>vol   = fdk_reconstruct(proj, geometry_500_views, bh_correction=on_off)
+d_hu  = mean(vol[tumor_roi]) - mean(vol[ref_roi])
+cnr   = d_hu / std(vol[ref_roi])                   # Rose: detectable if cnr >= 3..5
+</code></pre>
+    </div>
+  </section>
+
+  <section id="repro">
+    <h2><span class="n">09</span>Reproducibility</h2>
+    <p class="lead">Every artifact on this page is regenerable from source.</p>
+    <ul class="tight">
+      <li>Environment: Java 8 + a pyconrad-compatible Python (3.9/3.10 venv).</li>
+      <li>Run the study: <code>python run_experiment.py</code> → writes <code>results/</code>.</li>
+      <li>Rebuild this dashboard: <code>python src/build_dashboard.py</code> → writes <code>docs/</code>.</li>
+      <li>Full parameters and rationale: <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/SPEC.md">SPEC.md</a>.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  SPIONvsXRay · MIT License · Simulation built on
+  <a href="https://www5.cs.fau.de/conrad/">CONRAD</a> (FAU Pattern Recognition Lab).
+  Reference nanoparticle article not redistributed.
+</footer>
+
+<script>
+  function markPending(img){
+    var d=document.createElement('div');
+    d.className='pending';
+    d.innerHTML='⏳ pending — renders <code>'+img.getAttribute('src')+'</code> once produced';
+    img.parentNode.replaceChild(d,img);
+  }
+  // Optional: show short commit hash if a build writes docs/commit.txt
+  fetch('commit.txt').then(function(r){return r.ok?r.text():null;}).then(function(t){
+    if(t){document.getElementById('commit').textContent='commit: '+t.trim().slice(0,7);}
+  }).catch(function(){});
+</script>
+</body>
+</html>
