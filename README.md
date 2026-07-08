@@ -56,30 +56,27 @@ pip install pyconrad
 python -c "import pyconrad; pyconrad.setup_pyconrad()"   # downloads CONRAD.jar, starts JVM
 ```
 
-## Missing information (to finalize the experiment)
+## Experimental design (finalized)
 
-The plan uses reasonable defaults, but the following would change results and
-should be confirmed:
+A factorial **effects study** on an in-vivo-like rabbit phantom (soft tissue +
+bone) with a single **8 cm³** SPION tumor, **20 cm FOV**, **500 projections**,
+**70 000 photons/pixel**:
 
-1. **Iron-oxide chemistry & density** — magnetite Fe₃O₄ vs maghemite γ-Fe₂O₃
-   (affects particle-mass ↔ Fe-mass conversion; X-ray model uses Fe directly).
-2. **Concentrations & units** — exact list to sweep, and **mg Fe/ml** vs
-   mg-particle/ml. In-vitro/clinical suspension range, or cellular loading
-   (pg Fe/cell) too?
-3. **Standard spectrum specifics** — the CONRAD default kVp / tube voltage,
-   filtration, and energy sampling; whether to model a specific C-arm tube.
-4. **Dose & noise model** — model Poisson photon noise (and at what dose/mAs), or
-   report the noise-free contrast ceiling? This sets the detectability limit.
-5. **Phantom & object scale** — vial/insert sizes, background material
-   (water vs blood vs soft tissue), number of inserts, and physical object size
-   (mouse-scale in-vivo vs a benchtop vial phantom).
-6. **C-arm geometry** — use CONRAD defaults, or specify SID/SDD, detector
-   pixel size & count, angular range (short-scan ~200° vs full 360°) and
-   reconstruction voxel size?
-7. **Detectability criterion** — what counts as "visible" (e.g. Rose criterion
-   CNR ≥ 3–5, or a minimum HU difference)?
-8. **Detector model** — energy-integrating vs photon-counting; beam-hardening
-   correction on/off.
+| Factor | Levels |
+|--------|--------|
+| Iron concentration [mg Fe/ml] | 0, 0.5, 1, 2, 5, 10, 20 (7) |
+| Detector | energy-integrating (EID), photon-counting multi-bin (PCD) |
+| Beam-hardening correction | off, on |
+| Noise realizations @ 70 000 ph/px | 10 |
+
+→ **14 forward simulations → ≈ 308 reconstructed/analyzed volumes.**
+Detectability reported as **both** ΔHU and **CNR** (Rose CNR ≥ 3–5), per detector
+and per BH-correction state. See [`SPEC.md`](SPEC.md) §5 for full parameters.
+
+Remaining defaults (non-blocking, read from the installed CONRAD and logged at
+implementation): standard-spectrum kVp/filtration, C-arm SID/SDD/detector/angular
+range, PCD bin thresholds, reconstruction voxel size (Fe₃O₄ assumed for
+reporting).
 
 ## Repository layout
 

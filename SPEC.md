@@ -69,26 +69,88 @@ Java classes to Python (`ClassGetter` / `pyconrad.ClassGetter`), with NumPy
 interop for grids. **The exact Python-side API must be verified against the
 installed pyconrad version** before writing the pipeline.
 
-## 5. Experimental Configuration (proposed defaults — to confirm, see §7)
+## 5. Finalized Experimental Configuration
 
-- **Concentrations swept:** `0, 1, 2, 5, 10 mg Fe/ml` (matches article range),
-  optionally add a low-end `0.5` and a high `20` to bracket the detection limit.
-- **Core model:** magnetite Fe₃O₄ for particle-mass conversion; X-ray model uses
-  Fe mass fraction directly.
-- **Background/matrix:** water (proxy for aqueous suspension / soft tissue).
-- **Spectrum:** CONRAD standard spectrum (nominal ~120 kVp C-arm); confirm exact
-  min/max/delta energy, peak voltage and filtration from the tutorial defaults.
-- **Geometry:** CONRAD default C-arm cone-beam `Configuration`/`Trajectory`,
-  **500 projections**; angular range and SID/SDD/detector taken from the default
-  (to be recorded once read from config).
-- **Reconstruction:** FDK, isotropic voxels; volume sized to the phantom.
-- **Noise:** first pass **noise-free** (pure contrast ceiling); second pass add
-  Poisson photon noise at a specified dose to assess realistic detectability.
+### 5.1 Phantom (rabbit-scale, in-vivo-like)
+
+- **Body:** homogeneous **ICRU soft-tissue** cylinder, ~10–12 cm diameter
+  (rabbit trunk), comfortably inside the **20 cm FOV**.
+- **Bone insert:** a cortical-bone rod (spine/rib surrogate) to create a genuine
+  **beam-hardening** source — this makes the BH-correction on/off comparison
+  meaningful.
+- **Tumor:** a single **8 cm³** sphere (radius ≈ 1.24 cm, ⌀ ≈ 2.48 cm) filled
+  with the SPION suspension at the scan's iron concentration; sits in soft tissue
+  offset from the bone (melanoma-like accumulation site).
+- **Reference ROI:** adjacent tumor-free soft tissue for ΔHU / CNR contrast.
+
+### 5.2 Materials
+
+- **Core model:** magnetite Fe₃O₄ (ρ ≈ 5.17 g/cm³) for particle↔Fe-mass
+  conversion; the X-ray model uses **Fe mass fraction directly**, so the
+  polymorph choice does not affect attenuation.
+- **SPION suspension @ c:** water + Fe at `c` mg Fe/ml (CONRAD mixture recipe).
+
+### 5.3 Spectrum & dose
+
+- **Spectrum:** CONRAD **standard** polychromatic X-ray spectrum (nominal
+  ~120 kVp C-arm); exact min/max/delta energy + filtration to be read from the
+  installed default and recorded at M3.
+- **Dose:** **70 000 photons per detector pixel** (unattenuated I₀); Poisson
+  noise applied at the projection level.
+
+### 5.4 Detectors (both simulated)
+
+- **EID** — energy-integrating: photon energies weight the signal.
+- **PCD** — photon-counting, **energy-resolved multi-bin**. Default **3 bins**
+  spanning the spectrum (thresholds set at ≈⅓/⅔ of the energy range once the
+  standard spectrum is known), plus the summed count image. Detectability is
+  evaluated per-bin and via optimal energy weighting.
+
+### 5.5 Geometry & reconstruction
+
+- **Geometry:** standard C-arm cone-beam (CONRAD default
+  `Configuration`/`Trajectory`), **500 projections**, **20 cm FOV**; SID/SDD,
+  detector pixel size/count and angular range taken from the default and recorded
+  at M4.
+- **Reconstruction:** cone-beam **FDK**, isotropic voxels sized to the FOV
+  (e.g. 512³ over 20 cm ≈ 0.39 mm), with **water beam-hardening correction
+  toggled off/on**.
+
+### 5.6 Factorial design (the "effects study")
+
+| Factor | Levels | n |
+|--------|--------|---|
+| Iron concentration [mg Fe/ml] | 0, 0.5, 1, 2, 5, 10, 20 | 7 |
+| Detector | EID, PCD (multi-bin) | 2 |
+| Beam-hardening correction | off, on | 2 |
+| Noise realization @ 70 000 ph/px | repeats | R = 10 |
+
+**Run counts** (concentration lives in the phantom, so it is a per-scan factor;
+BH-correction and noise are post-projection steps):
+
+- **Polychromatic forward projections (compute-heavy, 500 views each):**
+  `7 conc × 2 detectors = 14`.
+- **Noisy sinogram realizations:** `14 × 10 = 140`.
+- **Reconstructions (× BH off/on):** `140 × 2 = 280`.
+- **Noise-free reference volumes (contrast ceiling):** `14 × 2 = 28`.
+- **➡ ≈ 308 analyzed volumes from 14 forward simulations.**
+
+Total scales linearly with the concentration list and `R`.
+
+### 5.7 Detectability metrics
+
+Per tumor ROI vs. soft-tissue reference, for every factor cell:
+- **ΔHU** = mean(tumor) − mean(reference).
+- **CNR** = ΔHU / σ(reference), from the R noise realizations.
+- **Detection threshold:** lowest `c` with **CNR ≥ 3–5** (Rose) and a reported
+  minimum meaningful ΔHU — reported separately for EID vs each PCD bin, and for
+  BH-correction off vs on.
 
 ## 6. Deliverables
 
 - `src/materials.py` — build/register SPION materials for a list of concentrations.
-- `src/phantom.py` — construct the multi-vial phantom with material labels.
+- `src/phantom.py` — construct the rabbit-scale soft-tissue + bone phantom with
+  the 8 cm³ SPION tumor insert.
 - `src/simulate.py` — spectrum + 500-projection C-arm forward projection.
 - `src/reconstruct.py` — FDK reconstruction.
 - `src/analyze.py` — ROI HU/attenuation, contrast curve, CNR, detectability.
@@ -109,9 +171,16 @@ installed pyconrad version** before writing the pipeline.
 - **M6 — Analysis**: HU-vs-concentration curve, CNR, detectability threshold.
 - **M7 — Noise study**: repeat with photon noise; report detection limit.
 
-## 8. Open Questions / Missing Information (blocking or affecting design)
+## 8. Status of Open Questions
 
-See the "Missing information" section in `README.md`. Key unknowns: iron-oxide
-polymorph & density, exact concentration list and units, standard-spectrum kVp
-and dose/noise model, phantom & C-arm geometry parameters (SID/SDD, detector,
-angular range, object scale), and the quantitative detectability criterion.
+**Resolved** (user, 2026-07-08): dose = 70 000 ph/px; tumor = 8 cm³; phantom =
+rabbit-scale soft-tissue **+ bone** insert; FOV = 20 cm; detectors = **both**
+EID and multi-bin PCD; beam-hardening correction = **both** off/on;
+detectability = **both** CNR and ΔHU; concentrations = 0/0.5/1/2/5/10/20
+mg Fe/ml. → **Sufficient to implement.**
+
+**Defaults recorded at implementation time** (non-blocking, will be read from the
+installed CONRAD and logged): standard-spectrum kVp/filtration & energy sampling
+(M3), C-arm SID/SDD/detector/angular range (M4), PCD bin thresholds (from the
+spectrum range), reconstruction voxel size, iron-oxide polymorph fixed to Fe₃O₄
+for reporting.

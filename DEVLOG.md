@@ -4,6 +4,34 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — Experimental design finalized
+
+**Decided (user input)**
+- Dose: **70 000 photons/pixel** (I₀) → Poisson noise at projection level.
+- Tumor: **8 cm³** sphere (⌀ ≈ 2.48 cm), single SPION insert.
+- Phantom: **rabbit-scale** soft-tissue cylinder (~10–12 cm) **+ bone insert**
+  (bone chosen so the beam-hardening on/off factor is actually meaningful).
+- **20 cm FOV**, 500 projections, standard C-arm geometry.
+- Detectors: **both** EID and **energy-resolved multi-bin PCD** (default 3 bins).
+- Beam-hardening correction: **both** off and on.
+- Detectability: **both** ΔHU and CNR (Rose CNR ≥ 3–5).
+- Concentrations: **0, 0.5, 1, 2, 5, 10, 20 mg Fe/ml** (7 levels).
+
+**Design → run count**
+- Factorial: 7 conc × 2 detectors × 2 BH × 10 noise reps.
+- **14** polychromatic forward projections (500 views) → 140 noisy sinograms →
+  **280** reconstructions + **28** noise-free references ≈ **308** analyzed volumes.
+
+**Status:** all information needed to implement is now in hand; remaining items
+are CONRAD-default values to be read and logged during M3/M4 (spectrum kVp,
+SID/SDD, detector geometry, PCD bin thresholds). Updated `SPEC.md` §5/§8 and
+`README.md`.
+
+**Next:** start **M0** — Python 3.9/3.10 venv + `pip install pyconrad` +
+`setup_pyconrad()` smoke test on this Mac.
+
+---
+
 ## 2026-07-08 — Project kickoff & planning
 
 **Done**
