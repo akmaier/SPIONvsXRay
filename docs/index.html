@@ -89,6 +89,9 @@
   <a href="#projections">Projections</a>
   <a href="#recons">Reconstructions</a>
   <a href="#detect">Detectability</a>
+  <a href="#spectral">Spectral</a>
+  <a href="#studyb">Study B</a>
+  <a href="#paper">Manuscript</a>
   <a href="#audit">Code audit</a>
   <a href="#repro">Reproducibility</a>
 </div></nav>
@@ -102,14 +105,15 @@
       beam-hardening correction shift that limit. This page updates as the pipeline runs —
       every figure below is regenerated from <code>results/</code> by
       <code>src/build_dashboard.py</code>.</p>
-    <div class="note">Status: <strong>scaffold</strong> — simulation not yet run. Panels show
-      the target artifact path and switch to the real image once produced.</div>
+    <div class="note">Status: <strong>live</strong> — full factorial + spectral sweep + Study B complete;
+      an 8–9 pp. SPIE draft is compiled. Headline: SPIONs are borderline-visible at realistic dose
+      (threshold ≈ 0.54 mg Fe/ml).</div>
     <table>
       <tr><th>Factor</th><th>Levels</th></tr>
       <tr><td>Formulation conc. (delivered mass model)</td><td>0, 0.5, 1, 2, 5, 10, 20 mg SPION/ml</td></tr>
       <tr><td>Detector</td><td>Energy-integrating (EID), Photon-counting multi-bin (PCD)</td></tr>
       <tr><td>Beam-hardening correction</td><td>off, on</td></tr>
-      <tr><td>Noise realizations @ 70 000 ph/px</td><td>10</td></tr>
+      <tr><td>Noise realizations @ 70 000 ph/px</td><td>30</td></tr>
       <tr><td>Geometry</td><td>C-arm cone-beam, 500 projections, 20 cm FOV</td></tr>
     </table>
   </section>
@@ -181,22 +185,63 @@
     <p class="lead">Contrast (ΔHU) and contrast-to-noise ratio vs. iron dose, with the
       Rose detection threshold. The table lists the lowest detectable dose per condition.</p>
     <div class="grid">
-      <figure><img src="assets/delta_hu.png" alt="delta HU" onerror="markPending(this)">
-        <figcaption>ΔHU vs. iron concentration (per detector / BH state).</figcaption></figure>
-      <figure><img src="assets/cnr.png" alt="CNR" onerror="markPending(this)">
-        <figcaption>CNR vs. dose with Rose threshold (CNR = 3–5).</figcaption></figure>
+      <figure><img src="assets/fig_dhu_vs_conc.png" alt="delta HU" onerror="markPending(this)">
+        <figcaption>ΔHU vs. iron concentration (EID vs. PCD, beam-hardening off).</figcaption></figure>
+      <figure><img src="assets/fig_cnr_vs_conc.png" alt="CNR" onerror="markPending(this)">
+        <figcaption>CNR vs. dose with Rose 3/5 threshold lines; the 6 mg dose sits on the Rose-5 boundary.</figcaption></figure>
     </div>
     <table style="margin-top:18px">
-      <tr><th>Condition</th><th class="num">Detection threshold (mg Fe/ml)</th><th class="num">ΔHU @ 6 mg</th><th class="num">CNR @ 6 mg</th></tr>
-      <tr><td>EID, BH off</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
-      <tr><td>EID, BH on</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
-      <tr><td>PCD, BH off</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
-      <tr><td>PCD, BH on</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+      <tr><th>Condition</th><th class="num">Threshold (mg Fe/ml)</th><th class="num">ΔHU @ 6 mg</th><th class="num">CNR @ 6 mg</th></tr>
+      <tr><td>EID, BH off</td><td class="num">0.54</td><td class="num">3.4</td><td class="num">5.4</td></tr>
+      <tr><td>EID, BH on</td><td class="num">0.54</td><td class="num">4.1</td><td class="num">5.1</td></tr>
+      <tr><td>PCD, BH off</td><td class="num">0.54</td><td class="num">4.7</td><td class="num">5.0</td></tr>
+      <tr><td>PCD, BH on</td><td class="num">1.09</td><td class="num">5.9</td><td class="num">4.8</td></tr>
     </table>
+    <p class="lead" style="margin-top:14px">The detection limit is ≈ <b>0.54 mg Fe/ml</b> — the realistic 6 mg
+      dose — essentially independent of detector and beam-hardening correction. SPIONs are
+      <b>borderline-visible</b> at realistic loading.</p>
+  </section>
+
+  <section id="spectral">
+    <h2><span class="n">08</span>Spectral shaping</h2>
+    <p class="lead">Iron contrast is photoelectric, so it favors low energy. A tube-voltage and
+      filter sweep confirms this end to end: lower kVp raises CNR, hardening filters lower it.
+      A matched-filter photon-counting detector attains its ~1.3× ideal gain only at higher dose,
+      where the low-energy bin is no longer photon-starved.</p>
+    <div class="grid">
+      <figure><img src="assets/fig_spectral_sweep.png" alt="spectral sweep" onerror="markPending(this)">
+        <figcaption>CNR at the top dose across tube voltages and filters (EID vs. PCD).</figcaption></figure>
+      <figure><img src="assets/pcd_bins.png" alt="pcd bins" onerror="markPending(this)">
+        <figcaption>Where iron contrast lives in energy + near-optimal 3-bin PCD thresholds (37.5/50 keV).</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="studyb">
+    <h2><span class="n">09</span>Study B — vascular uptake</h2>
+    <p class="lead">The same iron mass confined to 150 µm vessels (10% of tumor volume, 10× local).
+      At the 0.5 mm voxel the vessels are unresolved, so partial-volume averaging with mass
+      conservation makes the tumor-ROI contrast identical to the homogeneous case; the
+      beam-hardening nonlinearity is &lt; 10⁻³ HU and per-voxel structural texture averages out.
+      Vascular uptake is therefore CT-indistinguishable from homogeneous uptake.</p>
+    <div class="grid">
+      <figure><img src="assets/fig_study_b.png" alt="study b" onerror="markPending(this)">
+        <figcaption>Partial-volume averaging: ROI-mean is invariant; the per-voxel peak reaches the
+          true 10× only near the 150 µm vessel scale.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="paper">
+    <h2><span class="n">10</span>Manuscript</h2>
+    <p class="lead">A full SPIE Medical Imaging draft (9 pp.) assembles these results —
+      dose model, phantom, factorial detectability, spectral shaping, and Study B — in the
+      <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/paper/spie_manuscript.pdf">compiled PDF</a>
+      (source <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/paper/spie_manuscript.tex">spie_manuscript.tex</a>).
+      The GPU spectral-detector and noise-generator machinery used here is upstreamed to
+      <a href="https://github.com/akmaier/CONRAD">CONRAD</a>.</p>
   </section>
 
   <section id="audit">
-    <h2><span class="n">08</span>Code audit</h2>
+    <h2><span class="n">11</span>Code audit</h2>
     <p class="lead">Annotated snippets of the key pipeline steps so a reviewer can audit the
       methodology without reading the whole codebase. <span class="tag">illustrative — replaced
       by permalinked source after implementation (M0–M7)</span></p>
@@ -249,7 +294,7 @@ cnr   = d_hu / std(vol[ref_roi])                   # Rose: detectable if cnr >= 
   </section>
 
   <section id="repro">
-    <h2><span class="n">09</span>Reproducibility</h2>
+    <h2><span class="n">12</span>Reproducibility</h2>
     <p class="lead">Every artifact on this page is regenerable from source.</p>
     <ul class="tight">
       <li>Environment: Java 8 + a pyconrad-compatible Python (3.9/3.10 venv).</li>

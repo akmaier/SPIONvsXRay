@@ -150,7 +150,9 @@ def main():
     ax.legend(frameon=False, fontsize=8)
     ax.grid(alpha=0.3)
     figpath = str(conrad_backend.REPO_ROOT / "paper" / "figures" / "fig_study_b.pdf")
-    fig.savefig(figpath, bbox_inches="tight"); plt.close(fig)
+    fig.savefig(figpath, bbox_inches="tight")
+    dashpng = str(conrad_backend.REPO_ROOT / "docs" / "assets" / "fig_study_b.png")
+    fig.savefig(dashpng, dpi=140, bbox_inches="tight"); plt.close(fig)
 
     print("[Study B] mass conservation: ROI-mean(rel) =",
           {int(v*1000): round(pv[v]["roi_mean"], 3) for v in voxels})

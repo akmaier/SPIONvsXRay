@@ -18,7 +18,16 @@ from config import tumor_iron_conc, DELIVERED_AT_10_MG
 
 REPO = conrad_backend.REPO_ROOT
 FIGDIR = str(REPO / "paper" / "figures")
+DASHDIR = str(REPO / "docs" / "assets")
 os.makedirs(FIGDIR, exist_ok=True)
+os.makedirs(DASHDIR, exist_ok=True)
+
+
+def _save(fig, name):
+    """Save a figure as vector PDF (paper) and PNG (dashboard)."""
+    fig.savefig(f"{FIGDIR}/{name}.pdf")
+    fig.savefig(f"{DASHDIR}/{name}.png", dpi=140)
+    plt.close(fig)
 
 C_REALISTIC = tumor_iron_conc(10.0)   # mg Fe/ml at the 6 mg delivered dose
 
@@ -46,7 +55,7 @@ def fig_dhu(fac):
     ax.set_ylabel("iron contrast $\\Delta$HU")
     ax.set_title("Iron contrast vs. dose (beam-hardening off)")
     ax.legend(frameon=False)
-    fig.savefig(f"{FIGDIR}/fig_dhu_vs_conc.pdf"); plt.close(fig)
+    _save(fig, "fig_dhu_vs_conc")
 
 
 def fig_cnr(fac):
@@ -69,7 +78,7 @@ def fig_cnr(fac):
     ax.set_ylabel("CNR")
     ax.set_title("Detectability vs. dose")
     ax.legend(frameon=False, fontsize=8)
-    fig.savefig(f"{FIGDIR}/fig_cnr_vs_conc.pdf"); plt.close(fig)
+    _save(fig, "fig_cnr_vs_conc")
 
 
 def fig_sweep(sw):
@@ -94,7 +103,7 @@ def fig_sweep(sw):
     ax.set_ylabel(f"CNR at $c_{{\\mathrm{{Fe}}}}$={top:.2f} mg/ml")
     ax.set_title("Spectral shaping: tube voltage and filtration")
     ax.legend(frameon=False)
-    fig.savefig(f"{FIGDIR}/fig_spectral_sweep.pdf"); plt.close(fig)
+    _save(fig, "fig_spectral_sweep")
 
 
 def main():
