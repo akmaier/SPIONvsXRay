@@ -48,3 +48,11 @@ publish/rabbitct/zenodo_secrets.env
 # CONRAD re-release artifacts (large binaries; host on FAU, not git)
 publish/conrad/*.jar
 publish/conrad/*.zip
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz
