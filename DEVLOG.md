@@ -4,6 +4,23 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — M2 COMPLETE ✅ (round geometric phantom)
+
+- `src/phantom.py`: analytic geometry (soft-tissue cylinder + bone rod + tumor
+  sphere) voxelized into 3 component volumes (soft frac, bone frac, iron mg/ml)
+  so M4 can integrate each material's path length independently for polychromatic
+  projection. Iron modeled as magnetite downstream.
+- Tumor models: **homogeneous** and **vessel** (150 µm vessels @10%, mass
+  conserved via per-voxel Binomial partial-volume sampling).
+- Verified: homogeneous tumor mean = 1.086 mg/ml (= tumor_iron_conc(20), std≈0);
+  vessel mean = 1.083 (mass conserved), std = 0.274 (~25% structural noise),
+  max 2.31 (local enrichment). Dashboard `phantom_axial.png` refreshed.
+
+**Next (M3):** extract the real CONRAD standard polychromatic spectrum; then M4
+projector.
+
+---
+
 ## 2026-07-08 — CORRECTION: ROBY is a RAT; no digital rabbit exists
 
 - Verified via literature: RADAR realistic animal series (Keenan/Stabin/Segars,
