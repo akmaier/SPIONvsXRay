@@ -1,0 +1,28 @@
+# Copyrighted source article (do not redistribute)
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.ipynb_checkpoints/
+
+# CONRAD / pyconrad runtime artifacts
+Conrad.xml
+*.jar
+.pyconrad/
+
+# Simulation outputs (regenerable)
+results/
+data/*.tif
+data/*.tiff
+data/*.raw
+data/*.npy
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
