@@ -1,0 +1,199 @@
+"""M4 (CONRAD-native) — fan-beam base-material sinograms via PriorityRayTracer.
+
+Replicates FanBeamProjector2D's geometry (source at focal*(cosb,sinb), flat
+detector through iso, StraightLine(source, detector-pixel)) so the resulting
+sinograms reconstruct with conrad_ct.fbp (FanBeamBackprojector2D). For each
+(view, detector-pixel) ray, PriorityRayTracer.castRay returns material segments;
+XRayDetector.accumulatePathLenghtForEachMaterial gives base-material path lengths
+[mm]. These are combined polychromatically (per-material CONRAD attenuation over
+the real 90 kVp spectrum) into EID + multi-bin PCD line-integral sinograms with
+Poisson noise. Sinogram layout: [views, det], matching conrad_ct.
+"""
+from __future__ import annotations
+import math
+import numpy as np
+import jpype
+
+import conrad_backend
+import conrad_ct
+import conrad_phantom
+import spectrum as spec
+from config import SPECTRUM, DETECTORS
+
+CG = conrad_backend.class_getter
+N0 = SPECTRUM.photons_per_pixel
+
+
+def project_base_materials(scene, geo=None, n_pix=512):
+    """Cast fan-beam rays with PriorityRayTracer -> {material_name: sino[views,det]} [mm].
+
+    Geometry-driven so the output matches conrad_ct.fbp exactly: n_det = maxTIndex,
+    n_views = maxBeta/deltaBeta from `geo` (default conrad_ct.fan_geometry(n_pix)).
+    """
+    conrad_backend.setup()
+    shapes = CG("edu.stanford.rsl.conrad.geometry.shapes.simple")
+    render = CG("edu.stanford.rsl.conrad.rendering")
+    XRayDetector = CG("edu.stanford.rsl.conrad.physics.detector").XRayDetector
+    PointND = shapes.PointND
+    StraightLine = shapes.StraightLine
+
+    tracer = render.PriorityRayTracer()
+    tracer.setScene(scene)
+
+    if geo is None:
+        geo = conrad_ct.fan_geometry(n_pix=n_pix)
+    focal, maxT, deltaT = geo["focal"], geo["maxT"], geo["deltaT"]
+    maxBeta, deltaBeta = geo["maxBeta"], geo["deltaBeta"]
+    n_views = int(round(maxBeta / deltaBeta))
+    n_det = int(round(maxT / deltaT))
+
+    def P(x, y):
+        return PointND(jpype.JArray(jpype.JDouble)([float(x), float(y), 0.0]))
+
+    sinos: dict = {}
+
+    def channel(name):
+        if name not in sinos:
+            sinos[name] = np.zeros((n_views, n_det), dtype=np.float32)
+        return sinos[name]
+
+    for i in range(n_views):
+        beta = deltaBeta * i
+        cb, sb = math.cos(beta), math.sin(beta)
+        a = P(focal * cb, focal * sb)                       # source
+        p0x, p0y = -maxT / 2.0 * sb, maxT / 2.0 * cb        # detector start
+        # detector direction = normalize(-p0) = (sb, -cb)
+        for t in range(n_det):
+            step = 0.5 * deltaT + t * deltaT
+            p = P(p0x + sb * step, p0y - cb * step)
+            segments = tracer.castRay(StraightLine(a, p))
+            if segments is None:
+                continue
+            m = XRayDetector.accumulatePathLenghtForEachMaterial(segments)
+            for mat in m.keySet():
+                channel(mat.getName())[i, t] = float(m.get(mat))
+    return sinos, geo
+
+
+def _material_mu(names, energies):
+    """Per-material linear attenuation mu(E) [1/cm] from CONRAD, for given names."""
+    DB = CG("edu.stanford.rsl.conrad.physics.materials.database").MaterialsDB
+    AT = CG("edu.stanford.rsl.conrad.physics.materials.utils").AttenuationType
+    at = AT.TOTAL_WITH_COHERENT_ATTENUATION
+    mu = {}
+    for name in names:
+        mat = DB.getMaterialWithName(name)
+        mu[name] = np.array([float(mat.getAttenuation(float(e), at)) for e in energies])
+    return mu
+
+
+def detector_sinograms(base_sinos, kvp=None, filters=(), add_noise=True, seed=0):
+    """Combine base-material sinograms polychromatically -> EID + PCD sinograms."""
+    rng = np.random.default_rng(seed)
+    if kvp is None:
+        E, flux, _ = spec.standard_spectrum()
+    else:
+        E, flux = spec.conrad_spectrum(kvp)
+    if filters:
+        flux = spec.apply_filters(E, flux, list(filters))
+    s = flux / flux.sum()
+
+    names = list(base_sinos.keys())
+    mu = _material_mu(names, E)                         # [1/cm]
+    shape = next(iter(base_sinos.values())).shape
+
+    S_det = np.zeros(shape); S_det_E2 = np.zeros(shape)
+    S_air = float(np.sum(N0 * s * E))
+    edges = np.array(DETECTORS.pcd_bin_edges_kev)
+    nb = len(edges) - 1
+    C_det = [np.zeros(shape) for _ in range(nb)]
+    C_air = [0.0] * nb
+
+    # path lengths mm -> cm
+    L = {name: base_sinos[name] * 0.1 for name in names}
+    for j, Ej in enumerate(E):
+        tau = np.zeros(shape)
+        for name in names:
+            tau += L[name] * mu[name][j]
+        n = N0 * s[j] * np.exp(-tau)
+        S_det += n * Ej
+        S_det_E2 += n * Ej * Ej
+        b = int(np.searchsorted(edges, Ej, side="right") - 1)
+        if 0 <= b < nb:
+            C_det[b] += n
+            C_air[b] += N0 * s[j]
+
+    if add_noise:
+        S_meas = S_det + rng.normal(0.0, np.sqrt(np.maximum(S_det_E2, 1e-30)))
+        C_meas = [rng.poisson(np.maximum(c, 0.0)) for c in C_det]
+    else:
+        S_meas, C_meas = S_det, C_det
+    eps = 1e-6
+    p_eid = -np.log(np.clip(S_meas, eps, None) / S_air)
+    p_pcd = [-np.log(np.clip(cm, eps, None) / max(ca, eps)) for cm, ca in zip(C_meas, C_air)]
+    return dict(eid=p_eid, pcd=p_pcd, edges=edges)
+
+
+# FanBeamBackprojector2D writes into a plain Grid2D whose spacing defaults to
+# 1.0 mm/px (it does not derive spacing from the FOV). Verified with the bone
+# marker: (35.4,35.4) mm -> pixel offset (35,35). So the recon grid is 1.0 mm/px.
+RECON_SPACING_MM = 1.0
+
+
+def measure_inserts(recon, geo, inserts, roi_mm=8.0):
+    """Per-insert mean mu and ΔHU vs the c=0 (water) insert (equal-radius -> cupping common-mode)."""
+    N = recon.shape[0]
+    sp = RECON_SPACING_MM  # recon grid spacing (see note above), NOT geo["spacing"]
+    yy, xx = np.mgrid[0:N, 0:N]
+
+    def roi_mean(cx, cy):
+        col = cx / sp + N / 2.0
+        row = cy / sp + N / 2.0
+        m = (xx - col) ** 2 + (yy - row) ** 2 <= (roi_mm / sp) ** 2
+        return float(recon[m].mean())
+
+    ref = next(i for i in inserts if i["name"] == "SPION_c0")
+    mu_ref = roi_mean(*ref["center_mm"])
+    out = []
+    for ins in inserts:
+        mu = roi_mean(*ins["center_mm"])
+        d_hu = 1000.0 * (mu - mu_ref) / mu_ref
+        out.append({**ins, "mu": mu, "delta_hu": d_hu})
+    return out, mu_ref
+
+
+if __name__ == "__main__":
+    import time, os
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    scene, inserts = conrad_phantom.build_phantom()
+    geo = conrad_ct.fan_geometry(n_pix=512)
+    t = time.time()
+    base, geo = project_base_materials(scene, geo)
+    print(f"[native] base-material projection {time.time()-t:.1f}s, "
+          f"sino {next(iter(base.values())).shape}, materials {len(base)}")
+
+    det = detector_sinograms(base, add_noise=False)
+    recon = conrad_ct.fbp(det["eid"], geo)
+    meas, mu_ref = measure_inserts(recon, geo, inserts)
+    print("[native] per-insert ΔHU vs water insert (noise-free EID):")
+    for m in meas:
+        if m["c_form"] is not None:
+            print(f"  {m['name']:10s} c_Fe={m['c_fe']:.3f}  dHU={m['delta_hu']:+.2f}")
+
+    outdir = str(conrad_backend.REPO_ROOT / "results" / "native")
+    os.makedirs(outdir, exist_ok=True)
+    fig, ax = plt.subplots(1, 3, figsize=(14, 4.6))
+    ax[0].imshow(base["water"], aspect="auto", cmap="viridis")
+    ax[0].set_title("base-material sinogram: water [mm]"); ax[0].set_xlabel("detector"); ax[0].set_ylabel("view")
+    ax[1].imshow(det["eid"], aspect="auto", cmap="gray")
+    ax[1].set_title("EID line-integral sinogram")
+    lo, hi = np.percentile(recon, [30, 99.5])
+    ax[2].imshow(recon, cmap="gray", vmin=lo, vmax=hi)
+    ax[2].set_title("CONRAD fan-beam FBP reconstruction")
+    for a in (ax[2],):
+        a.axis("off")
+    fig.tight_layout(); fig.savefig(f"{outdir}/native_pipeline.png", dpi=130); plt.close(fig)
+    print("[ok] wrote", outdir, "-> native_pipeline.png")

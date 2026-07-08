@@ -22,6 +22,27 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — CONRAD-native pipeline COMPLETE end-to-end (src/conrad_project.py)
+
+Full native chain working: CONRAD AnalyticPhantom → PriorityRayTracer fan-beam
+**base-material sinograms** (9 materials, 500×1024, ~17 s, 38 µs/ray) →
+polychromatic combine (per-material CONRAD attenuation, real 90 kVp spectrum,
+EID + multi-bin PCD, Poisson noise) → CONRAD fan-beam FBP → per-insert ROI.
+- Base-material path lengths exact (water 160 mm, each insert 25 mm, bone 25 mm).
+- Fixed a ROI-scale bug: FanBeamBackprojector2D writes a Grid2D at **1.0 mm/px**
+  (default), not geo["spacing"]; calibrated via the bone marker.
+- **Result (noise-free EID):** high-c ΔHU monotonic and matches the earlier
+  numpy pipeline (c20 → +6.9 HU vs +7.6). BUT low-c inserts sit at a spurious
+  ~−2.5 HU baseline from **bone-insert streak artifacts** — i.e. the sub-HU iron
+  signal is below the reconstruction-artifact floor. Real finding + an M6
+  measurement-refinement TODO (same-radius annular reference / more views /
+  apodization / bone-free contrast sub-scan). Figure → docs/assets/recon_grid.png.
+
+**Next (M6):** refine per-insert detectability (kill streak bias), then run the
+full factorial (detectors × BH × noise × filters) + dashboard.
+
+---
+
 ## 2026-07-08 — CONRAD-native phantom built (src/conrad_phantom.py)
 
 - Real CONRAD `AnalyticPhantom` (PrioritizableScene) built at runtime via pyconrad:
