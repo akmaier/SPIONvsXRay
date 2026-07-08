@@ -22,6 +22,22 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — OpenCL check: not available on this Mac (arch, not hardware)
+
+User asked whether CONRAD's OpenCL runs here (it's OpenCL, not CUDA). Tested:
+- Hardware present: Apple M1 Max, 32 GPU cores, Apple OpenCL 1.2 exists.
+- But CONRAD OpenCL **fails to initialize**: JOCL Java classes load, native
+  binding does not — `NoClassDefFoundError: Could not initialize class
+  com.jogamp.opencl.llb.impl.CLAbstractImpl` / `ExceptionInInitializerError`.
+  Cause: pyconrad bundles jogamp **2.3.2 (2015)** → gluegen/JOCL natives are
+  x86_64-only, incompatible with the arm64 JVM. Not a hardware problem.
+- Fix options (not pursued): arm64 JOCL 2.4+ natives (API-mismatch risk vs CONRAD
+  1.1.0) or a full x86_64/Rosetta stack. Not worth it for a 2D study.
+- **Decision:** keep the proven CPU path (PriorityRayTracer base-material
+  sinograms + CPU fan FBP). Corrected the earlier "no CUDA" wording in conrad_ct.
+
+---
+
 ## 2026-07-08 — CONRAD-native path proven (analytic phantom + material projector)
 
 User steered to: use a CONRAD Phantom + CONRAD's material projectors; checked out

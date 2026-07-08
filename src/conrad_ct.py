@@ -1,8 +1,15 @@
-"""CONRAD CPU fan-beam projection + FBP reconstruction (no GPU required).
+"""CONRAD CPU fan-beam projection + FBP reconstruction.
+
+CPU path chosen because CONRAD's OpenCL projectors don't initialize on this
+Apple-Silicon machine: JOCL's Java classes load, but pyconrad bundles jogamp
+2.3.2 (2015) whose gluegen/JOCL native bindings are x86_64-only and fail to load
+in the arm64 JVM (NoClassDefFoundError: Could not initialize CLAbstractImpl). The
+M1's OpenCL hardware exists; the native bindings are the wrong architecture. So
+we use the CPU ray/pixel-driven projectors, which are exact and CONRAD-native.
 
 Uses edu.stanford.rsl.tutorial.fan.FanBeamProjector2D.projectRayDriven and
-FanBeamBackprojector2D.backprojectPixelDriven (both CPU ray/pixel-driven), with
-RamLakRampFilter. numpy<->Grid2D conversion via pyconrad.
+FanBeamBackprojector2D.backprojectPixelDriven with RamLakRampFilter;
+numpy<->Grid2D conversion via pyconrad.
 """
 from __future__ import annotations
 import numpy as np
@@ -18,6 +25,7 @@ FOV_MM = 200.0
 
 
 def _cls(pkg, name):
+    conrad_backend.setup()   # idempotent: ensures the JVM is up
     return conrad_backend.class_getter(pkg).__getattr__(name)
 
 
