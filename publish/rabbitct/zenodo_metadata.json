@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "upload_type": "dataset",
+    "title": "RabbitCT: a C-arm cone-beam CT benchmark dataset (post-mortem rabbit)",
+    "creators": [
+      {"name": "Rohkohl, Christopher", "affiliation": "Friedrich-Alexander-Universität Erlangen-Nürnberg, Pattern Recognition Lab"},
+      {"name": "Keck, Benjamin", "affiliation": "Friedrich-Alexander-Universität Erlangen-Nürnberg, Pattern Recognition Lab"},
+      {"name": "Hofmann, Hannes G.", "affiliation": "Friedrich-Alexander-Universität Erlangen-Nürnberg, Pattern Recognition Lab"},
+      {"name": "Hornegger, Joachim", "affiliation": "Friedrich-Alexander-Universität Erlangen-Nürnberg, Pattern Recognition Lab"}
+    ],
+    "description": "<p>Archival re-release of the <strong>RabbitCT</strong> benchmark dataset: an open platform for benchmarking 3-D cone-beam CT backprojection algorithms on a single high-resolution C-arm CT scan of a <strong>post-mortem rabbit</strong>. The original challenge website (www5.cs.fau.de) is no longer online; this copy is published with the authors' agreement to keep the benchmark available.</p><p><strong>Contents:</strong> <code>rabbitct_512.rctd</code> and <code>rabbitct_1024.rctd</code> (496 projections plus calibrated 3×4 projection matrices, for 512³ and 1024³ reconstruction targets), <code>reference_256.vol</code> (256³ float32 reference reconstruction), and the developer kit (<code>rabbitct_develop.zip</code>: data structure header, CMake project, and the LolaBunny example backprojection module). See README_data.md for the file format and geometry.</p><p><strong>Ethics:</strong> post-mortem acquisition; no live-animal procedure.</p><p><strong>Please cite:</strong> Rohkohl C, Keck B, Hofmann HG, Hornegger J. Technical Note: RabbitCT — an open platform for benchmarking 3D cone-beam reconstruction algorithms. Medical Physics 36(9):3940–3944, 2009. doi:10.1118/1.3180956</p>",
+    "access_right": "open",
+    "license": "cc-by-4.0",
+    "keywords": [
+      "cone-beam CT", "CBCT", "C-arm", "3D reconstruction", "backprojection",
+      "benchmark", "RabbitCT", "medical imaging", "GPU reconstruction"
+    ],
+    "related_identifiers": [
+      {"identifier": "10.1118/1.3180956", "relation": "isDocumentedBy", "resource_type": "publication-article", "scheme": "doi"}
+    ],
+    "notes": "Original RabbitCT challenge organized by the Pattern Recognition Lab, FAU Erlangen-Nürnberg. Re-released under CC BY 4.0 with the authors' agreement."
+  }
+}
