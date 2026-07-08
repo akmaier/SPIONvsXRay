@@ -1,0 +1,142 @@
+"""Single source of truth for all experiment parameters (see SPEC.md).
+
+All lengths in mm unless noted. Concentrations in mg/ml. Energies in keV.
+"""
+from __future__ import annotations
+from dataclasses import dataclass, field
+
+# --------------------------------------------------------------------------
+# Dose model (SPEC §5.2) — delivered mass, anchored at 6 mg for 10 mg/ml.
+# --------------------------------------------------------------------------
+FE_FRACTION = 0.724          # iron mass fraction of magnetite Fe3O4
+DELIVERED_AT_10_MG = 6.0     # mg SPION delivered into the tumor at c_form = 10 mg/ml
+TUMOR_VOLUME_CM3 = 8.0       # cm^3
+
+# Independent variable: article formulation concentration [mg SPION/ml]
+C_FORM_LEVELS = [0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
+
+
+def delivered_spion_mg(c_form: float) -> float:
+    """Delivered SPION particle mass [mg] for a formulation concentration."""
+    return DELIVERED_AT_10_MG * (c_form / 10.0)
+
+
+def tumor_iron_conc(c_form: float) -> float:
+    """Tumor iron concentration [mg Fe/ml] from formulation conc [mg SPION/ml].
+
+    c_Fe = FE_FRACTION * (delivered mass / tumor volume) = 0.0543 * c_form.
+    """
+    c_spion = delivered_spion_mg(c_form) / TUMOR_VOLUME_CM3
+    return FE_FRACTION * c_spion
+
+
+# --------------------------------------------------------------------------
+# Phantom (SPEC §5.1) — rabbit-scale soft tissue + bone + iron-loaded tumor.
+# --------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Phantom:
+    body_diameter_mm: float = 110.0     # rabbit trunk (~11 cm) inside 20 cm FOV
+    body_height_mm: float = 140.0
+    body_material: str = "soft_tissue"  # ICRU-44 soft tissue
+
+    # 8 cm^3 tumor sphere -> radius = (3V/4pi)^(1/3)
+    tumor_volume_cm3: float = TUMOR_VOLUME_CM3
+    tumor_center_mm: tuple = (25.0, 0.0, 0.0)   # offset from iso-center
+
+    # cortical-bone insert (beam-hardening source), a rod
+    bone_radius_mm: float = 8.0
+    bone_center_mm: tuple = (-30.0, 0.0, 0.0)
+    bone_material: str = "cortical_bone"
+
+    @property
+    def tumor_radius_mm(self) -> float:
+        return (3.0 * self.tumor_volume_cm3 * 1000.0 / (4.0 * 3.141592653589793)) ** (1.0 / 3.0)
+
+
+# --------------------------------------------------------------------------
+# Acquisition geometry (SPEC §5.5) — standard C-arm cone beam.
+# Defaults below are recorded from CONRAD's standard config at M4 and may be
+# refined; FOV and projection count are fixed by the study.
+# --------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Geometry:
+    num_projections: int = 500
+    fov_mm: float = 200.0               # 20 cm reconstruction FOV
+    angular_range_deg: float = 200.0    # short scan (180 + fan); confirm at M4
+    source_iso_mm: float = 750.0        # SID  (CONRAD default; confirm)
+    source_detector_mm: float = 1200.0  # SDD  (CONRAD default; confirm)
+    detector_cols: int = 620
+    detector_rows: int = 480
+    detector_pixel_mm: float = 0.616    # confirm from CONRAD default
+
+
+# --------------------------------------------------------------------------
+# Reconstruction (SPEC §5.5)
+# --------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Recon:
+    voxels: tuple = (512, 512, 384)
+    voxel_mm: float = 200.0 / 512.0     # ~0.39 mm isotropic over 20 cm FOV
+    bh_correction_states: tuple = (False, True)   # beam-hardening correction off/on
+
+
+# --------------------------------------------------------------------------
+# Spectrum & dose (SPEC §5.3) — CONRAD standard polychromatic spectrum.
+# --------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Spectrum:
+    kvp: float = 120.0            # nominal C-arm peak voltage; confirm CONRAD default at M3
+    e_min_kev: float = 10.0
+    e_max_kev: float = 120.0
+    e_delta_kev: float = 1.0
+    photons_per_pixel: float = 70000.0   # unattenuated I0 for Poisson noise
+
+
+# --------------------------------------------------------------------------
+# Detectors (SPEC §5.4)
+# --------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Detectors:
+    types: tuple = ("EID", "PCD")        # energy-integrating, photon-counting
+    pcd_num_bins: int = 3
+    # Bin edges default to thirds of [e_min, e_max]; finalized once the standard
+    # spectrum is known (M3).
+    pcd_bin_edges_kev: tuple = (10.0, 47.0, 83.0, 120.0)
+
+
+# --------------------------------------------------------------------------
+# Evaluation (SPEC §5.6/§5.7)
+# --------------------------------------------------------------------------
+@dataclass(frozen=True)
+class Evaluation:
+    noise_realizations: int = 10
+    rose_cnr_threshold: float = 5.0      # detectable if CNR >= 3..5 (report both)
+
+
+PHANTOM = Phantom()
+GEOMETRY = Geometry()
+RECON = Recon()
+SPECTRUM = Spectrum()
+DETECTORS = Detectors()
+EVAL = Evaluation()
+
+
+def summary() -> str:
+    lines = ["SPIONvsXRay configuration", "=" * 40]
+    lines.append(f"Formulation levels (mg SPION/ml): {C_FORM_LEVELS}")
+    lines.append("Tumor iron per level (mg Fe/ml):")
+    for c in C_FORM_LEVELS:
+        lines.append(f"  c_form={c:5.1f} -> delivered={delivered_spion_mg(c):5.2f} mg"
+                     f" -> {tumor_iron_conc(c):.4f} mg Fe/ml")
+    lines.append(f"Tumor radius: {PHANTOM.tumor_radius_mm:.2f} mm (8 cm^3 sphere)")
+    lines.append(f"Projections: {GEOMETRY.num_projections}, FOV: {GEOMETRY.fov_mm} mm")
+    lines.append(f"Photons/pixel: {SPECTRUM.photons_per_pixel:.0f}")
+    lines.append(f"Detectors: {DETECTORS.types}, PCD bins: {DETECTORS.pcd_num_bins}")
+    lines.append(f"Factorial cells: {len(C_FORM_LEVELS)}x{len(DETECTORS.types)}"
+                 f"x{len(RECON.bh_correction_states)}x{EVAL.noise_realizations}"
+                 f" = {len(C_FORM_LEVELS)*len(DETECTORS.types)*len(RECON.bh_correction_states)*EVAL.noise_realizations}")
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    print(summary())

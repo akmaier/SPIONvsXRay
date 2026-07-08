@@ -1,0 +1,8 @@
+# SPIONvsXRay — Python dependencies
+# Preferred simulation/reconstruction backend (needs Java 8 + matching arch):
+pyconrad>=0.8.0
+# Numerics / IO / plotting (also used by the self-contained fallback backend):
+numpy>=1.21
+scipy>=1.7
+matplotlib>=3.4
+imageio>=2.9

@@ -10,8 +10,8 @@ Target conference paper based on the SPION CT-visibility simulation study
 
 - **Conference:** SPIE Medical Imaging (annual, San Diego, ~February).
   <https://spie.org/conferences-and-exhibitions/medical-imaging>
-- **Track:** *Physics of Medical Imaging* — the natural home for CT simulation,
-  spectral / photon-counting detectors, and image-quality/detectability studies.
+- **Track:** *Physics of Medical Imaging* (confirmed) — the natural home for CT
+  simulation, spectral / photon-counting detectors, and detectability studies.
 - **Format:** SPIE Proceedings, single-column, letter paper, no page numbers;
   built with the official `spie.cls` v3.4. Template downloaded and verified to
   compile under `paper/template/` (`spie_template.tex` = the official style guide;
@@ -33,14 +33,19 @@ notification ~October 2026, **manuscript due ~January 2027**, conference
 
 Recommended: **#1** — poses the question (Maier-style hook) and names the method.
 
-## 3. Authors & affiliations (to confirm)
+## 3. Authors & affiliations (confirmed)
 
-- Andreas Maier (corresponding), Pattern Recognition Lab, FAU
-  Erlangen-Nürnberg — simulation/methodology.
-- **Confirm co-authorship with the nanoparticle group** (SEON / Heinen, Tietze,
-  Alexiou et al., Universitätsklinikum Erlangen) who characterized the SPIONs in
-  the reference article — they provide the material/dose grounding.
-- Any student/postdoc running the simulations.
+- **Andreas Maier** (corresponding) — Pattern Recognition Lab, FAU
+  Erlangen-Nürnberg — simulation & methodology.
+- **Stefan Lyer** — SEON, Section of Experimental Oncology and Nanomedicine,
+  Dept. of Otorhinolaryngology, Universitätsklinikum Erlangen / FAU.
+- **Lukas Heinen** — SEON, Dept. of Otorhinolaryngology, Universitätsklinikum
+  Erlangen / FAU — SPION synthesis & characterization (reference article).
+- **Rainer Tietze** — SEON, Dept. of Otorhinolaryngology, Universitätsklinikum
+  Erlangen / FAU — nanoparticle characterization.
+
+(Exact affiliation strings/order to be finalized on the manuscript; SEON authors
+provide the material and dose grounding from the reference article.)
 
 ## 4. Core contribution (one-sentence thesis)
 

@@ -4,6 +4,27 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — Implementation start (M0) + 30-min loop
+
+- **Paper metadata confirmed:** SPIE MI track = *Physics of Medical Imaging*;
+  co-authors = Maier, Stefan Lyer, Lukas Heinen, Rainer Tietze (SEON /
+  Universitätsklinikum Erlangen). Updated `paper_plan.md`.
+- **Environment probe (M0):** available Pythons = 3.12/3.13/3.14 (arm64) + old
+  3.6 (x86_64); Java 8 present but **x86_64** (Oracle). ⚠ Apple-Silicon arch
+  mismatch risk: JPype needs Python and JVM at the same arch. Testing pyconrad on
+  arm64 py3.12 first; arm64 Temurin/Zulu 8 is the fallback if the x86_64 JVM
+  can't be bridged.
+- **Scaffolding (backend-agnostic):** `requirements.txt`, `src/` package,
+  `src/config.py` = single source of truth for every SPEC parameter. Verified
+  `python src/config.py` reproduces the dose table (c_form→mg Fe/ml) and the
+  7×2×2×10 = 280 factorial.
+- Started a **30-min work/report loop**; pyconrad install running in background.
+
+**Loop cadence:** each iteration advances a milestone, commits + pushes, reports
+to chat. Next: resolve the pyconrad/JVM arch question (M0), then M1 materials.
+
+---
+
 ## 2026-07-08 — MIT license + GitHub Pages audit dashboard
 
 - Added **MIT `LICENSE`** (© 2026 Andreas Maier); README + paper plan updated.
