@@ -22,6 +22,34 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — CONRAD-native path proven (analytic phantom + material projector)
+
+User steered to: use a CONRAD Phantom + CONRAD's material projectors; checked out
+the CONRAD source. Findings & proofs:
+- **Cloned CONRAD source** to `~/Documents/CONRAD` (github.com/akmaier/CONRAD) for
+  reference + to host the new phantom. (No Maven/Gradle — Eclipse project; a single
+  new class can be compiled against the pyconrad jar instead of a full rebuild.)
+- **Material projector = `MaterialPathLengthDetector`** (records per-material path
+  length into a `MultiChannelGrid2D` = base-material sinograms) +
+  `XRayDetector.accumulatePathLenghtForEachMaterial(segments)`.
+- **Analytic ray tracer = `PriorityRayTracer`** (NOT WatertightRayTracer, which is
+  STL/mesh-only). `setScene(phantom)` + `castRay(StraightLine)` → material segments.
+- **PROVEN** via pyconrad: built an AnalyticPhantom (water Cylinder + iron insert
+  Cylinder), cast a ray → exact base-material path lengths (iron 25.00 mm = insert
+  dia; water 135.00 mm = body − insert). CPU, headless, no Configuration.
+- **`CirclesPhantom` is the template** for the new phantom (Cylinder body +
+  PhysicalObject inserts on a circle + MaterialsDB materials + add()).
+
+**New phantom location:** `CONRAD/src/edu/stanford/rsl/conrad/phantom/SPIONInsertPhantom.java`
+(contributable), built identically at runtime via pyconrad for now.
+
+**Build plan (next):** src/conrad_phantom.py — runtime AnalyticPhantom (ED inserts
++ registered magnetite SPION materials); src/conrad_project.py — PriorityRayTracer
+fan-beam base-material sinograms; then polychromatic EID/PCD + CONRAD fan FBP.
+Supersedes the numpy-geometry hybrid.
+
+---
+
 ## 2026-07-08 — COURSE CORRECTION (user review): use CONRAD for recon; ED phantom
 
 User caught four issues in the M4/M5 review — all valid:
