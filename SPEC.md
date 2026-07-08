@@ -71,37 +71,18 @@ installed pyconrad version** before writing the pipeline.
 
 ## 5. Finalized Experimental Configuration
 
-### 5.1 Phantom (rabbit-scale, in-vivo-like) — TWO backgrounds
+### 5.1 Phantom (round geometric, rabbit-scale)
 
-Decision 2026-07-08: run the study on **both** backgrounds and compare.
+**Decision 2026-07-08:** use a **single round geometric phantom**; the
+realistic-anatomy arm is dropped. Rationale: there is **no digital rabbit
+phantom** (ROBY = rat, MOBY = mouse; the Segars/RADAR family has no rabbit — JNM
+2010;51:471), and a real rabbit CT was not pursued. The geometric phantom is
+clean, reproducible, and isolates the detector/spectral variables. **Paper
+limitation:** idealized cylindrical anatomy → idealized beam hardening/scatter;
+no organ heterogeneity.
 
-**(A) Round geometric phantom** — homogeneous **ICRU soft-tissue** (water proxy)
-cylinder, ~10–12 cm diameter (rabbit trunk), inside the **20 cm FOV**, with a
-cortical-bone rod. Clean, reproducible; isolates the detector/spectral variables.
-
-**(B) Realistic-anatomy background — CORRECTION (2026-07-08):** there is **no
-digital rabbit** in the Segars/RADAR family. **MOBY = mouse, ROBY = *rat*** (RADAR
-animal series, Keenan/Stabin/Segars, JNM 2010;51:471, has only these two). A true
-rabbit phantom does not exist as a standard resource; rabbit voxel models in the
-literature are one-off segmentations of **real rabbit CT**. Options for arm (B),
-pending user decision:
-  - **Real rabbit CT** (preferred for a *rabbit*) — segment tissue/bone, embed the
-    tumor. The SEON co-authors' in-vivo work may provide one. Realistic at true
-    rabbit scale (~11 cm).
-  - **ROBY (rat)** — a licensed, ready digital phantom, but rat-scale (~5 cm),
-    NOT rabbit-scale; changes path length/beam hardening/dose. Only if a rodent is
-    acceptable. Licensed via Duke CVIT (paul.segars@duke.edu,
-    https://cvit.duke.edu/resource/moby-roby-phantoms/); ships as NURBS + voxel.
-  - Drop arm (B), keep only the round geometric rabbit-scale phantom (A).
-
-CONRAD-side integration (still valid for any Segars/NURBS or real-CT input):
-NURBS via `XCatScene` (`getSplineNameMaterialNameLUT`, tessellate) →
-`AnalyticPhantomProjector`, or STL meshes via `AsciiSTLMeshPhantom`, or a
-voxelized volume adapter. Until arm (B) is chosen and supplied, the batch runs
-on (A).
-
-Both backgrounds carry the **same tumor** (homogeneous, and the Study-B vessel
-variant) and run the same factorial, so anatomy's effect is directly measured.
+- **Body:** homogeneous **ICRU soft-tissue** (water proxy) cylinder, ~10–12 cm
+  diameter (rabbit trunk), inside the **20 cm FOV**.
 - **Bone insert:** a cortical-bone rod (spine/rib surrogate) to create a genuine
   **beam-hardening** source — this makes the BH-correction on/off comparison
   meaningful.

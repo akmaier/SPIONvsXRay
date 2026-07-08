@@ -133,27 +133,11 @@ class Evaluation:
     rose_cnr_threshold: float = 5.0      # detectable if CNR >= 3..5 (report both)
 
 
-# Phantom backgrounds and tumor distribution models (SPEC §5.1 / §5.9)
-# NOTE: ROBY is the Segars *rat* phantom (MOBY=mouse); there is NO digital rabbit
-# in the RADAR/Segars family. A realistic RABBIT requires a real rabbit CT.
-# Arm (B) background is pending user decision (real rabbit CT vs ROBY rat vs none).
-PHANTOM_BACKGROUNDS = ["round"]              # (A) geometric cylinder; (B) added once chosen
+# Phantom background and tumor distribution models (SPEC §5.1 / §5.9).
+# Decision 2026-07-08: single round geometric phantom (no digital rabbit exists;
+# ROBY=rat, MOBY=mouse). Realistic-anatomy arm dropped.
+PHANTOM_BACKGROUNDS = ["round"]              # (A) geometric rabbit-scale cylinder
 TUMOR_MODELS = ["homogeneous", "vessel"]     # Study A (uniform), Study B (150 µm vessels @10%)
-
-
-@dataclass(frozen=True)
-class RealisticPhantom:
-    """Arm (B) realistic background: a real rabbit CT or a Segars voxel/NURBS model.
-
-    Supply files under data/rabbit/ (CT) or data/roby/ (ROBY rat, licensed).
-    """
-    ct_volume_path: str = "data/rabbit/rabbit_ct.nii.gz"   # real rabbit CT (preferred)
-    roby_volume_path: str = "data/roby/roby_atn_1.bin"      # ROBY rat (licensed, rat-scale)
-    dim: tuple = (256, 256, 350)                            # override from source header
-    voxel_mm: float = 0.5                                   # override from source header
-
-
-REALISTIC = RealisticPhantom()
 
 # Study B vessel model (SPEC §5.9)
 VESSEL_DIAMETER_UM = 150.0

@@ -99,7 +99,10 @@ factorial: dose × detector × beam-hardening, ΔHU + CNR) → headline result
 - Interpretation: is the realistic 6 mg dose visible? Which factor helps most?
 - Comparison to iodine CT; spectral advantage of PCD for low-Z-contrast iron.
 - **Limitations (state candidly):** simulation-only, idealized detectors,
-  homogeneous tumor uptake, single spectrum/geometry, no scatter/motion.
+  **round geometric (cylindrical) phantom rather than real rabbit anatomy** — no
+  standard digital rabbit phantom exists (ROBY = rat), so beam hardening/scatter
+  are idealized; homogeneous tumor uptake (vs the vessel-model Study B); single
+  base geometry; no scatter/motion.
 
 ### 5.6 Conclusion (~0.3 pp.)
 Answer the title question; state the threshold; note the detector implication;
