@@ -19,15 +19,14 @@ See the Medical Physics paper above for details.
 
 ## Contents
 
-Both the **original (2011)** and the **corrected `-v2` (2012)** versions of the
-512³ and 1024³ datasets are included for a complete historical record.
+This record contains the corrected **`-v2` (2012)** release of the datasets.
 
 | File | Size | Description |
 |------|------|-------------|
-| `rabbitct_512-v2.rctd` / `rabbitct_512.rctd`   | ~2.5 GB | 496 projections + calibrated 3×4 projection matrices; 512³ reconstruction target (voxel 0.5 mm, 256 mm³ volume). `-v2` = corrected 2012 release. |
-| `rabbitct_1024-v2.rctd` / `rabbitct_1024.rctd` | ~4.5 GB | Same scan at the 1024³ target (voxel 0.25 mm). `-v2` = corrected 2012 release. |
+| `rabbitct_512-v2.rctd`  | ~2.5 GB | 496 projections + calibrated 3×4 projection matrices; 512³ reconstruction target (voxel 0.5 mm, 256 mm³ volume). |
+| `rabbitct_1024-v2.rctd` | ~4.5 GB | Same scan at the 1024³ target (voxel 0.25 mm). |
 | `reference_256.vol`  | 64 MB   | Reference reconstruction, 256³ float32 (256 mm³, 1.0 mm voxels). |
-| `rabbitct_develop-v2.zip` / `rabbitct_develop.zip` | small | Developer kit: `rabbitct.h` (data struct), CMake project, `LolaBunny` example backprojection module. |
+| `rabbitct_develop-v2.zip` | small | Developer kit: `rabbitct.h` (data struct), CMake project, `LolaBunny` example backprojection module. |
 
 ## `.rctd` format (summary)
 

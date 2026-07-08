@@ -16,13 +16,10 @@ import urllib.error
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = "/disks/data1/share/webdata/fileadmin/Forschung/Software/RabbitCT/download"
 
-# The updated README (mentions both versions; overwrites the one on the draft)
-# plus the ORIGINAL (2011) versions to add alongside the already-uploaded -v2 files.
+# v2-only publication: just re-upload the corrected README (overwrites the one
+# already on the draft). No original (non-v2) data files are added.
 EXTRA_FILES = [
     os.path.join(HERE, "README_data.md"),
-    os.path.join(DATA_DIR, "rabbitct_develop.zip"),
-    os.path.join(DATA_DIR, "rabbitct_512.rctd"),
-    os.path.join(DATA_DIR, "rabbitct_1024.rctd"),
 ]
 
 
