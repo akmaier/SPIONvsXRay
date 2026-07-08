@@ -18,6 +18,14 @@ Reverse-chronological log of progress. Newest entries on top.
 **ACTION FOR USER:** to enable the ROBY arm, drop the ROBY-generated volume +
 log into `data/roby/` (they're licensed; I can't fetch them).
 
+- **ROBY format check (introspected the CONRAD jar):** ROBY = same Segars NURBS
+  spline format as XCAT. CONRAD reads it natively via `XCatScene` (loads splines,
+  spline→material LUT, tessellate) + `AnalyticPhantomProjector`. BUT the loader is
+  XCAT-organ-specific → ROBY needs either (1) a ROBY spline→material LUT adapter
+  or (2) the STL/mesh route via `AsciiSTLMeshPhantom`. Preferred: analytic NURBS.
+  **Q for user:** do you have ROBY as `.nrb` NURBS splines (→ analytic) or only
+  voxelized output (→ voxel adapter)? Determines which loader I build.
+
 ---
 
 ## 2026-07-08 — Correctness: model iron OXIDE (magnetite), not pure Fe

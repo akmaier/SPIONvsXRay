@@ -79,12 +79,21 @@ Decision 2026-07-08: run the study on **both** backgrounds and compare.
 cylinder, ~10–12 cm diameter (rabbit trunk), inside the **20 cm FOV**, with a
 cortical-bone rod. Clean, reproducible; isolates the detector/spectral variables.
 
-**(B) ROBY digital rabbit phantom** — the Segars/Duke XCAT-family voxelized
-rabbit (realistic organs + skeleton) for anatomical realism (realistic beam
-hardening/heterogeneity). *ROBY is licensed (Duke/XCAT) and cannot be
-auto-downloaded — the user provides the generated voxel volume; `src/phantom.py`
-adapts it (organ→material map) and embeds the tumor.* Until the files are
-supplied, the batch runs on (A); the ROBY adapter is ready to ingest (B).
+**(B) ROBY digital rabbit phantom** — the Segars/Duke XCAT-family rabbit for
+anatomical realism. **Same NURBS spline format as XCAT/MOBY**, which CONRAD reads
+natively: `edu.stanford.rsl.conrad.phantom.xcat.XCatScene` loads named splines
+(`generateFromSplineName`/`getSplines`), maps spline→material via
+`getSplineNameMaterialNameLUT`, tessellates, and projects through
+`AnalyticPhantomProjector`. *Caveat:* `XCatScene`/`XCatMaterialGenerator` are
+hard-wired to XCAT's human organ names, so ROBY needs one of:
+  1. **Adapt the scene** — feed ROBY's `.nrb` splines + a ROBY spline→material
+     LUT (replicate XCatScene for rabbit anatomy). Analytic, faithful.
+  2. **STL/mesh route** — tessellate ROBY NURBS → per-organ STL, load via
+     `AsciiSTLMeshPhantom`, assign materials. Format-agnostic, simplest.
+Preferred: the analytic NURBS route (exact surfaces, no background partial
+volume). *ROBY is licensed (Duke/XCAT) — the user supplies the files.* Which
+form determines the loader: NURBS `.nrb` splines (→ analytic) vs voxelized
+output (→ voxel-volume adapter). Until supplied, the batch runs on (A).
 
 Both backgrounds carry the **same tumor** (homogeneous, and the Study-B vessel
 variant) and run the same factorial, so anatomy's effect is directly measured.
