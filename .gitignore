@@ -40,3 +40,7 @@ data/RabbitCT/
 
 # Compiled CONRAD extension (build artifacts; source is tracked)
 conrad_ext/out/
+
+# Secrets (Zenodo token etc.) — never commit
+publish/rabbitct/zenodo_secrets.env
+*.secret

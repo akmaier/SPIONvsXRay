@@ -5,17 +5,24 @@
 # It does NOT publish — it leaves a draft for you to review + click Publish on
 # Zenodo. Test on sandbox first: ZENODO_SANDBOX=1 ./upload_to_zenodo.sh
 #
-# Requirements: bash, curl, jq. Token (do NOT paste in chat):
-#   export ZENODO_TOKEN=<your Zenodo personal access token: deposit:write,deposit:actions>
+# Requirements: bash, curl, jq. Token goes in the git-ignored zenodo_secrets.env
+# next to this script (copy zenodo_secrets.env.example). Never paste it in chat.
 set -euo pipefail
-
-: "${ZENODO_TOKEN:?Set ZENODO_TOKEN (Zenodo personal access token) first}"
-BASE="https://zenodo.org/api"
-[ "${ZENODO_SANDBOX:-0}" = "1" ] && BASE="https://sandbox.zenodo.org/api"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 META="$HERE/zenodo_metadata.json"
 README="$HERE/README_data.md"
+
+# Load credentials from the git-ignored secrets file (or fall back to env vars).
+[ -f "$HERE/zenodo_secrets.env" ] && source "$HERE/zenodo_secrets.env"
+
+if [ "${ZENODO_SANDBOX:-0}" = "1" ]; then
+  BASE="https://sandbox.zenodo.org/api"
+  ZENODO_TOKEN="${ZENODO_SANDBOX_TOKEN:-${ZENODO_TOKEN:-}}"
+else
+  BASE="https://zenodo.org/api"
+fi
+: "${ZENODO_TOKEN:?No token. Put it in zenodo_secrets.env (see .example) or export ZENODO_TOKEN}"
 
 # RabbitCT data on the LME server (edit if paths differ):
 DATA_DIR="/disks/data1/share/webdata/fileadmin/Forschung/Software/RabbitCT/download"
