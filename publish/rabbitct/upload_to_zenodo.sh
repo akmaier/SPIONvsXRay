@@ -26,11 +26,13 @@ fi
 
 # RabbitCT data on the LME server (edit if paths differ):
 DATA_DIR="/disks/data1/share/webdata/fileadmin/Forschung/Software/RabbitCT/download"
+# Corrected -v2 versions (2012) as the canonical release. Add the originals here
+# too if you want the full historical record.
 FILES=(
-  "$DATA_DIR/rabbitct_512.rctd"
-  "$DATA_DIR/rabbitct_1024.rctd"
+  "$DATA_DIR/rabbitct_512-v2.rctd"
+  "$DATA_DIR/rabbitct_1024-v2.rctd"
   "$DATA_DIR/reference_256.vol"
-  "$DATA_DIR/rabbitct_develop.zip"
+  "$DATA_DIR/rabbitct_develop-v2.zip"
   "$README"
 )
 
