@@ -65,10 +65,17 @@ bone) with a single **8 cm³** SPION tumor, **20 cm FOV**, **500 projections**,
 
 | Factor | Levels |
 |--------|--------|
-| Iron concentration [mg Fe/ml] | 0, 0.5, 1, 2, 5, 10, 20 (7) |
+| Formulation conc. [mg SPION/ml] | 0, 0.5, 1, 2, 5, 10, 20 (7) |
 | Detector | energy-integrating (EID), photon-counting multi-bin (PCD) |
 | Beam-hardening correction | off, on |
 | Noise realizations @ 70 000 ph/px | 10 |
+
+**Dose model:** a *delivered mass*, not a fixed vial concentration — anchored at
+**6 mg SPIONs for the 10 mg/ml formulation**, spread over the 8 cm³ tumor and
+scaled with concentration. With a magnetite core (72.4% Fe), tumor iron works out
+to `c_Fe = 0.0543 × c_form`, so the top dose is only **~0.5 mg Fe/ml** — ~10×
+below iodine CT enhancement. Whether that is detectable is a key study outcome.
+See [`SPEC.md`](SPEC.md) §5.2 for the full conversion table.
 
 → **14 forward simulations → ≈ 308 reconstructed/analyzed volumes.**
 Detectability reported as **both** ΔHU and **CNR** (Rose CNR ≥ 3–5), per detector

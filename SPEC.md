@@ -78,24 +78,48 @@ installed pyconrad version** before writing the pipeline.
 - **Bone insert:** a cortical-bone rod (spine/rib surrogate) to create a genuine
   **beam-hardening** source — this makes the BH-correction on/off comparison
   meaningful.
-- **Tumor:** a single **8 cm³** sphere (radius ≈ 1.24 cm, ⌀ ≈ 2.48 cm) filled
-  with the SPION suspension at the scan's iron concentration; sits in soft tissue
-  offset from the bone (melanoma-like accumulation site).
+- **Tumor:** a single **8 cm³** sphere (radius ≈ 1.24 cm, ⌀ ≈ 2.48 cm) of
+  iron-loaded soft tissue holding the scan's delivered SPION dose spread
+  uniformly (see §5.2); sits in soft tissue offset from the bone (melanoma-like
+  accumulation site).
 - **Reference ROI:** adjacent tumor-free soft tissue for ΔHU / CNR contrast.
 
-### 5.2 Materials
+### 5.2 Materials & dose model
 
-- **Core model:** magnetite Fe₃O₄ (ρ ≈ 5.17 g/cm³) for particle↔Fe-mass
-  conversion; the X-ray model uses **Fe mass fraction directly**, so the
-  polymorph choice does not affect attenuation.
-- **Iron-loaded tumor @ c:** the tumor host medium is the **same ICRU soft
-  tissue** as the phantom background, with Fe **added** at `c` mg/ml (density
-  raised by 0.001·c g/cm³, mass negligible; high-Z iron drives the contrast).
-  The iron is **not diluted in water** — this keeps **c = 0 ≡ background
-  (ΔHU = 0)**, so all measured contrast is attributable to iron and the
-  tumor-free soft-tissue reference ROI is a true iron-free control.
-- *(An aqueous water+Fe model would instead represent an in-vitro vial of
-  suspension and reintroduce a water-vs-tissue baseline offset; not used here.)*
+- **Core model:** magnetite **Fe₃O₄** (ρ ≈ 5.17 g/cm³, **Fe mass fraction
+  0.724**). "6 mg of SPIONs" = whole-particle mass; iron content = 0.724 × mass.
+- **Iron-loaded tumor:** the tumor host medium is the **same ICRU soft tissue**
+  as the phantom background, with Fe **added** (density raised by 0.001·c_Fe
+  g/cm³, mass negligible; high-Z iron drives the contrast). The iron is **not
+  diluted in water** — this keeps **c_Fe = 0 ≡ background (ΔHU = 0)**, so all
+  contrast is attributable to iron and the tumor-free soft tissue is a true
+  iron-free reference.
+
+**Dose model — delivered mass, not a fixed suspension concentration.** The
+independent variable is the article's **formulation concentration** `c_form`
+[mg SPION/ml]. The delivered SPION mass scales with it, anchored so
+`c_form = 10 mg/ml → 6 mg` delivered into the 8 cm³ tumor:
+
+```
+m_SPION   = 6 mg × (c_form / 10)          # delivered particle mass
+c_tumor   = m_SPION / 8 cm³               # tumor particle concentration
+c_Fe      = 0.724 × c_tumor               # tumor IRON concentration (drives X-ray)
+          = 0.0543 × c_form  [mg Fe/ml]
+```
+
+| `c_form` (mg/ml) | delivered SPION (mg) | tumor SPION (mg/ml) | **tumor Fe (mg/ml)** |
+|---:|---:|---:|---:|
+| 0    | 0    | 0      | **0**     |
+| 0.5  | 0.3  | 0.0375 | **0.027** |
+| 1    | 0.6  | 0.075  | **0.054** |
+| 2    | 1.2  | 0.15   | **0.109** |
+| 5    | 3.0  | 0.375  | **0.271** |
+| 10   | 6.0  | 0.75   | **0.543** |
+| 20   | 12.0 | 1.5    | **1.086** |
+
+**Note:** even the top dose yields only ~0.5 mg Fe/ml in the tumor — roughly an
+order of magnitude below iodine CT enhancement (~2–15 mg/ml). Quantifying whether
+this is detectable is a central outcome of the study.
 
 ### 5.3 Spectrum & dose
 
@@ -127,7 +151,7 @@ installed pyconrad version** before writing the pipeline.
 
 | Factor | Levels | n |
 |--------|--------|---|
-| Iron concentration [mg Fe/ml] | 0, 0.5, 1, 2, 5, 10, 20 | 7 |
+| Formulation conc. `c_form` [mg SPION/ml] (→ tumor Fe, see §5.2) | 0, 0.5, 1, 2, 5, 10, 20 | 7 |
 | Detector | EID, PCD (multi-bin) | 2 |
 | Beam-hardening correction | off, on | 2 |
 | Noise realization @ 70 000 ph/px | repeats | R = 10 |

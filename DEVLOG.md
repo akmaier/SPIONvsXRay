@@ -4,6 +4,22 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — Dose model: delivered mass, anchored at 6 mg / 10 mg-ml
+
+- **Decision (user):** the dose is a *delivered SPION mass*, not a fixed vial
+  concentration. Anchor: **10 mg/ml formulation → 6 mg SPIONs** spread over the
+  8 cm³ tumor; other formulation levels scale the delivered mass proportionally.
+  "6 mg SPIONs" = whole-particle mass; magnetite core → 72.4% Fe.
+- **Conversion:** `c_Fe = 0.724 × (6·c_form/10) / 8 = 0.0543 × c_form` mg Fe/ml.
+  Tumor iron per level: c_form 0.5/1/2/5/10/20 → Fe 0.027/0.054/0.109/0.271/
+  0.543/1.086 mg/ml.
+- **Implication:** even the top dose is only ~0.5 mg Fe/ml — ~10× below iodine
+  CT enhancement. Detectability at these low iron loads is the central question;
+  expect SPIONs to be borderline/invisible except at the high end. Updated
+  SPEC §5.1/§5.2/§5.6 and README.
+
+---
+
 ## 2026-07-08 — Material model corrected: iron in tissue, not water
 
 - Caught an inconsistency: modeling the tumor as *water + Fe* would give a
