@@ -46,16 +46,22 @@ See [`SPEC.md`](SPEC.md) for the full plan and milestones, and
 plan (`SPEC.md`), this README, and the development log (`DEVLOG.md`). Code lands
 under `src/` per the milestones in the SPEC.
 
-## Getting started (planned)
+## Getting started
 
-CONRAD requires **Java 8** (already present) and a pyconrad-compatible Python
-(3.9/3.10 recommended — the system Python 3.14 is too new for JPype):
+CONRAD needs **Java 8**. Verified working environment (Apple Silicon):
+Python 3.12 + pyconrad 0.8.0 + **JPype1 1.5.0** (newer JPype dropped Java 8) +
+a native **arm64 Zulu JDK 8** (bundled locally by the script below).
 
 ```bash
-python3.10 -m venv .venv && source .venv/bin/activate
-pip install pyconrad
-python -c "import pyconrad; pyconrad.setup_pyconrad()"   # downloads CONRAD.jar, starts JVM
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt          # pyconrad + JPype1==1.5.0 + numerics
+bash scripts/install_jdk8.sh             # arm64 Zulu JDK 8 -> ./.jdk8 (no sudo)
+python src/conrad_backend.py             # smoke test: starts JVM, round-trips a CONRAD Grid2D
 ```
+
+`src/conrad_backend.py` auto-points `JAVA_HOME` at the bundled JDK, so the
+pipeline needs no manual environment setup. On Intel/Linux a system Java 8 also
+works; set `JAVA_HOME` if you don't use the bundled JDK.
 
 ## Experimental design (finalized)
 

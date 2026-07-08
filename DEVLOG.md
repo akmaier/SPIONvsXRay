@@ -4,6 +4,27 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — M0 COMPLETE ✅ (pyconrad bridge working)
+
+Working environment on Apple Silicon nailed down after three blockers:
+1. **Arch mismatch** — arm64 Python can't load the system x86_64 `libjvm.dylib`.
+   → installed a native **arm64 Zulu JDK 8** into `.jdk8/` (`scripts/install_jdk8.sh`).
+2. **JPype too new** — JPype1 1.7.1 requires Java 9+, but CONRAD needs Java 8.
+   → pinned **JPype1==1.5.0** (last Java-8-compatible release).
+3. **Env wiring** — `src/conrad_backend.py` auto-sets `JAVA_HOME` to the bundled
+   JDK and starts the JVM idempotently.
+
+Result: `pyconrad.setup_pyconrad()` succeeds and a CONRAD `Grid2D` round-trips
+through the JVM (`CONRAD bridge OK: True`) with **no manual environment setup**.
+Stack: Python 3.12 + pyconrad 0.8.0 + JPype1 1.5.0 + arm64 Zulu JDK 8.
+
+Pinned `JPype1==1.5.0` in `requirements.txt`; updated README getting-started.
+
+**Next (M1):** custom materials (soft tissue, cortical bone, iron-loaded tumor)
+and a μ(E)/HU sanity check.
+
+---
+
 ## 2026-07-08 — Implementation start (M0) + 30-min loop
 
 - **Paper metadata confirmed:** SPIE MI track = *Physics of Medical Imaging*;

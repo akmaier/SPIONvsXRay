@@ -1,6 +1,9 @@
 # SPIONvsXRay — Python dependencies
 # Preferred simulation/reconstruction backend (needs Java 8 + matching arch):
 pyconrad>=0.8.0
+# JPype 1.6+ dropped Java 8 support; CONRAD needs Java 8, so pin the last
+# Java-8-compatible JPype. (On Apple Silicon also use an arm64 JDK 8, e.g. Zulu.)
+JPype1==1.5.0
 # Numerics / IO / plotting (also used by the self-contained fallback backend):
 numpy>=1.21
 scipy>=1.7
