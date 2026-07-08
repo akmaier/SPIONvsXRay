@@ -44,3 +44,7 @@ conrad_ext/out/
 # Secrets (Zenodo token etc.) — never commit
 publish/rabbitct/zenodo_secrets.env
 *.secret
+
+# CONRAD re-release artifacts (large binaries; host on FAU, not git)
+publish/conrad/*.jar
+publish/conrad/*.zip

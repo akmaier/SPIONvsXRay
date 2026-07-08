@@ -44,6 +44,14 @@ has no usable K-edge → low-energy/photoelectric contrast; lower kVp helps (60 
   `scripts/build_conrad_ext.sh`; `conrad_backend` puts `conrad_ext/out` on
   `CONRAD_DEV_DIRS` so it **shadows** the jar class. This gives correct 0.5 mm +
   ~850× GPU backprojection.
+  - ⚠ **This fix (plus a GPU `exp`/`log` operator fix) is now upstreamed to
+    akmaier/CONRAD `master` (`71bb20c`)** and baked into a patched
+    `conrad_1.1.0.jar` (`publish/conrad/`, git-ignored). Once that jar is
+    re-hosted on FAU and picked up by pyconrad (see `publish/conrad/RELEASE.md`),
+    `conrad_ext` is redundant — retire it by dropping the `CONRAD_DEV_DIRS` shadow
+    in `conrad_backend`. **Until then, keep `conrad_ext`** (our env still runs the
+    currently-hosted, unpatched jar). Rebuild the jar with
+    `scripts/rebuild_conrad_jar.sh`.
 - `conrad_backend.setup()` wires ALL of the above (JAVA_HOME, DYLD, CONRAD_DEV_DIRS)
   and starts the JVM idempotently. Always import + `setup()` before CONRAD calls.
 - **Reference CONRAD source** cloned read-only at `~/Documents/CONRAD` (grep it).

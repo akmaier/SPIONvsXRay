@@ -4,6 +4,35 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — CONRAD OpenCL fixes upstreamed to akmaier/CONRAD + jar re-release prep
+
+- Studied CONRAD's GPU stack to answer "can we run it all on GPU with OpenCL
+  grids?" Findings: `OpenCLGrid2D/3D` + `OpenCLGridOperators` (GPU `multiplyBy`,
+  `addBy`, `sum`, `pow`, …) + GPU-resident `fastProjectRayDrivenCL` /
+  `fastBackprojectPixelDrivenCL` all exist, and `SimulateXRayDetector` (render
+  material path-lengths once, apply any detector) is exactly our architecture —
+  so an all-GPU, OpenCL-grid-resident pipeline is supported. **But** two GPU ops
+  needed for the polychromatic conversion are broken: `OpenCLGridOperators.exp()`
+  called a non-existent kernel `"expontial"` (no natural-exp kernel at all) and
+  `log()` called a missing `"logarithm"` — both threw `CLInvalidKernelNameException`.
+  (No GPU Poisson anywhere; noise stays a cheap CPU step.)
+- Per AM: **fix upstream in CONRAD, not as a `conrad_ext` shadow.** Added
+  `exponential` + natural-`logarithm` kernels to `PointwiseOperators.cl` and fixed
+  the `exp()` call site; **ported the `FanBeamBackprojector2D` pixel-spacing fix**
+  (previously only in `conrad_ext`) into the repo too. Pushed to
+  **akmaier/CONRAD `master` (`71bb20c`)**.
+- Built a patched `conrad_1.1.0.jar` by recompiling the two changed classes
+  against the released jar and splicing the new `.class` + `.cl` in with `jar uf`
+  (`scripts/rebuild_conrad_jar.sh`). **Verified** against the patched jar with the
+  `conrad_ext` shadow disabled + OpenCL on: GPU `exp(log(x))=x` to 1e-7; 0.5 mm
+  recon with monotonic iron ΔHU (c20 → +7.14, identical to the `conrad_ext` result).
+- Re-release prep: swapped the patched jar into the canonical FAU zip
+  (`publish/conrad/CONRAD_1.1.0.zip`; jar sha `c4aa2689bfef`, was `38fe24e116da`).
+  **Pending (needs FAU access):** host it at
+  `https://www5.cs.fau.de/fileadmin/user_upload/CONRAD_1.1.0.zip`. See
+  `publish/conrad/RELEASE.md`. Once the re-hosted jar ships via pyconrad,
+  `conrad_ext` can retire (keep it until then — our env still uses the old jar).
+
 ## 2026-07-08 — M6 PCD bug fixed + full factorial re-run (GPU 0.5 mm)
 
 - **Fixed the PCD detector bug** (was CNR ≈ 0/negative, unusable). Two root
