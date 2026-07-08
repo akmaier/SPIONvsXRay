@@ -22,6 +22,25 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — COURSE CORRECTION (user review): use CONRAD for recon; ED phantom
+
+User caught four issues in the M4/M5 review — all valid:
+1. **Not using CONRAD for projection/recon** — M4/M5 were custom numpy Radon/FBP
+   (CONRAD only gave attenuation+spectrum). FIXED: proved CONRAD's **CPU**
+   fan-beam works on this Mac — `FanBeamProjector2D.projectRayDriven` +
+   `FanBeamBackprojector2D.backprojectPixelDriven` + numpy ramp/cosine weighting
+   (`src/conrad_ct.py`). Round-trip on a disk reconstructs sharp & flat. No GPU.
+2. **Noise not visible** — it IS simulated (~17 HU), but the montage window
+   spanned the bone spike (4× body) so it was invisible; will window to soft tissue.
+3. **Phantom design** — switching to an **ED-phantom style**: concentration inserts
+   on a circle at equal radius (all imaged in one scan, cupping equal, directly
+   comparable), each insert a 2.5 cm (8 cm³-equiv) disk. Replaces the single tumor.
+4. **Persist sinograms** — will save sinogram arrays to results/ and show them.
+
+Rework in progress: phantom.py (ED), simulate.py/reconstruct.py -> conrad_ct.
+
+---
+
 ## 2026-07-08 — M2 COMPLETE ✅ (round geometric phantom)
 
 - `src/phantom.py`: analytic geometry (soft-tissue cylinder + bone rod + tumor
