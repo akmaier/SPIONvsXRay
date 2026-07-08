@@ -22,6 +22,24 @@ multi-bin PCD) using the phantom component volumes + real spectrum.
 
 ---
 
+## 2026-07-08 — RabbitCT data (real rabbit CT) located + fetched from LME
+
+- Sven's tip: rabbit CT is the **RabbitCT benchmark** (Erlangen group), on lme31 at
+  `/disks/.../Forschung/Software/RabbitCT`. Reached it via two-hop SSH
+  (maier@cluster.i5.cs.fau.de → maier@lme31.cs.fau.de; key-based, works).
+- Contents: `download/reference_256.vol` (67 MB = reconstructed **rabbit volume**,
+  256³ @ 1 mm — the real anatomy we can use as the realistic phantom);
+  `rabbitct_512/1024.rctd` (2.7/4.8 GB benchmark projections — not fetched);
+  `rabbitct_develop.zip` (format spec + geometry). CONRAD has RabbitCT support
+  under the **"LolaBunny"** codename (`LolaBunnyBackprojector`).
+- Fetched `reference_256.vol` + dev kit into `data/rabbitct/` (git-ignored).
+- RabbitCT is a real **C-arm geometry** (496 projections, 0.5 mm-voxel recon) →
+  ideal for the "set the geometry correctly" Conrad config.
+- Two subagents dispatched: fix the CL fan backprojector (`// TODO: Spacing`); and
+  config-aware reconstruction (rate-limited on first try, to re-run).
+
+---
+
 ## 2026-07-08 — Investigation: CL backprojector + voxel spacing (user questions)
 
 **CL backprojector — root cause found.** `FanBeamBackprojector2D.backprojectPixelDrivenCL`

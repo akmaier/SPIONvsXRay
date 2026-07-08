@@ -32,3 +32,8 @@ data/*.npy
 
 # Local OpenCL shim (Path A GPU enablement)
 .jogamp/
+
+# RabbitCT benchmark data (large, fetched from LME; not redistributed)
+data/rabbitct/
+data/RabbitCT/
+*.rctd
