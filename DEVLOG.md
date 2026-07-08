@@ -48,16 +48,17 @@ C-arm (SID/SDD/detector/angular range). Feasible; next.
 
 ---
 
-## 2026-07-08 — RabbitCT re-published to Zenodo (DRAFT, CC BY 4.0)
+## 2026-07-08 — RabbitCT PUBLISHED on Zenodo (DOI 10.5281/zenodo.21267885, CC BY 4.0)
 
 Uploaded the RabbitCT -v2 dataset from lme31 (python3 uploader; lme31 lacks
 curl/jq) to a Zenodo **draft** (id 21267885, PRODUCTION, not published):
 rabbitct_512-v2.rctd (2.5 GB) + rabbitct_1024-v2.rctd (4.5 GB) + reference_256.vol
 + dev kit + README. Metadata: 4 authors (Rohkohl/Keck/Hofmann/Hornegger),
 CC BY 4.0, isDocumentedBy doi:10.1118/1.3180956, post-mortem ethics note.
-Decision: publish v2 only (originals not added). AWAITING user review + Publish
-at https://zenodo.org/uploads/21267885. Token stays in git-ignored
-publish/rabbitct/zenodo_secrets.env.
+Decision: publish v2 only (originals not added). **PUBLISHED** by the user:
+DOI **10.5281/zenodo.21267885** (concept 10.5281/zenodo.21267884),
+record https://zenodo.org/records/21267885. Documented in README.md. Token stays
+in git-ignored publish/rabbitct/zenodo_secrets.env.
 
 ---
 

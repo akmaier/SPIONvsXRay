@@ -2,131 +2,147 @@
 
 **Can superparamagnetic iron-oxide nanoparticles (SPIONs) be seen in CT?**
 
-This project simulates the X-ray absorption and cone-beam CT reconstruction of
-PAA-coated iron-oxide nanoparticle suspensions at varying iron concentrations,
-to determine whether — and at what concentration — they become visible in a
-standard C-arm CT. The simulation uses the [CONRAD](https://www5.cs.fau.de/conrad/)
-framework via [`pyconrad`](https://pypi.org/project/pyconrad/).
+A fully reproducible, **CONRAD-native** simulation study of the X-ray absorption
+and cone-beam CT reconstruction of iron-oxide nanoparticles at realistic
+biological iron loads — to determine whether, and at what concentration, they
+become visible in a C-arm CT, and how detector type, beam-hardening correction,
+and spectral shaping shift that limit. Built on [CONRAD](https://www5.cs.fau.de/conrad/)
+via [`pyconrad`](https://pypi.org/project/pyconrad/).
 
-The nanoparticles are those described in Heinen et al., *Ultrasonics
-Sonochemistry* 130 (2026) 107876 (PAA-coated SPION clusters, iron-oxide cores
-~8–12 nm, used at ~1–10 mg Fe/ml). *The article PDF is git-ignored (copyright).*
+The nanoparticles are those in Heinen et al., *Ultrasonics Sonochemistry* 130
+(2026) 107876 (PAA-coated magnetite SPION clusters, cores ~8–12 nm, ~1–10 mg/ml).
+*The article PDF is git-ignored (copyright).*
 
-## Idea in one picture
+---
 
-```
-SPION suspensions          multi-vial phantom        C-arm cone-beam scan
-@ 0,1,2,5,10 mg Fe/ml  ──►  (water + inserts)   ──►  500 projections, std spectrum
-                                                             │
-                                          HU vs. concentration, CNR  ◄── FDK reco
-```
+## Study design
 
-Because X-ray attenuation is dominated by **iron content**, the tumor is modeled
-as **iron-loaded soft tissue** — the same soft-tissue matrix as the rabbit
-background with Fe added at `c` mg/ml (not diluted in water), so a zero-iron
-tumor is indistinguishable from background and all contrast is attributable to
-iron. The phantom is imaged polychromatically, reconstructed, and the contrast
-(Hounsfield Units) and contrast-to-noise ratio are measured in the tumor ROI.
+Two phantoms, one comparable C-arm geometry:
 
-## Method summary
+- **Disc phantom study (2D fan-beam).** An **ED-phantom-style** calibration
+  phantom: a soft-tissue cylinder with the 7 concentration inserts arranged on a
+  ring at equal radius (so beam-hardening cupping is common-mode) plus a
+  cortical-bone insert. Each insert is a 2.5 cm (≈8 cm³-equivalent) disk of
+  **iron-loaded soft tissue** (magnetite Fe₃O₄ added to the tissue matrix, so a
+  zero-iron insert equals background and all contrast is iron).
+- **Rabbit case (3D, planned).** The real **RabbitCT** rabbit volume (see below)
+  as anatomy, imaged with the real RabbitCT C-arm geometry — the disc study uses
+  a 2D slice of the same acquisition for direct comparability.
 
-1. **Materials** — register a CONRAD material per iron concentration.
-2. **Phantom** — a water cylinder with rod inserts, one concentration each.
-3. **Spectrum** — CONRAD standard polychromatic X-ray spectrum.
-4. **Acquisition** — 500 projections in the default C-arm cone-beam geometry.
-5. **Reconstruction** — cone-beam FDK.
-6. **Analysis** — HU-vs-concentration curve, CNR, detectability threshold.
+**Dose model** — a *delivered mass*, not a fixed vial concentration: anchored at
+**6 mg SPIONs for the 10 mg/ml formulation**, spread over an 8 cm³ tumor, scaled
+with concentration. Magnetite (72.4 % Fe) ⇒ `c_Fe = 0.0543 × c_form`, so the top
+dose is only **~0.5 mg Fe/ml** (~10× below iodine CT enhancement).
 
-See [`SPEC.md`](SPEC.md) for the full plan and milestones, and
-[`DEVLOG.md`](DEVLOG.md) for progress.
+**Factorial** (per phantom): formulation conc. {0, 0.5, 1, 2, 5, 10, 20 mg/ml} ×
+detector {EID, multi-bin PCD} × beam-hardening {off, on} × 10 noise realizations
+@ **70 000 photons/pixel**. Detectability reported as **ΔHU and CNR** (Rose ≥ 3–5).
+See [`SPEC.md`](SPEC.md) for full parameters.
 
-## Status
+## Key findings so far
 
-🚧 Planning complete; environment setup next. This repo currently contains the
-plan (`SPEC.md`), this README, and the development log (`DEVLOG.md`). Code lands
-under `src/` per the milestones in the SPEC.
+- **SPIONs are borderline-undetectable at realistic dose.** Tumor contrast is
+  ~3 HU at the realistic 6 mg dose and ~7 HU at 2× dose; EID CNR reaches only
+  ~3.9 at the top dose (just below Rose 5).
+- **Iron has no usable K-edge** (7.1 keV) → contrast is photoelectric and lives
+  at low energy. Optimal mono energy ≈ 30 keV; **lower kVp helps** (60 kVp =
+  1.34× the 90 kVp ideal CNR), **hardening filters hurt** (Sn → 0.58×), and
+  **PCD optimal energy weighting ≈ 1.35× EID** (optimal 3-bin thresholds ~37.5/50 keV).
+- The CONRAD magnetite material and an independent NIST-based model agree to 5
+  decimals — the physics is cross-validated.
+
+## Pipeline (all CONRAD-native)
+
+| Module | Role |
+|--------|------|
+| `src/config.py` | single source of truth for all parameters |
+| `src/conrad_backend.py` | JVM/CONRAD bootstrap (JAVA_HOME, OpenCL, extension classpath) |
+| `src/materials.py` | attenuation via CONRAD's material DB; magnetite oxide model |
+| `src/spectrum.py` | real CONRAD 90 kVp polychromatic spectrum (+ kVp/filter variants) |
+| `src/spectral.py` | spectral optimization (optimal energy weighting, PCD thresholds) |
+| `src/conrad_phantom.py` | CONRAD `AnalyticPhantom` (ED phantom + registered SPION materials) |
+| `src/conrad_project.py` | `PriorityRayTracer` base-material sinograms + polychromatic EID/PCD + noise |
+| `src/conrad_ct.py` | CONRAD fan-beam projection + FBP (GPU when available) |
+| `src/run_factorial.py` | the full factorial: per-insert ΔHU + CNR + detection thresholds |
 
 ## Getting started
 
-CONRAD needs **Java 8**. Verified working environment (Apple Silicon):
+CONRAD needs **Java 8**. Verified environment (Apple Silicon M1):
 Python 3.12 + pyconrad 0.8.0 + **JPype1 1.5.0** (newer JPype dropped Java 8) +
-a native **arm64 Zulu JDK 8** (bundled locally by the script below).
+a native **arm64 Zulu JDK 8** (bundled locally).
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt          # pyconrad + JPype1==1.5.0 + numerics
 bash scripts/install_jdk8.sh             # arm64 Zulu JDK 8 -> ./.jdk8 (no sudo)
-python src/conrad_backend.py             # smoke test: starts JVM, round-trips a CONRAD Grid2D
+bash scripts/install_opencl.sh           # optional: OpenCL (jogamp 2.6.0 + shim)
+bash scripts/build_conrad_ext.sh         # optional: build the fixed GPU backprojector
+python src/conrad_backend.py             # smoke test: JVM up, CONRAD Grid2D round-trips
 ```
 
-`src/conrad_backend.py` auto-points `JAVA_HOME` at the bundled JDK, so the
-pipeline needs no manual environment setup. On Intel/Linux a system Java 8 also
-works; set `JAVA_HOME` if you don't use the bundled JDK.
+`conrad_backend` auto-configures `JAVA_HOME`, the OpenCL shim, and the extension
+classpath; the pipeline falls back to CPU if OpenCL is absent.
 
-**Optional GPU (OpenCL) acceleration** — on Apple Silicon, enable CONRAD's
-OpenCL projectors (~4000× faster forward projection on the M1 GPU):
+## CONRAD extension — fixed OpenCL fan backprojector (`conrad_ext/`)
 
-```bash
-bash scripts/install_opencl.sh          # jogamp 2.6.0 + OpenCL.framework shim
-```
+CONRAD's OpenCL fan backprojector shipped incomplete: its kernel was never passed
+the reconstruction pixel spacing (`// TODO: Spacing` in the source) plus some
+`//FIXME` detector-geometry hacks, so it couldn't do configurable voxel sizes and
+corrupted quantitative reconstructions. We fixed it **in the original class**
+`edu.stanford.rsl.tutorial.fan.FanBeamBackprojector2D` (+ its `.cl` kernel): added
+`setSpacing`, passed the spacing to the kernel, and corrected the 2D detector
+geometry to match the CPU path. Result: correct **0.5 mm voxels** and **~850×
+faster** GPU reconstruction (matches CPU to ~1e-5). Source is in `conrad_ext/`
+(git-tracked, contributable upstream); `scripts/build_conrad_ext.sh` compiles it
+against the bundled jar and it is classpath-shadowed at runtime.
 
-`conrad_backend.opencl_available()` reports status; the pipeline auto-uses the
-GPU forward projector when present and falls back to CPU otherwise.
+## RabbitCT dataset — realistic rabbit anatomy & geometry (published)
 
-## Experimental design (finalized)
+The realistic rabbit is the **RabbitCT** benchmark (a post-mortem C-arm cone-beam
+scan from the FAU Pattern Recognition Lab). The original challenge site is offline;
+with the authors' agreement we **re-published the dataset on Zenodo** under
+**CC BY 4.0**:
 
-A factorial **effects study** on an in-vivo-like rabbit phantom (soft tissue +
-bone) with a single **8 cm³** SPION tumor, **20 cm FOV**, **500 projections**,
-**70 000 photons/pixel**:
+➡ **DOI: [10.5281/zenodo.21267885](https://doi.org/10.5281/zenodo.21267885)**
+&nbsp;·&nbsp; record: <https://zenodo.org/records/21267885>
+&nbsp;·&nbsp; concept DOI: 10.5281/zenodo.21267884
 
-| Factor | Levels |
-|--------|--------|
-| Formulation conc. [mg SPION/ml] | 0, 0.5, 1, 2, 5, 10, 20 (7) |
-| Detector | energy-integrating (EID), photon-counting multi-bin (PCD) |
-| Beam-hardening correction | off, on |
-| Noise realizations @ 70 000 ph/px | 10 |
+Please cite the original paper: Rohkohl C, Keck B, Hofmann HG, Hornegger J.
+*Technical Note: RabbitCT — an open platform for benchmarking 3D cone-beam
+reconstruction algorithms.* **Medical Physics** 36(9):3940–3944, 2009.
+DOI: [10.1118/1.3180956](https://doi.org/10.1118/1.3180956). The scan is
+**post-mortem** (no live-animal procedure).
 
-**Dose model:** a *delivered mass*, not a fixed vial concentration — anchored at
-**6 mg SPIONs for the 10 mg/ml formulation**, spread over the 8 cm³ tumor and
-scaled with concentration. With a magnetite core (72.4% Fe), tumor iron works out
-to `c_Fe = 0.0543 × c_form`, so the top dose is only **~0.5 mg Fe/ml** — ~10×
-below iodine CT enhancement. Whether that is detectable is a key study outcome.
-See [`SPEC.md`](SPEC.md) §5.2 for the full conversion table.
+Re-publication tooling is in [`publish/rabbitct/`](publish/rabbitct/) (data
+descriptor, Zenodo metadata, and a python3 uploader run from the LME server). The
+data itself is git-ignored (`data/rabbitct/`, fetched from LME via SSH).
 
-→ **14 forward simulations → ≈ 308 reconstructed/analyzed volumes.**
-Detectability reported as **both** ΔHU and **CNR** (Rose CNR ≥ 3–5), per detector
-and per BH-correction state. See [`SPEC.md`](SPEC.md) §5 for full parameters.
+## Audit dashboard
 
-Remaining defaults (non-blocking, read from the installed CONRAD and logged at
-implementation): standard-spectrum kVp/filtration, C-arm SID/SDD/detector/angular
-range, PCD bin thresholds, reconstruction voxel size (Fe₃O₄ assumed for
-reporting).
+A public **GitHub Pages dashboard** shows all intermediate results — spectra,
+material attenuation, phantom, projections, reconstructions, detectability curves
+— with **annotated code snippets for auditing**, regenerated from `results/`.
+
+➡ **https://akmaier.github.io/SPIONvsXRay/** (source: `docs/`)
 
 ## Repository layout
 
 ```
-SPEC.md          Full experimental plan and milestones
-README.md        This file
-LICENSE          MIT License
-DEVLOG.md        Running development log
-paper_plan.md    SPIE Medical Imaging paper plan + Maier writing-style analysis
-paper/template/  Official SPIE Proceedings LaTeX template (spie.cls v3.4, verified)
-docs/            GitHub Pages audit dashboard (index.html + assets/)
-src/             Simulation & analysis code (to be added)
-results/         Generated outputs (git-ignored)
+SPEC.md            Full experimental plan and milestones
+DEVLOG.md          Running development log (reverse-chronological)
+paper_plan.md      SPIE Medical Imaging paper plan + Maier writing-style analysis
+paper/template/    Official SPIE Proceedings LaTeX template (spie.cls v3.4)
+src/               CONRAD-native simulation & analysis pipeline
+conrad_ext/        Patched CONRAD class (fixed OpenCL fan backprojector) + build
+scripts/           Environment setup (JDK 8, OpenCL, conrad_ext build)
+publish/rabbitct/  RabbitCT Zenodo re-publication package
+docs/              GitHub Pages audit dashboard (index.html + assets/)
+data/, results/    Git-ignored: fetched data, generated outputs
+.jdk8/, .jogamp/   Git-ignored: bundled arm64 JDK 8 + OpenCL shim
 ```
-
-## Audit dashboard
-
-A public **GitHub Pages dashboard** presents all intermediate results — spectra,
-material attenuation, phantom, projections, reconstructions, and detectability
-curves — alongside **annotated code snippets for auditing** the methodology. It
-is regenerated from `results/` by `src/build_dashboard.py`.
-
-➡ **https://akmaier.github.io/SPIONvsXRay/** (source: `docs/`)
 
 ## License / attribution
 
-Released under the **MIT License** — see [`LICENSE`](LICENSE). Simulation built on
-CONRAD (FAU Pattern Recognition Lab). The reference article PDF is not
-redistributed (git-ignored).
+Project code: **MIT License** ([`LICENSE`](LICENSE)). Simulation built on CONRAD
+(FAU Pattern Recognition Lab). RabbitCT data: **CC BY 4.0** (cite the Med Phys
+paper above). The reference SPION article PDF is not redistributed (git-ignored).
