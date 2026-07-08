@@ -131,7 +131,7 @@ FILTER_CONFIGS = {
 # --------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Evaluation:
-    noise_realizations: int = 10
+    noise_realizations: int = 30         # per cell; σ(CNR) estimate ~1/√(2·(n−1))
     rose_cnr_threshold: float = 5.0      # detectable if CNR >= 3..5 (report both)
 
 

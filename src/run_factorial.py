@@ -14,7 +14,7 @@ import conrad_phantom
 import conrad_project as cp
 import materials
 import spectrum as spec
-from config import DETECTORS, SPECTRUM, EVAL
+from config import DETECTORS, SPECTRUM, EVAL, PHANTOM
 
 N0 = SPECTRUM.photons_per_pixel
 
@@ -55,15 +55,34 @@ def polychromatic_accumulators(base, kvp=None, filters=()):
 
 
 def _pcd_weights(acc):
-    """Optimal-ish per-bin weights ~ mean iron (oxide) contrast in each bin."""
-    ox = materials.oxide_contrast_massatten(acc["E"])
-    edges = acc["edges"]; s = acc["s"]
+    """CNR-optimal per-bin weights for COUNT-domain combination (matched filter).
+
+    The bins are combined as a weighted sum of photon COUNTS (like an EID, but
+    with optimal weights instead of energy E), then a *single* log is taken —
+    see `line_integral`. The CNR-optimal weight for that scheme is
+        w_b ∝ S_b / V_b   with  S_b = Σ_{E∈bin} N_t(E)·c(E),  V_b = Σ_{E∈bin} N_t(E)
+    i.e. the detected-count-weighted mean iron contrast in the bin. This attains
+    the binned detectability ceiling ΣS_b²/V_b derived in src/spectral.py.
+
+    N_t = N0·s·exp(−μ_tissue·L_body) is the background photon count reaching the
+    detector (spectrum shape × body attenuation); c(E) is the per-energy iron-oxide
+    contrast. The low bin (10–37.5 keV) has the highest contrast-per-count so it
+    gets the largest weight, but because we combine COUNTS (not per-bin logs) its
+    few surviving photons keep its contribution small and, crucially, finite.
+    """
+    E, edges, s = acc["E"], acc["edges"], acc["s"]
+    L_body_cm = PHANTOM.body_diameter_mm / 10.0
+    mu_tissue = materials.linear_attenuation("water", E)          # 1/cm
+    ox = materials.oxide_contrast_massatten(E)                    # iron contrast shape
+    Nt = N0 * s * np.exp(-mu_tissue * L_body_cm)                  # detected bkg photons/energy
     w = []
     for b in range(len(edges) - 1):
-        m = (acc["E"] >= edges[b]) & (acc["E"] < edges[b + 1])
-        w.append(float((ox[m] * s[m]).sum() / (s[m].sum() + 1e-12)))
-    w = np.array(w)
-    return w / w.sum()
+        m = (E >= edges[b]) & (E < edges[b + 1])
+        S_b = float((Nt[m] * ox[m]).sum())
+        V_b = float(Nt[m].sum())
+        w.append(S_b / (V_b + 1e-12))                            # count-weighted mean contrast
+    w = np.clip(np.array(w), 0.0, None)
+    return w / (w.sum() + 1e-12)
 
 
 def line_integral(acc, detector, seed):
@@ -73,13 +92,17 @@ def line_integral(acc, detector, seed):
     if detector == "EID":
         S = acc["S_det"] + rng.normal(0.0, np.sqrt(np.maximum(acc["S_det_E2"], 1e-30)))
         return -np.log(np.clip(S, eps, None) / acc["S_air"])
-    # PCD: per-bin Poisson counts -> per-bin line integrals -> optimal weighting
+    # PCD: optimal-weighted COUNT combination -> a SINGLE log. Summing counts (not
+    # per-bin logs) keeps the photon-starved low-energy bin finite: a per-bin
+    # -log(count) diverges when the bin's counts hit 0 through the body, smearing
+    # image-wide streaks; a weighted count sum is dominated by the populated bins.
     w = _pcd_weights(acc)
-    p = np.zeros_like(acc["S_det"])
+    M = np.zeros_like(acc["S_det"]); M_air = 0.0
     for b, (cd, ca) in enumerate(zip(acc["C_det"], acc["C_air"])):
         cm = rng.poisson(np.maximum(cd, 0.0))
-        p += w[b] * (-np.log(np.clip(cm, eps, None) / max(ca, eps)))
-    return p
+        M += w[b] * cm
+        M_air += w[b] * ca
+    return -np.log(np.clip(M, eps, None) / max(M_air, eps))
 
 
 def run():
@@ -123,12 +146,40 @@ def thresholds(rows, rose=EVAL.rose_cnr_threshold):
     return out
 
 
+def save_results(rows, outdir=None):
+    """Persist the factorial to results/factorial/ (CSV + JSON) for the dashboard."""
+    import csv, json, os
+    if outdir is None:
+        outdir = str(conrad_backend.REPO_ROOT / "results" / "factorial")
+    os.makedirs(outdir, exist_ok=True)
+    cols = ["detector", "bh", "name", "c_fe", "delta_hu", "noise", "cnr"]
+    with open(os.path.join(outdir, "factorial.csv"), "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        for r in rows:
+            w.writerow({k: r[k] for k in cols})
+    meta = dict(n_realizations=EVAL.noise_realizations,
+                photons_per_pixel=SPECTRUM.photons_per_pixel,
+                pcd_bin_edges_kev=list(DETECTORS.pcd_bin_edges_kev),
+                thresholds={f"{d}_BH{int(b)}": c for (d, b), c in thresholds(rows).items()},
+                thresholds_rose3={f"{d}_BH{int(b)}": c
+                                  for (d, b), c in thresholds(rows, rose=3.0).items()},
+                rows=rows)
+    with open(os.path.join(outdir, "factorial.json"), "w") as f:
+        json.dump(meta, f, indent=2)
+    return outdir
+
+
 if __name__ == "__main__":
     import time
     t = time.time()
     rows, inserts = run()
-    thr = thresholds(rows)
-    print(f"\n[factorial] {len(rows)} cells in {time.time()-t:.0f}s")
-    print("Detection thresholds (lowest c_Fe with CNR>=5, mg Fe/ml):")
-    for (det, bh), c in thr.items():
-        print(f"  {det} BH={int(bh)}: {c if c is not None else 'none (undetectable)'}")
+    dt = time.time() - t
+    print(f"\n[factorial] {len(rows)} cells, {EVAL.noise_realizations} reps each, in {dt:.0f}s")
+    for rose in (3.0, 5.0):
+        thr = thresholds(rows, rose=rose)
+        print(f"Detection thresholds (lowest c_Fe with CNR>={rose:.0f}, mg Fe/ml):")
+        for (det, bh), c in thr.items():
+            print(f"  {det} BH={int(bh)}: {c if c is not None else 'none (undetectable)'}")
+    outdir = save_results(rows)
+    print(f"[ok] wrote {outdir} -> factorial.csv, factorial.json")

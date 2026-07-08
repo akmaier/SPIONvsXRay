@@ -18,10 +18,14 @@ EID/PCD + Poisson noise) → `conrad_ct.fbp` (CONRAD fan FBP) →
 `conrad_project.measure_inserts`. Sanity run: `python src/conrad_project.py`
 gives monotonic per-insert iron ΔHU (0 → **+7.14 HU** at c_form=20), noise-free EID.
 
-**Headline finding:** SPIONs are **borderline-undetectable** — ~3 HU at the
-realistic 6 mg dose; EID CNR ≈ 3.9 at the top dose (just below Rose 5). Iron has
-no usable K-edge → low-energy/photoelectric contrast; lower kVp helps (60 kVp
-1.34×), hardening filters hurt (Sn 0.58×), PCD optimal weighting ≈ 1.35× EID
+**Headline finding (GPU 0.5 mm factorial, 30 reps/cell, `results/factorial/`):**
+SPIONs sit **right at the detection limit** at the realistic dose — iron ΔHU ≈ 3.4
+(EID) / 4.7 (PCD), CNR ≈ 5.4/5.1 (just crosses Rose 5) at c_Fe ≈ 0.54 mg Fe/ml.
+Detection threshold ≈ 0.54 mg Fe/ml is the **same for all four** EID/PCD × BH
+off/on cells: neither photon-counting nor BH correction lowers it. PCD delivers
+its ideal ~1.3× CNR gain only at 2× dose (c_Fe 1.09: PCD 11.5 vs EID 8.8). Iron
+has no usable K-edge → low-energy/photoelectric contrast; lower kVp helps (60 kVp
+1.34×), hardening filters hurt (Sn 0.58×), ideal-observer PCD ceiling ≈ 1.35× EID
 (optimal 3-bin thresholds ≈ 37.5/50 keV). See `src/spectral.py`.
 
 ## 3. Environment — the hard-won parts (don't re-derive)
@@ -55,14 +59,19 @@ no usable K-edge → low-energy/photoelectric contrast; lower kVp helps (60 kVp
   `grep -viE "vtk|UserWarning|warnings.warn|stack guard|could not install|Replacing File|globalWork|CLDevice|Context:|Device:"`.
 
 ## 4. Open work (priority order)
-1. **Fix the PCD per-bin bug** in `src/run_factorial.py`. Last factorial gave PCD
-   CNR ≈ 0/negative (broken) while EID was sensible. The `line_integral(...,"PCD")`
-   optimal-weighting combination is wrong — rework it (weight bins by
-   contrast/variance; consider reconstructing bins then combining, or verify the
-   per-bin Poisson/weights).
-2. **Re-run the full factorial** on the GPU 0.5 mm pipeline (the last full run was
-   the old CPU/1 mm path). `python src/run_factorial.py`. Report ΔHU + CNR +
-   detection thresholds per (detector, BH). Add the **filter/kVp sweep** (currently 90 kVp only).
+1. ✅ **DONE — PCD per-bin bug fixed** in `src/run_factorial.py`. Root cause was
+   two-fold: (a) `_pcd_weights` used contrast-only weighting that UP-weighted the
+   photon-starved low-energy bin; (b) bins were combined as `Σ w_b·(−log C_b)`, so
+   a per-bin log diverged when starved-bin counts hit 0 → image-wide streaks
+   (CNR ≈ 0/negative). Fix: combine COUNTS then take a single log
+   (`p=−log(Σ w_b C_b / Σ w_b C_air,b)`) with matched-filter weights
+   `w_b ∝ S_b/V_b` (count-weighted mean iron contrast). Verified against a
+   detector-level Monte Carlo (reaches the 1.29–1.34× ideal ceiling of `spectral.py`).
+2. ✅ **DONE — full factorial re-run** on the GPU 0.5 mm pipeline, 30 reps/cell,
+   persisted to `results/factorial/` (`factorial.csv` + `factorial.json`).
+   Threshold ≈ 0.54 mg Fe/ml, same for all cells (see headline above).
+   **Still TODO:** add the **filter/kVp sweep** (currently 90 kVp only) —
+   `polychromatic_accumulators(base, kvp=..., filters=...)` already accepts them.
 3. **RabbitCT C-arm geometry** for the Conrad config: extract the 496 3×4
    projection matrices from `data/rabbitct/rabbitct_512-v2.rctd` (format in
    `data/rabbitct/develop/rabbitct_develop/include/rabbitct.h`; struct

@@ -41,13 +41,23 @@ See [`SPEC.md`](SPEC.md) for full parameters.
 
 ## Key findings so far
 
-- **SPIONs are borderline-undetectable at realistic dose.** Tumor contrast is
-  ~3 HU at the realistic 6 mg dose and ~7 HU at 2× dose; EID CNR reaches only
-  ~3.9 at the top dose (just below Rose 5).
+- **SPIONs sit right at the CT detection limit at the realistic dose.** Iron
+  tumor contrast is ~3.4 HU (EID) / ~4.7 HU (PCD) at the realistic 6 mg dose and
+  ~7–9 HU at 2× dose. Detectability crosses the Rose criterion (CNR ≈ 5) *exactly*
+  at the realistic dose (c_Fe ≈ 0.54 mg Fe/ml: CNR 5.4 EID / 5.1 PCD @ 70 000
+  photons/px, 0.5 mm voxels) — the 6 mg SPION load is a borderline, not a
+  comfortable, detection. *(GPU 0.5 mm factorial, 30 noise realizations/cell;
+  `results/factorial/`.)*
+- **Neither photon-counting nor beam-hardening correction lowers the threshold.**
+  All four cells (EID/PCD × BH off/on) share the same detection limit
+  (~0.54 mg Fe/ml). PCD's matched-filter energy weighting delivers its ideal
+  ~1.3× CNR gain only at 2× dose (c_Fe 1.09: PCD CNR 11.5 vs EID 8.8 = 1.31×);
+  at the realistic limit the gain is swamped by noise. BH correction changes iron
+  detectability negligibly — iron contrast is not a beam-hardening artifact.
 - **Iron has no usable K-edge** (7.1 keV) → contrast is photoelectric and lives
   at low energy. Optimal mono energy ≈ 30 keV; **lower kVp helps** (60 kVp =
-  1.34× the 90 kVp ideal CNR), **hardening filters hurt** (Sn → 0.58×), and
-  **PCD optimal energy weighting ≈ 1.35× EID** (optimal 3-bin thresholds ~37.5/50 keV).
+  1.34× the 90 kVp ideal CNR), **hardening filters hurt** (Sn → 0.58×); the
+  ideal-observer PCD ceiling is ≈ 1.35× EID (optimal 3-bin thresholds ~37.5/50 keV).
 - The CONRAD magnetite material and an independent NIST-based model agree to 5
   decimals — the physics is cross-validated.
 

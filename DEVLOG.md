@@ -4,6 +4,38 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-08 — M6 PCD bug fixed + full factorial re-run (GPU 0.5 mm)
+
+- **Fixed the PCD detector bug** (was CNR ≈ 0/negative, unusable). Two root
+  causes in `src/run_factorial.py`:
+  1. `_pcd_weights` weighted bins by **iron contrast only**, so the low-energy
+     bin (10–37.5 keV, highest contrast) got the largest weight — but a 90 kVp
+     spectrum has few photons there and ~11 cm of tissue removes almost all of
+     them, so the code up-weighted the noisiest bin.
+  2. Bins were combined as `Σ w_b·(−log C_b)` — a **per-bin log** that diverges
+     when the starved low bin's Poisson counts hit 0 (−log(0→ε) ≈ 22), which FBP
+     smears into image-wide streaks (per-realization ΔHU swung ±10 HU).
+  Fix: combine **counts first, then a single log** —
+  `p = −log(Σ w_b C_b / Σ w_b C_air,b)` — which is dominated by the populated
+  high bin and never blows up, with matched-filter weights `w_b ∝ S_b/V_b`
+  (`S_b = Σ_bin N_t·c`, `V_b = Σ_bin N_t`; detected-count-weighted mean iron
+  contrast). Verified against a **detector-level Monte Carlo**: the estimator
+  reaches 1.29× EID, essentially the 1.34× ideal-observer ceiling from
+  `spectral.py`.
+- **Re-ran the full factorial** on the GPU 0.5 mm pipeline, 30 noise
+  realizations/cell (was CPU/1 mm before), persisted to `results/factorial/`
+  (`factorial.csv` + `factorial.json`; added a `save_results` writer). Results:
+  - Detection threshold ≈ **0.54 mg Fe/ml** (Rose 3 and 5) — the realistic 6 mg
+    dose — **identical for all four** EID/PCD × BH off/on cells.
+  - Realistic dose (c_Fe 0.54): EID ΔHU 3.4 / CNR 5.4; PCD ΔHU 4.7 / CNR 5.1.
+  - 2× dose (c_Fe 1.09): EID CNR 8.8; PCD CNR 11.5 = **1.31× EID** (PCD's ideal
+    spectral gain shows only once the low bin isn't photon-starved).
+  - Beam-hardening correction: negligible effect on iron detectability.
+- Bumped `EVAL.noise_realizations` 10 → 30 for stable CNR. Refreshed README key
+  findings + HANDOFF headline (were still carrying old CPU/1 mm numbers).
+- **Still TODO:** filter/kVp sweep in the factorial (accumulators already accept
+  `kvp`/`filters`); RabbitCT geometry extraction; 3D rabbit case.
+
 ## 2026-07-08 — M3 COMPLETE ✅ (real CONRAD spectrum + refined optimization)
 
 - `src/spectrum.py`: wraps `PolychromaticXRaySpectrum`. The no-arg ctor = CONRAD
