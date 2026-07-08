@@ -129,6 +129,7 @@ material attenuation, phantom, projections, reconstructions, detectability curve
 
 ```
 SPEC.md            Full experimental plan and milestones
+HANDOFF.md         Continuation guide for the next contributor (start here)
 DEVLOG.md          Running development log (reverse-chronological)
 paper_plan.md      SPIE Medical Imaging paper plan + Maier writing-style analysis
 paper/template/    Official SPIE Proceedings LaTeX template (spie.cls v3.4)
