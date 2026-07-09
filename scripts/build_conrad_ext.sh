@@ -20,4 +20,11 @@ echo "Compiling patched FanBeamBackprojector2D (spacing fix) against CONRAD jar 
 "$JH/bin/javac" -source 8 -target 8 -cp "$JAR" -d "$OUT" "$SRC/FanBeamBackprojector2D.java"
 # .cl resources must sit next to the .class for getResourceAsStream()
 cp "$SRC"/*.cl "$OUT/edu/stanford/rsl/tutorial/fan/"
+
+# Compile patched filter kernels (SheppLogan deltaS scaling fix), if present.
+FSRC="conrad_ext/edu/stanford/rsl/tutorial/filters"
+if compgen -G "$FSRC/*.java" > /dev/null; then
+  echo "Compiling patched filter kernels (SheppLogan deltaS fix) against CONRAD jar ..."
+  "$JH/bin/javac" -source 8 -target 8 -cp "$JAR" -d "$OUT" "$FSRC"/*.java
+fi
 echo "Built:"; find "$OUT" -type f
