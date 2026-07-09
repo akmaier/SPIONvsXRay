@@ -63,6 +63,18 @@ See [`SPEC.md`](SPEC.md) for full parameters.
 
 ## Pipeline (all CONRAD-native)
 
+> **Policy: all reconstruction uses the CONRAD API — no hand-rolled recon math.**
+> Projection (`FanBeamProjector2D`), redundancy/short-scan weighting
+> (`redundancy.ParkerWeights` / `SilverWeights` / …), filtering
+> (`CosineFilter`, `RamLakKernel` and its roll-off variants), and backprojection
+> (`FanBeamBackprojector2D`) are all CONRAD classes, used in CONRAD's geometry
+> convention (e.g. `focalLength` derived from `maxT`, `deltaT`, and the fan angle —
+> **no ad-hoc magnification or padding factors**). We do not mix in custom ramp
+> filters, custom Parker weights, or custom geometry. Only the polychromatic /
+> spectral bookkeeping (per-energy attenuation, EID/PCD detector combination, noise)
+> lives outside CONRAD's fan classes.
+
+
 | Module | Role |
 |--------|------|
 | `src/config.py` | single source of truth for all parameters |
