@@ -80,6 +80,22 @@ has no usable K-edge → low-energy/photoelectric contrast; lower kVp helps (60 
    Threshold ≈ 0.54 mg Fe/ml, same for all cells (see headline above).
    **Still TODO:** add the **filter/kVp sweep** (currently 90 kVp only) —
    `polychromatic_accumulators(base, kvp=..., filters=...)` already accepts them.
+### RabbitCT .rctd format (CRACKED — see `src/rabbitct.py`)
+The `.rctd` binary was undocumented in the distributed sources; reverse-engineered:
+`[24-byte header: uint32 version=2, S_x=1248, S_y=960, numProj=496; float32 R_L=1.2076,
+O_L=24.0]` then per projection `[96-byte 3×4 double matrix A_n, COLUMN-major] +
+[S_x·S_y float32 image]`. The matrix maps world[mm]→detector[px]; decomposing gives
+the real Siemens C-arm short scan: **SID 745 mm, SDD ~1196 mm (0.308 mm pitch),
+1248×960 detector, 496 views over 198° (0.40°/step), rotation about z**, principal
+point (558.5, 486.1) (offset detector). `src/rabbitct.py` provides
+`geometry()`, `read_matrices()`, `load_reference_volume()` (256³ anatomy loads +
+renders correctly). A tumor-insertion PoC works. **Next: full 3D** — build a CONRAD
+`ProjectionTableTrajectory` from the 496 matrices (or set SID/SDD/angles on a
+config), insert the SPION tumor into `reference_256.vol`, cone-beam forward-project
++ FDK, run the same detectability analysis. The GPU spectral detectors + RNG now in
+CONRAD make the on-device version feasible.
+
+### Older open items
 3. **RabbitCT C-arm geometry** for the Conrad config: extract the 496 3×4
    projection matrices from `data/rabbitct/rabbitct_512-v2.rctd` (format in
    `data/rabbitct/develop/rabbitct_develop/include/rabbitct.h`; struct

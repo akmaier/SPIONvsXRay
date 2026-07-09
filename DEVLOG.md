@@ -4,6 +4,19 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-09 — RabbitCT .rctd format cracked; real 3D geometry extracted
+
+- Reverse-engineered the undocumented RabbitCT `.rctd` binary (`src/rabbitct.py`):
+  24-byte header + per-projection [96-byte column-major 3×4 double matrix + 1248×960
+  float32 image]. Decomposed the 496 matrices into the real Siemens C-arm short scan:
+  **SID 745 mm, SDD ~1196 mm (0.308 mm pitch), 496 views over 198° (0.40°/step)**,
+  rotation about z, offset detector. Loaded `reference_256.vol` (256³ rabbit head/neck
+  anatomy — renders correctly) and inserted a SPION tumor (3D phantom PoC).
+- Added the real rabbit geometry + anatomy figure to the paper (future-work bridge to
+  the 3D study). Documented the format + next steps in HANDOFF §4.
+- **Next: full 3D** — CONRAD cone-beam forward projection (ProjectionTable trajectory
+  from the matrices) + FDK of the SPION-in-rabbit phantom, same detectability analysis.
+
 ## 2026-07-09 — CONRAD GPU spectral detectors (Layer 2) upstreamed
 
 - Added on-device polychromatic detectors so the whole spectral projection stays
