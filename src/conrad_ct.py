@@ -109,21 +109,30 @@ def project(image_np, geo, gpu=None):
 
 
 def water_precorrection_poly(E, w_eff, mu_water_percm, Lmax_cm=30.0, deg=4):
-    """Calibrated water beam-hardening precorrection polynomial.
+    """Calibrated water beam-hardening precorrection polynomial (CONRAD API).
 
     Given a detector's effective per-energy weighting w_eff(E) (EID: s*E;
-    PCD-combined: bin-weight*s) and water linear attenuation mu(E) [1/cm], tabulate
-    the polychromatic water line integral p_poly(L) = -log(sum w exp(-mu L)) and fit
-    p_mono = poly(p_poly), where p_mono = mu_ref*L is the linear (monochromatic)
-    response at the spectrum-weighted mean mu_ref. Applying poly() to a measured
-    line integral linearizes the water response, so a water cylinder reconstructs
-    flat (removing cupping) instead of relying on a guessed quadratic coefficient.
+    PCD-combined: bin-weight*s), tabulate the polychromatic water line integral
+    p_poly(L) = -log(sum w exp(-mu L)) and fit p_mono = poly(p_poly), where
+    p_mono = mu_ref*L is the linear (monochromatic) response at the spectrum-weighted
+    mean mu_ref. Applying poly() to a measured line integral linearizes the water
+    response, so a water cylinder reconstructs flat (removing cupping).
+
+    Delegates the fit to CONRAD's WaterPrecorrectionTool.calibrate(energies,
+    detectorWeights, water, Lmax, degree): the tool uses the water Material's own
+    TOTAL_WITH_COHERENT attenuation (matches SPION's mu_water_percm to <8e-16) and
+    returns numpy.polyfit-order coefficients (highest degree first). `mu_water_percm`
+    is retained in the signature for backward compatibility but the CONRAD tool
+    sources mu(E) from MaterialsDB; callers are unchanged.
     """
-    w = np.asarray(w_eff, float); w = w / w.sum()
-    L = np.linspace(0.0, Lmax_cm, 400)
-    p_poly = np.array([-np.log(np.sum(w * np.exp(-mu_water_percm * l))) for l in L])
-    mu_ref = float(np.sum(w * mu_water_percm))        # low-dose slope dp/dL at L=0
-    return np.polyfit(p_poly, mu_ref * L, deg)
+    energies = jpype.JArray(jpype.JDouble)([float(e) for e in np.asarray(E, float)])
+    weights = jpype.JArray(jpype.JDouble)([float(w) for w in np.asarray(w_eff, float)])
+    DB = _cls("edu.stanford.rsl.conrad.physics.materials.database", "MaterialsDB")
+    water = DB.getMaterial("water")
+    Tool = _cls("edu.stanford.rsl.conrad.filtering", "WaterPrecorrectionTool")
+    tool = Tool()
+    tool.calibrate(energies, weights, water, float(Lmax_cm), int(deg))
+    return np.array(tool.getCoefficients()[:], dtype=float)
 
 
 def fbp(sino_np, geo, bh_correction=False, bh_poly=None, bh_c2=0.10):
