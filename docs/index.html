@@ -171,13 +171,19 @@
 
   <section id="recons">
     <h2><span class="n">06</span>Reconstructions</h2>
-    <p class="lead">FDK cone-beam reconstructions across the factor grid. The gallery below is
-      assembled automatically; rows = iron dose, columns = detector × beam-hardening.</p>
+    <p class="lead">Fan-beam FBP of the calibration phantom — all seven iron inserts on a ring
+      (c<sub>Fe</sub> = 0–1.09 mg/ml), at a tight ±20 HU iron window. The labeled panel shows insert
+      brightness rising with dose (1.09 brightest; 0.00 ≡ background). The gallery compares the two
+      detectors with and without quantum noise: <b>noise-free</b> resolves all high-dose inserts and
+      PCD gives higher insert contrast than EID; <b>noisy</b> (70 000 photons/pixel) is grain-limited
+      at the single-slice level — detection relies on ROI averaging (see Detectability). The
+      bone rod is omitted here for display: at an iron-level window its streaks swamp the inserts,
+      which is exactly why the quantitative analysis uses a local-annulus background.</p>
     <div class="grid">
-      <figure><img src="assets/recon_grid.png" alt="reconstruction grid" onerror="markPending(this)">
-        <figcaption>Reconstruction gallery (dose × detector × BH-correction).</figcaption></figure>
-      <figure><img src="assets/recon_tumor_zoom.png" alt="tumor zoom" onerror="markPending(this)">
-        <figcaption>Tumor-region zoom at the realistic 6&nbsp;mg dose.</figcaption></figure>
+      <figure><img src="assets/recon_labeled.png" alt="labeled inserts" onerror="markPending(this)">
+        <figcaption>Inserts labeled by c<sub>Fe</sub> [mg/ml] (EID, noise-free); note beam-hardening cupping.</figcaption></figure>
+      <figure><img src="assets/recon_gallery.png" alt="reconstruction gallery" onerror="markPending(this)">
+        <figcaption>EID vs. PCD, noise-free vs. noisy (70 000 photons/pixel, beam-hardening off).</figcaption></figure>
     </div>
   </section>
 

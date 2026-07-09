@@ -81,8 +81,12 @@ def _cyl(radius, cx, cy):
     return cyl
 
 
-def build_phantom():
-    """Return (scene, inserts) where inserts = list of dicts with layout + material."""
+def build_phantom(with_bone=True):
+    """Return (scene, inserts) where inserts = list of dicts with layout + material.
+
+    with_bone=False omits the cortical-bone rod (used only for clean display
+    galleries; the quantitative study always keeps the bone beam-hardening source).
+    """
     conrad_backend.setup()
     register_spion_materials()
     phys = CG("edu.stanford.rsl.conrad.physics")
@@ -105,10 +109,11 @@ def build_phantom():
         add(_cyl(INSERT_RADIUS_MM, cx, cy), DB.getMaterialWithName(spion_name(c)))
         inserts.append(dict(name=spion_name(c), c_form=float(c), c_fe=tumor_iron_conc(c),
                             center_mm=(cx, cy), radius_mm=INSERT_RADIUS_MM))
-    theta = 2 * math.pi * len(C_FORM_LEVELS) / n_slots + math.pi / 2
-    bx, by = INSERT_CIRCLE_MM * math.cos(theta), INSERT_CIRCLE_MM * math.sin(theta)
-    add(_cyl(BONE_RADIUS_MM, bx, by), DB.getMaterialWithName("bone"))
-    inserts.append(dict(name="bone", c_form=None, c_fe=0.0, center_mm=(bx, by), radius_mm=BONE_RADIUS_MM))
+    if with_bone:
+        theta = 2 * math.pi * len(C_FORM_LEVELS) / n_slots + math.pi / 2
+        bx, by = INSERT_CIRCLE_MM * math.cos(theta), INSERT_CIRCLE_MM * math.sin(theta)
+        add(_cyl(BONE_RADIUS_MM, bx, by), DB.getMaterialWithName("bone"))
+        inserts.append(dict(name="bone", c_form=None, c_fe=0.0, center_mm=(bx, by), radius_mm=BONE_RADIUS_MM))
     return scene, inserts
 
 
