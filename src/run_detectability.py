@@ -124,55 +124,75 @@ def line_integral(acc, detector, seed, bh_polys=None):
     return -np.log(np.clip(M, eps, None) / max(M_air, eps))
 
 
-def run(short_scan=False, with_bone=False):
-    """Detectability sweep: EID vs multi-bin PCD across iron concentration, each
-    cell estimated over EVAL.noise_realizations noise draws (CNR = mean iron signal
-    / std of the local background).
+def bh_poly_for(acc, detector):
+    """Calibrated water precorrection for a detector, applied in `line_integral`.
 
-    Design choices (see DEVLOG 2026-07-09):
-      - Bone is OFF by default. Cortical bone is a HARD beam-hardening source we do
-        NOT correct; it belongs in the study only as an explicit factor
-        (with_bone=True), not baked into the baseline where its streak would fan
-        across the iron inserts.
-      - Beam-hardening CORRECTION is NOT a factor. Detectability is measured against
-        a LOCAL annulus, which cancels smooth cupping (water or bone) whether or not
-        we precorrect -- so BH correction cannot change local CNR; it only moves
-        absolute/global HU, a different endpoint. We therefore run WITHOUT
-        precorrection (the honest raw-detectability case).
+    EID: a single polynomial for the energy-weighted (s*E) spectrum.
+    PCD: a LIST of per-bin polynomials, each calibrated for that bin's own spectrum.
     """
-    scene, inserts = conrad_phantom.build_phantom(with_bone=with_bone)
-    geo = conrad_ct.fan_geometry(n_pix=512, short_scan=short_scan)
-    base, geo = cp.project_base_materials(scene, geo)
-    acc = polychromatic_accumulators(base)              # once (90 kVp standard)
-    spions = [i for i in inserts if i["c_form"] is not None and i["name"] != "SPION_c0"]
+    E, s, edges = acc["E"], acc["s"], acc["edges"]
+    mu_w = materials.linear_attenuation("water", E)     # 1/cm
+    if detector == "EID":
+        return conrad_ct.water_precorrection_poly(E, s * E, mu_w)
+    return [conrad_ct.water_precorrection_poly(E, np.where((E >= edges[b]) & (E < edges[b + 1]), s, 0.0), mu_w)
+            for b in range(len(edges) - 1)]
 
+
+def run(short_scan=False, bones=(False, True), bhs=(False, True)):
+    """Detectability study across the phantom factors. Each cell = mean iron signal
+    / std of the local background over EVAL.noise_realizations noise draws.
+
+    Factors (see DEVLOG 2026-07-09):
+      - detector: EID vs multi-bin PCD.
+      - with_bone: cortical-bone rod absent / present. Bone is a HARD beam-hardening
+        source, present in the rabbit study, so it is an explicit FACTOR here, not
+        the baseline. Its streak fans across the ring inserts -- a phantom effect,
+        for the discussion.
+      - bh: water beam-hardening precorrection off / on. On the homogeneous phantom,
+        measured against a LOCAL annulus, this barely moves local CNR; it becomes
+        relevant once bone streaking + multi-material correction are in play (the
+        rabbit study). Kept as a factor for that reason.
+      - c_Fe concentration; EVAL.noise_realizations noise draws per cell.
+    """
     rows = []
-    for detector in DETECTORS.types:                    # EID, PCD
-        signal = {i["name"]: [] for i in inserts}
-        for seed in range(EVAL.noise_realizations):
-            sino = line_integral(acc, detector, seed)   # no BH precorrection
-            recon = conrad_ct.fbp(sino, geo)
-            meas = cp.measure_inserts(recon, geo, inserts)
-            for m in meas:
-                signal[m["name"]].append((m["iron_delta_hu"], m["delta_hu"]))
-        for ins in spions:
-            arr = np.array(signal[ins["name"]])         # (reps, 2)
-            d_hu = float(arr[:, 0].mean())              # c0-corrected iron signal
-            noise = float(arr[:, 1].std())              # quantum noise on the insert
-            cnr = d_hu / (noise + 1e-9)
-            rows.append(dict(detector=detector, name=ins["name"],
-                             c_fe=ins["c_fe"], delta_hu=d_hu, noise=noise, cnr=cnr))
-        print(f"[{detector}] "
-              + "  ".join(f"{r['c_fe']:.2f}:CNR{r['cnr']:.1f}" for r in rows[-len(spions):]))
-    return rows, inserts
+    inserts_ref = None
+    for with_bone in bones:
+        scene, inserts = conrad_phantom.build_phantom(with_bone=with_bone)
+        inserts_ref = inserts
+        geo = conrad_ct.fan_geometry(n_pix=512, short_scan=short_scan)
+        base, geo = cp.project_base_materials(scene, geo)
+        acc = polychromatic_accumulators(base)          # once per phantom
+        spions = [i for i in inserts if i["c_form"] is not None and i["name"] != "SPION_c0"]
+        for detector in DETECTORS.types:                # EID, PCD
+            bh_polys = bh_poly_for(acc, detector)
+            for bh in bhs:
+                signal = {i["name"]: [] for i in inserts}
+                for seed in range(EVAL.noise_realizations):
+                    sino = line_integral(acc, detector, seed, bh_polys if bh else None)
+                    recon = conrad_ct.fbp(sino, geo)
+                    meas = cp.measure_inserts(recon, geo, inserts)
+                    for m in meas:
+                        signal[m["name"]].append((m["iron_delta_hu"], m["delta_hu"]))
+                for ins in spions:
+                    arr = np.array(signal[ins["name"]])     # (reps, 2)
+                    d_hu = float(arr[:, 0].mean())          # c0-corrected iron signal
+                    noise = float(arr[:, 1].std())          # quantum noise on the insert
+                    cnr = d_hu / (noise + 1e-9)
+                    rows.append(dict(detector=detector, with_bone=with_bone, bh=bh,
+                                     name=ins["name"], c_fe=ins["c_fe"],
+                                     delta_hu=d_hu, noise=noise, cnr=cnr))
+                print(f"[{detector} bone={int(with_bone)} BH={int(bh)}] "
+                      + "  ".join(f"{r['c_fe']:.2f}:CNR{r['cnr']:.1f}" for r in rows[-len(spions):]))
+    return rows, inserts_ref
 
 
 def thresholds(rows, rose=EVAL.rose_cnr_threshold):
-    """Lowest detectable c_Fe (CNR >= Rose) per detector."""
+    """Lowest detectable c_Fe (CNR >= Rose) per (detector, with_bone, bh) cell."""
     out = {}
-    for det in DETECTORS.types:
-        cells = sorted([r for r in rows if r["detector"] == det], key=lambda r: r["c_fe"])
-        out[det] = next((r["c_fe"] for r in cells if r["cnr"] >= rose), None)
+    for det, wb, bh in sorted({(r["detector"], r["with_bone"], r["bh"]) for r in rows}):
+        cells = sorted([r for r in rows if r["detector"] == det and r["with_bone"] == wb
+                        and r["bh"] == bh], key=lambda r: r["c_fe"])
+        out[f"{det}_bone{int(wb)}_BH{int(bh)}"] = next((r["c_fe"] for r in cells if r["cnr"] >= rose), None)
     return out
 
 
@@ -182,7 +202,7 @@ def save_results(rows, outdir=None):
     if outdir is None:
         outdir = str(conrad_backend.REPO_ROOT / "results" / "detectability")
     os.makedirs(outdir, exist_ok=True)
-    cols = ["detector", "name", "c_fe", "delta_hu", "noise", "cnr"]
+    cols = ["detector", "with_bone", "bh", "name", "c_fe", "delta_hu", "noise", "cnr"]
     with open(os.path.join(outdir, "detectability.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
