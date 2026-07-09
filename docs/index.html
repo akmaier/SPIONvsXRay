@@ -83,15 +83,13 @@
 
 <nav><div class="wrap">
   <a href="#overview">Overview</a>
-  <a href="#spectrum">Spectrum</a>
+  <a href="#design">Study design</a>
+  <a href="#spectrum">E2 spectrum</a>
   <a href="#materials">Materials</a>
-  <a href="#phantom">Phantom</a>
-  <a href="#projections">Projections</a>
-  <a href="#recons">Reconstructions</a>
-  <a href="#detect">Detectability</a>
-  <a href="#spectral">Spectral</a>
-  <a href="#studyb">Study B</a>
-  <a href="#rabbit">3D rabbit</a>
+  <a href="#studya">E3 Study A</a>
+  <a href="#studyb">E4 Study B</a>
+  <a href="#eidpcd">EID vs PCD</a>
+  <a href="#rabbit">E5 3D</a>
   <a href="#paper">Manuscript</a>
   <a href="#audit">Code audit</a>
   <a href="#repro">Reproducibility</a>
@@ -101,235 +99,221 @@
 
   <section id="overview">
     <h2><span class="n">01</span>Overview</h2>
-    <p class="lead">We image an iron-loaded tumor inside a rabbit-scale phantom and ask at
-      what iron dose the nanoparticles become detectable, and how detector type and
-      beam-hardening correction shift that limit. This page updates as the pipeline runs —
-      every figure below is regenerated from <code>results/</code> by
-      <code>src/build_dashboard.py</code>.</p>
-    <div class="note">Status: <strong>live</strong> — detectability study + spectral sweep + Study B complete,
-      real RabbitCT geometry decoded for the 3D case, and a 10 pp. SPIE draft compiled.
-      Headline: SPIONs are borderline-visible at realistic dose (threshold ≈ 0.54 mg Fe/ml).</div>
+    <p class="lead">We image an iron-loaded melanoma inside a rabbit-scale phantom and ask at
+      what iron dose the nanoparticles become detectable, and how spectrum, detector type, and
+      biological distribution shift that limit. This is a <b>detectability study</b> — we report
+      contrast (ΔHU) and contrast-to-noise ratio (CNR) against the Rose criterion, not a full
+      mathematical factorial. Every figure below is regenerated from <code>results/</code>.</p>
+    <div class="note">Status: <strong>live</strong> — spectrum + detector optimization (E2),
+      Study A (cellular uptake, E3), and Study B (vascular delivery, E4) complete. The 3D
+      verification (E5) is running now — see the placeholder section.
+      <b>Headline:</b> at realistic melanoma iron loads SPIONs sit right at the CT detection
+      limit; visibility is dominated by tumor cell density; the photon-counting detector gives
+      about <b>1.2×</b> CNR over energy-integrating; lower kVp helps.</div>
+    <p class="lead">All numbers on this page use the <b>no-bone</b> phantom
+      (<code>with_bone=False</code>). The bone-insert cells are degenerate here — the cortical-bone
+      rod dominates the ROI statistics — so they are excluded from the reported iron thresholds.</p>
+  </section>
+
+  <section id="design">
+    <h2><span class="n">02</span>Study design (E1–E5)</h2>
+    <p class="lead">Five experiments build on one another. The spectrum + detector optimization
+      (E2) is run first; its optimum feeds the two biological detectability studies (E3, E4) and
+      the 3D verification (E5). Each of E3/E4/E5 is <b>always run twice</b>: once at the E2
+      optimum, and once at a conventional <b>90&nbsp;kVp baseline</b>, so every result carries its
+      own "does the optimized spectrum actually help" control.</p>
     <table>
-      <tr><th>Factor</th><th>Levels</th></tr>
-      <tr><td>Formulation conc. (delivered mass model)</td><td>0, 0.5, 1, 2, 5, 10, 20 mg SPION/ml</td></tr>
-      <tr><td>Detector</td><td>Energy-integrating (EID), Photon-counting multi-bin (PCD)</td></tr>
-      <tr><td>Beam-hardening correction</td><td>off, on</td></tr>
-      <tr><td>Noise realizations @ 70 000 ph/px</td><td>30</td></tr>
-      <tr><td>Geometry</td><td>C-arm cone-beam, 500 projections, 20 cm FOV</td></tr>
+      <tr><th>Exp.</th><th>Name</th><th>What it does</th></tr>
+      <tr><td>E1</td><td>Physics &amp; materials</td>
+        <td>Full-particle magnetite + PAA attenuation model; HU vs iron; cross-check vs NIST.</td></tr>
+      <tr><td>E2</td><td>Spectrum + detector optimization</td>
+        <td>Sweep tube voltage × filter × PCD bins; pick the CNR-optimal acquisition. Feeds E3/E4/E5.</td></tr>
+      <tr><td>E3</td><td>Study A — homogeneous (cellular uptake)</td>
+        <td>Cellular loading × cell density; detectability of internalised iron.</td></tr>
+      <tr><td>E4</td><td>Study B — vascular (fresh injection)</td>
+        <td>Freshly-injected SPIONs confined to tumor vessels; detectability of the vascular phase.</td></tr>
+      <tr><td>E5</td><td>3D verification</td>
+        <td>Real RabbitCT C-arm geometry, full 3D FDK — confirms the 2D detectability limits. <span class="tag">results pending</span></td></tr>
     </table>
+    <div class="audit">
+      <h3>Detectability study — factor structure</h3>
+      <p>This is a <b>detectability study</b> (a multi-factor effects study), not a mathematical
+        factorial. In each of E3/E4/E5 the reported factors are detector {EID, multi-bin PCD},
+        dose {low 20&nbsp;000, high 100&nbsp;000 photons/px}, and the biological concentration axis;
+        each cell repeats over <b>30 noise realizations</b>. Every study is run at both spectra:</p>
+      <ul class="tight">
+        <li><b>E2 optimum</b> — 70&nbsp;kVp / Al&nbsp;5&nbsp;mm, PCD bins 10 / 37.5 / 47.5 / 70&nbsp;keV.</li>
+        <li><b>90&nbsp;kVp baseline</b> — 90&nbsp;kVp / Al&nbsp;2.5&nbsp;mm (conventional C-arm setting).</li>
+      </ul>
+      <p>Held fixed (not factors): water beam-hardening precorrection is always on; the Parker-weighted
+        short scan is always on; the 2D fan-beam mid-plane reconstruction geometry is common to all cells.</p>
+    </div>
   </section>
 
   <section id="spectrum">
-    <h2><span class="n">02</span>X-ray spectrum</h2>
-    <p class="lead">CONRAD standard polychromatic spectrum used for the forward model, plus
-      the energy-bin thresholds used by the photon-counting detector.</p>
+    <h2><span class="n">03</span>E2 — spectrum + detector optimization</h2>
+    <p class="lead">Iron contrast is photoelectric (no usable K-edge — 7.1&nbsp;keV is out of range),
+      so it favors low energy. A tube-voltage × filter × detector sweep picks the acquisition that
+      maximizes iron CNR. This optimum is what E3/E4/E5 run at.</p>
+    <div class="audit">
+      <h3>Optimum vs baseline</h3>
+      <p>The winner is a soft, lightly-filtered beam read out by a photon-counting detector:</p>
+      <table>
+        <tr><th>Setting</th><th>Optimum (E2)</th><th>Baseline</th></tr>
+        <tr><td>Tube voltage</td><td>70 kVp</td><td>90 kVp</td></tr>
+        <tr><td>Filter</td><td>Al 5.0 mm</td><td>Al 2.5 mm</td></tr>
+        <tr><td>Detector</td><td>PCD, 3-bin</td><td>(EID / PCD both run)</td></tr>
+        <tr><td>PCD bin edges</td><td>10 / 37.5 / 47.5 / 70 keV</td><td>—</td></tr>
+        <tr><td>Iron CNR @ 1 mg Fe/ml</td><td class="num">16.9</td><td class="num">—</td></tr>
+        <tr><td>PCD gain vs EID</td><td class="num">~1.20×</td><td class="num">—</td></tr>
+      </table>
+      <p>At the representative 1&nbsp;mg&nbsp;Fe/ml insert the optimum PCD reaches <b>CNR&nbsp;16.9</b>
+        (100&nbsp;000 photons/px), about <b>1.20×</b> the matched EID CNR and 98&nbsp;% of the ideal
+        energy-weighting ceiling. Lower kVp raises contrast; heavy hardening filters (Cu, Sn) hurt it,
+        so the win is keeping the beam soft, not adding a K-edge filter.</p>
+    </div>
     <div class="grid">
-      <figure><img src="assets/spectrum.png" alt="X-ray spectrum" onerror="markPending(this)">
-        <figcaption>Standard polychromatic spectrum (photon fluence vs. energy).</figcaption></figure>
-      <figure><img src="assets/pcd_bins.png" alt="PCD energy bins" onerror="markPending(this)">
-        <figcaption>Photon-counting energy bins overlaid on the spectrum.</figcaption></figure>
+      <figure><img src="assets/fig_spectral.png" alt="spectral optimization" onerror="markPending(this)">
+        <figcaption>Iron CNR across tube voltages and filters (EID vs PCD); the 70&nbsp;kVp / Al&nbsp;5&nbsp;mm
+          PCD point is the optimum, and the near-optimal 3-bin thresholds where iron contrast lives in energy.</figcaption></figure>
     </div>
   </section>
 
   <section id="materials">
-    <h2><span class="n">03</span>Materials &amp; attenuation</h2>
+    <h2><span class="n">04</span>E1 — materials &amp; attenuation</h2>
     <p class="lead">Iron is loaded into a soft-tissue matrix (not water) so a zero-iron tumor
-      matches background. These plots verify the attenuation model before imaging.</p>
+      matches background. We simulate the <b>whole particle</b> — magnetite core plus PAA coating —
+      and verify the attenuation model before imaging.</p>
 
     <div class="audit">
       <h3>What the nanoparticles are, and how we count them</h3>
-      <p>The formulation we ground on is a real <b>polyacrylic-acid (PAA)-coated magnetite
+      <p>The reference formulation is a real <b>polyacrylic-acid (PAA)-coated magnetite
         (Fe<sub>3</sub>O<sub>4</sub>) SPION</b> suspension: iron-oxide cores of ~8 and ~12&nbsp;nm that
-        assemble into hydrodynamic clusters of ~70–250&nbsp;nm. The reference article characterizes
-        the suspension by its <b>iron concentration (mg Fe/ml)</b>, measured by ICP-MAES on
-        acid-digested particles over a working range of 1–10&nbsp;mg Fe/ml; the PAA coating never
-        enters that concentration bookkeeping.</p>
-      <p>For X-ray this is the right anchor. Contrast is driven by the <b>iron oxide</b>, and we model
-        the oxide (magnetite), whose iron mass fraction is <b>0.724</b> (3·55.85/231.5) — so the bound
-        oxygen is included (~+7% over pure Fe).</p>
+        assemble into ~70–250&nbsp;nm hydrodynamic clusters (Heinen et al.). Contrast is driven by the
+        <b>iron oxide</b>; magnetite has an iron mass fraction of <b>0.724</b> (3·55.85/231.5), so the
+        bound oxygen is included (~+7&nbsp;% over pure Fe). Iron's <b>K-edge is 7.1&nbsp;keV — out of the
+        diagnostic range</b>, so all contrast is photoelectric and lives at low energy.</p>
       <h3>Full-nanoparticle simulation (magnetite core + PAA coating)</h3>
-      <p>We simulate the <b>whole particle</b>, not just the iron: the tumor material is the ICRU
-        soft-tissue matrix + magnetite (mass = c<sub>Fe</sub>/0.724) + the <b>PAA coating</b>
-        (polyacrylic acid, monomer C<sub>3</sub>H<sub>4</sub>O<sub>2</sub>, registered as a CONRAD
-        C/H/O material). From the tumor iron concentration we estimate the whole-nanoparticle
-        concentration <code>c<sub>NP</sub> = c<sub>Fe</sub> / (0.724 · (1 − φ))</code>, where φ is the
-        coating's mass fraction of the particle.</p>
-      <p>φ is now taken <b>per formulation from the article's supplementary TGA</b> (Table A.1 /
-        Fig A.1), replacing the earlier single estimate. The inorganic (iron-oxide) residual is
-        <b>87.7 % for SPION I</b> (12 nm cores) and <b>66.4 % for SPION II</b> (8 nm cores); on heating
-        the residual oxidizes magnetite → hematite (+3.4 % mass, article Eq A.1), so the original
-        magnetite fraction is R<sub>m</sub>/1.034 = <b>84.8 % (SPION I)</b> and <b>64.2 % (SPION II)</b>.
-        The complement is PAA: <b>φ ≈ 0.15 for SPION I</b> and <b>φ ≈ 0.36 for SPION II</b> — SPION II
-        carries roughly twice the coating. (The earlier central estimate φ = 0.15 turned out ≈ exact
-        for SPION I.) Each formulation uses its own coating: <code>c<sub>NP</sub> ≈ 1.625 · c<sub>Fe</sub></code>
-        (SPION I), <code>c<sub>NP</sub> ≈ 2.16 · c<sub>Fe</sub></code> (SPION II). φ sets <b>only</b> the
-        reported mg SPION/ml; the PAA is low-Z (C/H/O), essentially tissue/water-equivalent, so it is
-        <b>negligible for the X-ray μ</b> — adding it moves the monochromatic iron ΔHU at the top dose
-        by only ≈ 3.6 % at φ = 0.15 (3.62 → 3.75 HU @ 60 keV), and the iron contrast is unchanged.</p>
-      <h3>Particle concentration vs. iron concentration</h3>
-      <p>These two are easy to conflate, so we keep them separate. The independent variable is a
-        <b>particle</b> concentration (mg SPION/ml); via the delivered-mass model it maps to a tumor
-        <b>iron</b> concentration <code>c<sub>Fe</sub> = 0.0543 · c<sub>form</sub></code> (mg Fe/ml),
-        and to a whole-nanoparticle concentration c<sub>NP</sub> = 1.625 · c<sub>Fe</sub>.
-        All contrast and detectability numbers on this page are reported as <b>mg Fe/ml in the
-        tumor</b>.</p>
-      <div class="note">The in-tumor iron concentrations here (~0.03–1.09&nbsp;mg Fe/ml) are about an
-        order of magnitude <b>below</b> the article's 1–10&nbsp;mg Fe/ml suspension range — by design.
-        We model the <b>diluted delivered dose in the tumor</b>, not the concentrated vial. The tumor
-        concentration is grounded in the article's measured <b>cellular loading</b> (Fig 5, B16-F10
-        melanoma, 0 h / 24 h): SPION I-113 nm ~8.23 / 3.78, SPION II-115 ~3.86 / 1.52, II-98
-        ~3.60 / 1.37, II-76 ~2.51 / 0.85 pg Fe/cell; at a tumor cell density ~10⁸–10⁹ cells/cm³ this
-        gives ~0.25–8 mg Fe/ml (realistic band ~1–2.5 mg Fe/ml for SPION I), which brackets the sweep.</div>
+      <p>We simulate the whole particle, not just the iron: the tumor material is ICRU soft tissue +
+        magnetite (mass = c<sub>Fe</sub>/0.724) + the <b>PAA coating</b> (polyacrylic acid, monomer
+        C<sub>3</sub>H<sub>4</sub>O<sub>2</sub>, registered as a CONRAD C/H/O material). From the tumor
+        iron concentration we estimate the whole-nanoparticle concentration
+        <code>c<sub>NP</sub> = c<sub>Fe</sub> / (0.724 · (1 − φ))</code>, where φ is the coating's mass
+        fraction of the particle.</p>
+      <p>φ is taken <b>per formulation from the article's supplementary TGA</b>. The magnetite fraction
+        is 84.8&nbsp;% (SPION I) and 64.2&nbsp;% (SPION II), so the coating fraction is
+        <b>φ ≈ 0.15 for SPION I</b> and <b>φ ≈ 0.36 for SPION II</b> — SPION II carries roughly twice
+        the PAA. φ sets <b>only</b> the reported mg&nbsp;SPION/ml; the PAA is low-Z (C/H/O), essentially
+        tissue-equivalent, so it is <b>negligible for the X-ray μ</b>.</p>
+      <h3>Iron concentration vs particle concentration</h3>
+      <p>The two are kept separate. All contrast and detectability numbers on this page are reported as
+        <b>mg&nbsp;Fe/ml in the tumor</b>. As a sanity anchor, iron adds about <b>6.7 HU per mg Fe/ml at
+        60&nbsp;keV</b>. The per-particle mapping is <code>c<sub>NP</sub> = 1.625 · c<sub>Fe</sub></code>
+        (SPION I) and <code>c<sub>NP</sub> = 2.16 · c<sub>Fe</sub></code> (SPION II).</p>
     </div>
 
     <div class="grid">
-      <figure><img src="assets/mu_vs_energy.png" alt="mu vs energy" onerror="markPending(this)">
-        <figcaption>Linear attenuation μ(E) for soft tissue, bone, and iron-loaded tumor.</figcaption></figure>
-      <figure><img src="assets/hu_vs_conc.png" alt="HU vs concentration" onerror="markPending(this)">
-        <figcaption>Predicted tumor HU vs. iron concentration (sanity check vs. NIST).</figcaption></figure>
+      <figure><img src="assets/fig_physics.png" alt="physics: attenuation and HU vs iron" onerror="markPending(this)">
+        <figcaption>Attenuation μ(E) of the iron-loaded tumor and predicted tumor HU vs iron
+          concentration (~6.7 HU per mg Fe/ml @ 60&nbsp;keV); cross-checked against NIST.</figcaption></figure>
+      <figure><img src="assets/fig_phantom_recon.png" alt="phantom and reconstruction" onerror="markPending(this)">
+        <figcaption>Rabbit-scale ICRU soft-tissue phantom with the 8&nbsp;cm³ iron-loaded tumor,
+          and a fan-beam FBP reconstruction of the concentration inserts.</figcaption></figure>
     </div>
   </section>
 
-  <section id="phantom">
-    <h2><span class="n">04</span>Digital phantom</h2>
-    <p class="lead">Rabbit-scale ICRU soft-tissue cylinder with a cortical-bone insert
-      (beam-hardening source) and an 8&nbsp;cm³ iron-loaded tumor.</p>
-    <div class="grid">
-      <figure><img src="assets/phantom_axial.png" alt="phantom axial" onerror="markPending(this)">
-        <figcaption>Axial slice with labeled inserts and ROIs.</figcaption></figure>
-      <figure><img src="assets/phantom_3d.png" alt="phantom 3d" onerror="markPending(this)">
-        <figcaption>3-D rendering / material map.</figcaption></figure>
-    </div>
-  </section>
-
-  <section id="projections">
-    <h2><span class="n">05</span>Projections</h2>
-    <p class="lead">Polychromatic forward projections (500 views). One example projection and a
-      sinogram per detector.</p>
-    <div class="grid">
-      <figure><img src="assets/projection_eid.png" alt="projection EID" onerror="markPending(this)">
-        <figcaption>Example projection — energy-integrating detector.</figcaption></figure>
-      <figure><img src="assets/projection_pcd.png" alt="projection PCD" onerror="markPending(this)">
-        <figcaption>Example projection — photon-counting detector (summed bins).</figcaption></figure>
-      <figure><img src="assets/sinogram.png" alt="sinogram" onerror="markPending(this)">
-        <figcaption>Central-slice sinogram (500 views).</figcaption></figure>
-    </div>
-  </section>
-
-  <section id="recons">
-    <h2><span class="n">06</span>Reconstructions</h2>
-    <p class="lead">Fan-beam FBP of the calibration phantom — all seven iron inserts on a ring
-      (c<sub>Fe</sub> = 0–1.09 mg/ml), at a tight ±20 HU iron window. The labeled panel shows insert
-      brightness rising with dose (1.09 brightest; 0.00 ≡ background). The gallery compares the two
-      detectors with and without quantum noise: <b>noise-free</b> resolves all high-dose inserts and
-      PCD gives higher insert contrast than EID; <b>noisy</b> (70 000 photons/pixel) is grain-limited
-      at the single-slice level — detection relies on ROI averaging (see Detectability). The
-      bone rod is omitted here for display: at an iron-level window its streaks swamp the inserts,
-      which is exactly why the quantitative analysis uses a local-annulus background.</p>
-    <div class="grid">
-      <figure><img src="assets/recon_labeled.png" alt="labeled inserts" onerror="markPending(this)">
-        <figcaption>Inserts labeled by c<sub>Fe</sub> [mg/ml] (EID, noise-free); note beam-hardening cupping.</figcaption></figure>
-      <figure><img src="assets/recon_gallery.png" alt="reconstruction gallery" onerror="markPending(this)">
-        <figcaption>EID vs. PCD, noise-free vs. noisy (70 000 photons/pixel, beam-hardening off).</figcaption></figure>
-    </div>
-  </section>
-
-  <section id="detect">
-    <h2><span class="n">07</span>Detectability</h2>
-    <p class="lead">Contrast (ΔHU) and contrast-to-noise ratio vs. iron dose, with the
-      Rose detection threshold. The table lists the lowest detectable dose per condition.</p>
-    <div class="grid">
-      <figure><img src="assets/fig_dhu_vs_conc.png" alt="delta HU" onerror="markPending(this)">
-        <figcaption>ΔHU vs. iron concentration (EID vs. PCD, beam-hardening off).</figcaption></figure>
-      <figure><img src="assets/fig_cnr_vs_conc.png" alt="CNR" onerror="markPending(this)">
-        <figcaption>CNR vs. dose with Rose 3/5 threshold lines; the 6 mg dose sits on the Rose-5 boundary.</figcaption></figure>
-    </div>
-    <table style="margin-top:18px">
-      <tr><th>Condition</th><th class="num">Threshold (mg Fe/ml)</th><th class="num">ΔHU @ 6 mg</th><th class="num">CNR @ 6 mg</th></tr>
-      <tr><td>EID, BH off</td><td class="num">0.54</td><td class="num">3.4</td><td class="num">5.4</td></tr>
-      <tr><td>EID, BH on</td><td class="num">0.54</td><td class="num">3.5</td><td class="num">5.4</td></tr>
-      <tr><td>PCD, BH off</td><td class="num">0.54</td><td class="num">4.7</td><td class="num">5.0</td></tr>
-      <tr><td>PCD, BH on</td><td class="num">0.54</td><td class="num">5.0</td><td class="num">5.0</td></tr>
-    </table>
-    <p class="lead" style="margin-top:14px">The detection limit is ≈ <b>0.54 mg Fe/ml</b> — the realistic 6 mg
-      dose — essentially independent of detector and beam-hardening correction. SPIONs are
-      <b>borderline-visible</b> at realistic loading.</p>
-
+  <section id="studya">
+    <h2><span class="n">05</span>E3 — Study A (homogeneous / cellular uptake)</h2>
+    <p class="lead">Iron internalised by tumor cells gives a ~uniform tumor iron distribution. The tumor
+      iron concentration is the article's <b>measured cellular loading</b> (pg&nbsp;Fe/cell) times the
+      <b>tumor cell density</b>, swept over {1×10⁸, 3×10⁸, 1×10⁹} cells/cm³. Each formulation uses its
+      own coating (SPION I φ ≈ 0.15, SPION II φ ≈ 0.36).</p>
     <div class="audit">
-      <h3>Two experiments: cellular uptake vs. vascular (fresh) delivery</h3>
-      <p>The same delivered iron mass is imaged under two biological distributions, run as one
-        directly comparable factor (uniform vs. vessel) within a single design:</p>
-      <ul class="tight">
-        <li><b>Study A — homogeneous (cellular uptake).</b> Iron internalised by tumor cells gives a
-          ~uniform tumor iron distribution (the homogeneous level). Concentrations are sampled from the
-          article's measured cellular loading (Fig 5, all configs incl. fresh; 0 h / 24 h): SPION I-113 nm
-          8.23 / 3.78, SPION II-115 3.86 / 1.52, II-98 3.60 / 1.37, II-76 2.51 / 0.85 pg Fe/cell, each
-          converted via the tumor cell density and using its formulation's coating (SPION I φ ≈ 0.15,
-          SPION II φ ≈ 0.36). Cite Heinen et al.</li>
-        <li><b>Study B — vascular / "fresh" delivery.</b> Freshly-injected SPIONs still in the
-          blood carrier inside the vessels, before cellular uptake — contrast confined to the ~150 µm
-          vessels (~10 % of tumor volume, 10× local concentration), heterogeneous (the vessel level), at
-          the injection concentration. Referenced to the Genç/Lyer flow-accumulation context
-          (suspension ~0.84 mg Fe/mL).</li>
-      </ul>
-      <div class="note"><b>Two open decisions (TODO — pending the user):</b> (a) Study A tumor
-        <b>cell density</b> for pg Fe/cell → mg Fe/ml; (b) Study B <b>injection concentration</b>
-        (article suspension 1–10 mg Fe/ml, or a specific injected dose). Both are placeholders until fixed.</div>
+      <h3>Concentrations and detection thresholds (E2 optimum, no bone)</h3>
+      <p>For SPION I fresh (0&nbsp;h, 8.23&nbsp;pg&nbsp;Fe/cell) the tumor iron scales directly with cell
+        density: <b>0.82 / 2.47 / 8.23&nbsp;mg&nbsp;Fe/ml</b> at 1e8 / 3e8 / 1e9 cells/cm³.</p>
+      <table>
+        <tr><th>Cell density</th><th>SPION I fresh c<sub>Fe</sub></th><th class="num">CNR (EID, high dose)</th></tr>
+        <tr><td>1×10⁸ cells/cm³</td><td>0.82 mg Fe/ml</td><td class="num">9.2</td></tr>
+        <tr><td>3×10⁸ cells/cm³</td><td>2.47 mg Fe/ml</td><td class="num">27.2</td></tr>
+        <tr><td>1×10⁹ cells/cm³</td><td>8.23 mg Fe/ml</td><td class="num">88.2</td></tr>
+      </table>
+      <p>Detectability crosses the <b>Rose CNR = 5</b> criterion at <b>1×10⁸ cells/cm³ at high dose</b>
+        and at <b>3×10⁸ cells/cm³ at low dose</b> — so at realistic loads the study is
+        <b>dose-limited</b>, not contrast-limited. The best (lowest) detection threshold is
+        <b>0.41&nbsp;mg&nbsp;Fe/ml with PCD</b> vs <b>0.75&nbsp;mg&nbsp;Fe/ml with EID</b> (high dose,
+        3e8). SPIONs at realistic melanoma cellularity sit right at the CT detection limit.</p>
     </div>
-  </section>
-
-  <section id="spectral">
-    <h2><span class="n">08</span>Spectral shaping</h2>
-    <p class="lead">Iron contrast is photoelectric, so it favors low energy. A tube-voltage and
-      filter sweep confirms this end to end: lower kVp raises CNR, hardening filters lower it.
-      A matched-filter photon-counting detector attains its ~1.3× ideal gain only at higher dose,
-      where the low-energy bin is no longer photon-starved.</p>
     <div class="grid">
-      <figure><img src="assets/fig_spectral_sweep.png" alt="spectral sweep" onerror="markPending(this)">
-        <figcaption>CNR at the top dose across tube voltages and filters (EID vs. PCD).</figcaption></figure>
-      <figure><img src="assets/pcd_bins.png" alt="pcd bins" onerror="markPending(this)">
-        <figcaption>Where iron contrast lives in energy + near-optimal 3-bin PCD thresholds (37.5/50 keV).</figcaption></figure>
+      <figure><img src="assets/fig_studyA_cnr.png" alt="Study A CNR" onerror="markPending(this)">
+        <figcaption>Study A CNR vs iron concentration with the Rose 3/5 threshold lines, per detector
+          and dose (E2 optimum, no bone).</figcaption></figure>
+      <figure><img src="assets/fig_density_montage.png" alt="cell density montage" onerror="markPending(this)">
+        <figcaption>Tumor appearance across cell densities {1e8, 3e8, 1e9}: visibility rises with cellularity.</figcaption></figure>
     </div>
   </section>
 
   <section id="studyb">
-    <h2><span class="n">09</span>Study B — vascular (fresh) delivery</h2>
-    <p class="lead">The vascular/"fresh" phase (freshly-injected SPIONs still in the blood carrier
-      inside the vessels, before cellular uptake, at the injection concentration) vs. Study A's
-      homogeneous cellular uptake. The same iron mass is confined to
-      150 µm vessels (10% of tumor volume, 10× local). At the 0.5 mm voxel the vessels are unresolved,
-      so partial-volume averaging with mass conservation makes the tumor-ROI contrast identical to the
-      homogeneous case; the beam-hardening nonlinearity is &lt; 10⁻³ HU and per-voxel structural texture
-      averages out. Vascular (fresh) delivery is therefore CT-indistinguishable from homogeneous
-      cellular uptake.</p>
+    <h2><span class="n">06</span>E4 — Study B (vascular / fresh injection)</h2>
+    <p class="lead">The vascular phase: freshly-injected SPIONs still in the blood carrier inside the
+      tumor vessels, before cellular uptake. Contrast is confined to ~150&nbsp;µm vessels occupying
+      ~10&nbsp;% of the tumor volume, at a <b>local vessel concentration of 5–15&nbsp;mg&nbsp;Fe/ml</b>.
+      With mass conserved this gives a tumor-mean of <b>0.5–1.5&nbsp;mg&nbsp;Fe/ml</b>.</p>
+    <div class="audit">
+      <h3>Detection thresholds (E2 optimum, no bone)</h3>
+      <p>At the CT voxel the 150&nbsp;µm vessels are unresolved, so partial-volume averaging makes the
+        ROI-mean contrast track the tumor-mean iron. At <b>high dose</b> the CNR = 5 crossing is:</p>
+      <table>
+        <tr><th>Detector</th><th>Crosses CNR = 5 at</th><th class="num">CNR at that vessel level</th></tr>
+        <tr><td>EID</td><td>vessel 5 mg Fe/ml (mean 0.5)</td><td class="num">6.1</td></tr>
+        <tr><td>PCD</td><td>vessel 7 mg Fe/ml (mean 0.7)</td><td class="num">7.4</td></tr>
+      </table>
+      <p>So the vascular phase is detectable at high dose from a local vessel concentration around
+        5–7&nbsp;mg&nbsp;Fe/ml — the low end of the article's 1–10&nbsp;mg&nbsp;Fe/ml suspension range.</p>
+    </div>
     <div class="grid">
-      <figure><img src="assets/fig_study_b.png" alt="study b" onerror="markPending(this)">
-        <figcaption>Partial-volume averaging: ROI-mean is invariant; the per-voxel peak reaches the
-          true 10× only near the 150 µm vessel scale.</figcaption></figure>
+      <figure><img src="assets/fig_studyB.png" alt="Study B" onerror="markPending(this)">
+        <figcaption>Study B CNR vs vessel iron concentration with the Rose threshold; EID crosses
+          CNR = 5 at vessel 5, PCD at vessel 7 (high dose, no bone).</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="eidpcd">
+    <h2><span class="n">07</span>EID vs PCD</h2>
+    <p class="lead">How much does photon counting actually buy? The gain depends on how the energy bins
+      are combined. With a <b>post-combination matched filter</b> the PCD delivers about <b>1.2×</b> the
+      EID CNR; a naive per-bin pre-sum gives essentially <b>1.0×</b>. Noise is equalized between detectors,
+      so the comparison is apples-to-apples.</p>
+    <div class="audit">
+      <h3>Why ~1.2×, not 2×</h3>
+      <p>Iron contrast lives in the low-energy bin, which is also the most photon-starved. A matched-filter
+        weighting <code>w<sub>b</sub> ∝ S<sub>b</sub>/V<sub>b</sub></code> applied <b>after</b> bin
+        combination reaches the CNR-optimal ceiling (~1.2× EID at the E2 optimum, 98&nbsp;% of the ideal
+        energy-weighting bound). A per-bin pre-sum throws that weighting away and lands at ~1.0×. On the
+        softer optimized 70&nbsp;kVp beam the EID already captures most of the available contrast, so the
+        headroom for the PCD is modest.</p>
+    </div>
+    <div class="grid">
+      <figure><img src="assets/fig_eid_vs_pcd.png" alt="EID vs PCD" onerror="markPending(this)">
+        <figcaption>EID vs PCD CNR with matched-filter bin combination — about 1.2× gain, noise equalized.</figcaption></figure>
     </div>
   </section>
 
   <section id="rabbit">
-    <h2><span class="n">10</span>3D — real rabbit geometry</h2>
-    <p class="lead">The <code>.rctd</code> RabbitCT format was reverse-engineered
-      (<code>src/rabbitct.py</code>) and its 496 projection matrices decoded into a real Siemens
-      C-arm short scan: SID 745 mm, SDD ≈ 1196 mm, 1248×960 detector, 496 views over 198°.
-      Ray-driven cone-beam DRRs of the post-mortem rabbit rotate correctly with view angle
-      (validating the geometry), and an inserted 8 cm³ SPION tumor projects as a localized
-      signal — the phantom for the planned full 3D FDK detectability study.</p>
-    <div class="grid">
-      <figure><img src="assets/rabbit_slices.png" alt="rabbit anatomy" onerror="markPending(this)">
-        <figcaption>Reference RabbitCT rabbit (256³): axial / coronal / sagittal.</figcaption></figure>
-      <figure><img src="assets/rabbit_drr_tumor.png" alt="rabbit DRR + tumor" onerror="markPending(this)">
-        <figcaption>Cone-beam DRRs (real geometry) + projected SPION-tumor signal at three views.</figcaption></figure>
-    </div>
+    <h2><span class="n">08</span>E5 — 3D verification</h2>
+    <p class="lead">A full 3D FDK detectability run on the real RabbitCT C-arm geometry, to confirm the
+      2D detectability limits carry over to a realistic cone-beam acquisition. It is run at both the E2
+      optimum and the 90&nbsp;kVp baseline, like E3 and E4.</p>
+    <div class="pending">⏳ PLACEHOLDER — E5 (3D verification) is running now; results pending.
+      The <code>.rctd</code> RabbitCT geometry is decoded (SID 745&nbsp;mm, SDD ≈ 1196&nbsp;mm, 496 views
+      over 198°) and the 8&nbsp;cm³ SPION tumor is inserted; this section will fill with the 3D FDK
+      detectability numbers once the run completes.</div>
   </section>
 
   <section id="paper">
-    <h2><span class="n">11</span>Manuscript</h2>
-    <p class="lead">A full SPIE Medical Imaging draft (10 pp.) assembles these results —
-      dose model, phantom, detectability study, spectral shaping, Study B, and the 3D
-      rabbit geometry — in the
+    <h2><span class="n">09</span>Manuscript</h2>
+    <p class="lead">A full SPIE Medical Imaging draft assembles these results — dose model, physics,
+      the E2 spectrum optimization, Study A, Study B, EID vs PCD, and the 3D rabbit geometry — in the
       <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/paper/spie_manuscript.pdf">compiled PDF</a>
       (source <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/paper/spie_manuscript.tex">spie_manuscript.tex</a>).
       The GPU spectral-detector and noise-generator machinery used here is upstreamed to
@@ -337,64 +321,59 @@
   </section>
 
   <section id="audit">
-    <h2><span class="n">12</span>Code audit</h2>
+    <h2><span class="n">10</span>Code audit</h2>
     <p class="lead">Annotated snippets of the key pipeline steps so a reviewer can audit the
-      methodology without reading the whole codebase. <span class="tag">illustrative — replaced
-      by permalinked source after implementation (M0–M7)</span></p>
+      methodology without reading the whole codebase.</p>
 
     <div class="audit">
       <h3>Dose model — delivered mass → tumor iron concentration</h3>
-      <p>The independent variable is the formulation concentration; a fixed particle mass is
-        spread through the 8&nbsp;cm³ tumor and converted to iron via the magnetite Fe fraction.</p>
-<pre><code># c_form [mg SPION/ml] -> tumor iron concentration [mg Fe/ml]
-FE_FRACTION = 0.724          # magnetite Fe3O4
-DELIVERED_AT_10 = 6.0        # mg SPION delivered at c_form = 10 mg/ml
-TUMOR_VOL = 8.0              # cm^3
-
-def tumor_iron_conc(c_form):
-    m_spion = DELIVERED_AT_10 * (c_form / 10.0)   # delivered particle mass [mg]
-    c_spion = m_spion / TUMOR_VOL                 # tumor particle conc [mg/ml]
-    return FE_FRACTION * c_spion                  # = 0.0543 * c_form  [mg Fe/ml]
+      <p>Iron concentration is anchored to the article's measured cellular loading times the tumor
+        cell density (Study A), or to the injection concentration confined to the vessel volume (Study B).</p>
+<pre><code># Study A: pg Fe/cell (measured) x cell density -> tumor c_Fe [mg Fe/ml]
+# SPION I fresh = 8.23 pg Fe/cell; densities {1e8, 3e8, 1e9} cells/cm^3
+c_fe = pg_fe_per_cell * cell_density_per_cm3 * 1e-9   # -> mg Fe/ml
+# 8.23 pg/cell @ 1e8 -> 0.82 ; @ 3e8 -> 2.47 ; @ 1e9 -> 8.23 mg Fe/ml
 </code></pre>
     </div>
 
     <div class="audit">
-      <h3>Custom materials — iron-loaded soft tissue</h3>
-      <p>Iron is added to the same soft-tissue matrix as the background so that c=0 ≡ background.</p>
-<pre><code># CONRAD custom material via pyconrad (JVM bridge) — API verified at M0
-material = mixture_of("soft_tissue", add_iron_mg_per_ml=c_fe)
-material.setDensity(RHO_SOFT_TISSUE + 1e-3 * c_fe)  # negligible mass, high-Z contrast
-MaterialsDB.put(material)
+      <h3>E2 optimum spectrum + PCD bins (fed to E3/E4/E5)</h3>
+      <p>The optimized acquisition read from <code>results/spectral/optimum.json</code>.</p>
+<pre><code>optimum  = {"kvp": 70.0, "filter": "Al5.0",
+            "detector": "PCD", "pcd_bin_edges_kev": [10, 37.5, 47.5, 70]}
+baseline = {"kvp": 90, "filter": "Al2.5"}     # conventional control, run alongside
+# iron CNR 16.9 @ 1 mg Fe/ml ; PCD gain 1.20x EID (98% of ideal weighting)
 </code></pre>
     </div>
 
     <div class="audit">
-      <h3>Polychromatic forward projection — 500 views, EID vs PCD</h3>
-      <p>Line integrals are evaluated through the standard spectrum; the detector model sets
-        whether photons are energy-weighted (EID) or counted per energy bin (PCD).</p>
-<pre><code>spectrum = PolychromaticXRaySpectrum(...)          # CONRAD standard spectrum
-model    = PolychromaticAbsorptionModel(); model.setInputSpectrum(spectrum)
-proj     = forward_project(phantom, geometry_500_views, model, detector=det)
-proj     = apply_poisson_noise(proj, I0=70_000)    # per-pixel photon count
+      <h3>Detectability metrics — ΔHU, CNR, Rose threshold</h3>
+      <p>Per tumor ROI vs soft-tissue reference, over 30 noise realizations; the bone cells are
+        excluded from reported thresholds (degenerate).</p>
+<pre><code>d_hu = mean(vol[tumor_roi]) - mean(vol[ref_roi])
+cnr  = d_hu / std(vol[ref_roi])              # Rose: detectable if cnr >= 5
+# thresholds computed only for with_bone == False
 </code></pre>
     </div>
 
     <div class="audit">
-      <h3>Reconstruction &amp; analysis — FDK, ΔHU, CNR</h3>
-      <p>Beam-hardening correction is toggled here; metrics come from tumor vs. reference ROIs.</p>
-<pre><code>vol   = fdk_reconstruct(proj, geometry_500_views, bh_correction=on_off)
-d_hu  = mean(vol[tumor_roi]) - mean(vol[ref_roi])
-cnr   = d_hu / std(vol[ref_roi])                   # Rose: detectable if cnr >= 3..5
+      <h3>PCD bin combination — post-combination matched filter</h3>
+      <p>Bins are combined with matched-filter weights in the count domain, then a single −log.
+        This reaches the ~1.2× gain; a per-bin pre-sum gives ~1.0×.</p>
+<pre><code>w_b = S_b / V_b                              # matched-filter weights (CNR-optimal)
+M   = sum(w_b * C_b for b in bins)           # count-domain combination
+p   = -log(M / M_air)                        # single line integral, noise-robust
 </code></pre>
     </div>
   </section>
 
   <section id="repro">
-    <h2><span class="n">13</span>Reproducibility</h2>
+    <h2><span class="n">11</span>Reproducibility</h2>
     <p class="lead">Every artifact on this page is regenerable from source.</p>
     <ul class="tight">
       <li>Environment: Java 8 + a pyconrad-compatible Python (3.9/3.10 venv).</li>
-      <li>Run the study: <code>python run_experiment.py</code> → writes <code>results/</code>.</li>
+      <li>Run E2: <code>python src/spectral.py</code> → writes <code>results/spectral/optimum.json</code>.</li>
+      <li>Run E3/E4: <code>python src/run_detectability.py</code> → writes <code>results/detectability/study_{a,b}_{optimum,baseline}.json</code>.</li>
       <li>Rebuild this dashboard: <code>python src/build_dashboard.py</code> → writes <code>docs/</code>.</li>
       <li>Full parameters and rationale: <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/SPEC.md">SPEC.md</a>.</li>
     </ul>
