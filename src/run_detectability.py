@@ -95,54 +95,66 @@ def _pcd_weights(acc):
     return w / (w.sum() + 1e-12)
 
 
-def line_integral(acc, detector, seed, bh_polys=None):
-    """One noisy line-integral sinogram for a detector model.
+def line_integral(acc, detector, seed, bh_polys=None, noiseless=False):
+    """One line-integral sinogram for a detector model.
+
+    noiseless=True skips the Poisson/Gaussian draw entirely (mean counts), for a
+    TRUE noise-free reconstruction -- so EID and PCD are compared on identical, exactly
+    noiseless signals (the PCD path otherwise always draws Poisson counts).
 
     Spectral processing (see README "Spectral processing"):
       EID: energy-integrated signal S = sum_E N(E)*E, Gaussian quantum noise with
            variance sum_E N(E)*E^2, single log; optional water precorrection via a
            single polynomial `bh_polys` calibrated for the EID spectrum.
-      PCD: per energy bin b, Poisson counts C_b; each bin is beam-hardening-corrected
-           on ITS OWN spectrum (per-bin polynomial `bh_polys[b]`, applied as a
-           corrected count), then combined in the count domain M = sum_b w_b*C_b_corr
-           (matched-filter weights) and a single log -> one FBP.
+      PCD: per energy bin b, Poisson counts C_b are summed in the intensity (I0) domain
+           with matched-filter weights (M = sum_b w_b*C_b), a single log gives the combined
+           line integral, then ONE water precorrection for the combined effective spectrum
+           (bh_poly_for) linearizes it. Correcting AFTER the count sum keeps water flat AND
+           weights the photon-starved low bin by its actual count -> CNR ~1.2x EID (a per-bin
+           pre-sum correction instead inflates the low bin's noise, giving only CNR ~1.0x).
     """
     rng = np.random.default_rng(seed)
     eps = 1e-6
     if detector == "EID":
-        S = acc["S_det"] + rng.normal(0.0, np.sqrt(np.maximum(acc["S_det_E2"], 1e-30)))
+        S = acc["S_det"]
+        if not noiseless:
+            S = S + rng.normal(0.0, np.sqrt(np.maximum(acc["S_det_E2"], 1e-30)))
         p = -np.log(np.clip(S, eps, None) / acc["S_air"])
         return np.polyval(bh_polys, p) if bh_polys is not None else p
-    # PCD: matched-filter COUNT-domain combination (robust to the photon-starved low
-    # bin), with per-bin water precorrection applied as CORRECTED COUNTS
-    # C_b_corr = C_air_b*exp(-poly_b(p_b)). Correcting each bin on its own spectrum is
-    # the energy-dependent (per-bin) BH approach; recombining in the count domain
-    # keeps the noise robustness. With bh_polys=None this is exactly the count-domain
-    # combination M = sum_b w_b*C_b (poly_b = identity for the uncorrected case).
+    # PCD: sum the RAW bin counts in the INTENSITY (I0) domain with matched-filter weights
+    # (M = sum_b w_b*C_b), single log, then ONE water precorrection on the combined line
+    # integral (bh_polys = the single combined-spectrum poly). Correcting after the sum
+    # keeps water flat while the count-domain sum keeps the starved low bin weighted by its
+    # actual count -> PCD CNR ~1.2x EID (per-bin pre-sum correction gives only ~1.0x).
     w = _pcd_weights(acc)
     M = np.zeros_like(acc["S_det"]); M_air = 0.0
     for b, (cd, ca) in enumerate(zip(acc["C_det"], acc["C_air"])):
-        cm = rng.poisson(np.maximum(cd, 0.0))
-        if bh_polys is not None:
-            p_b = -np.log(np.maximum(cm, 1.0) / max(ca, eps))
-            cm = ca * np.exp(-np.polyval(bh_polys[b], p_b))     # per-bin corrected count
+        cm = cd if noiseless else rng.poisson(np.maximum(cd, 0.0))
         M += w[b] * cm
         M_air += w[b] * ca
-    return -np.log(np.clip(M, eps, None) / max(M_air, eps))
+    p = -np.log(np.clip(M, eps, None) / max(M_air, eps))
+    return np.polyval(bh_polys, p) if bh_polys is not None else p
 
 
 def bh_poly_for(acc, detector):
     """Calibrated water precorrection for a detector, applied in `line_integral`.
 
     EID: a single polynomial for the energy-weighted (s*E) spectrum.
-    PCD: a LIST of per-bin polynomials, each calibrated for that bin's own spectrum.
+    PCD: a SINGLE polynomial for the count-combined effective spectrum
+         w_eff(E) = w[bin(E)]*s(E) -- applied AFTER the I0-domain count sum (like the EID),
+         so the combined line integral is water-flat. (Correcting per bin BEFORE the sum
+         instead inflates the photon-starved low bin's noise; see line_integral / DEVLOG.)
     """
     E, s, edges = acc["E"], acc["s"], acc["edges"]
     mu_w = materials.linear_attenuation("water", E)     # 1/cm
     if detector == "EID":
         return conrad_ct.water_precorrection_poly(E, s * E, mu_w)
-    return [conrad_ct.water_precorrection_poly(E, np.where((E >= edges[b]) & (E < edges[b + 1]), s, 0.0), mu_w)
-            for b in range(len(edges) - 1)]
+    w = _pcd_weights(acc)                                # matched-filter bin weights
+    w_eff = np.zeros_like(s)
+    for b in range(len(edges) - 1):
+        m = (E >= edges[b]) & (E < edges[b + 1])
+        w_eff[m] = w[b] * s[m]                           # bin weight x spectrum = combined weighting
+    return conrad_ct.water_precorrection_poly(E, w_eff, mu_w)
 
 
 def _vessel_effects(c_fe, d_hu, quantum_noise, roi_mm=8.0):

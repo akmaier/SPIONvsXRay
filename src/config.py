@@ -29,8 +29,61 @@ TUMOR_VOLUME_CM3 = 8.0       # cm^3
 # sampling (see HANDOFF.md). phi sets ONLY the reported whole-particle concentration
 # (mg SPION/ml); it is NEGLIGIBLE for the X-ray mu (PAA is low-Z C/H/O, tissue/water-
 # equivalent) and does NOT move the iron contrast. Independent variable: tumor c_Fe.
-PAA_MASS_FRAC = 0.15          # phi (SPION I): single value for now; per-formulation TODO
+PAA_MASS_FRAC = 0.15          # phi (SPION I): default single-formulation value
 PAA_MASS_FRAC_RANGE = (0.15, 0.36)   # SPION I .. SPION II (TGA, supplement Table A.1)
+
+# Per-formulation coating (supplement TGA, Table A.1): SPION I (12 nm) phi = 0.15,
+# SPION II (8 nm) phi = 0.36. build_phantom(formulation=...) picks one; the generic
+# concentration-sweep phantom defaults to SPION I (the realistic high-loading particle).
+PAA_MASS_FRAC_BY_FORMULATION = {"SPION_I": 0.15, "SPION_II": 0.36}
+DEFAULT_FORMULATION = "SPION_I"
+
+
+def coating_frac(formulation: str = DEFAULT_FORMULATION) -> float:
+    """PAA coating mass fraction phi for a formulation (TGA, supplement Table A.1)."""
+    return PAA_MASS_FRAC_BY_FORMULATION[formulation]
+
+
+# --------------------------------------------------------------------------
+# Study A concentrations: MEASURED cellular loading (Heinen et al. Fig 5, B16-F10
+# melanoma). Each configuration = (formulation, hydrodynamic size) with its 0 h and
+# 24 h iron load in pg Fe/cell. Converted to tumor mg Fe/ml via the tumor cell
+# density, and simulated with that formulation's coating phi (SPION I 0.15 / II 0.36).
+# --------------------------------------------------------------------------
+CELL_DENSITY_PER_CM3 = 3.0e8   # default tumor cellularity (mid level below).
+# Tumor cellularity is uncertain (solid tumors ~1e8-1e9 /cm^3), so it is a FACTOR:
+# the Study A iron spans this range (c_Fe = pg Fe/cell x density x 1e-9). E.g. SPION I
+# fresh 8.23 pg/cell -> 0.82 / 2.47 / 8.23 mg Fe/ml at 1e8 / 3e8 / 1e9.
+CELL_DENSITY_LEVELS = {"1e8": 1.0e8, "3e8": 3.0e8, "1e9": 1.0e9}
+CELLULAR_LOADING = [           # label, formulation, pg Fe/cell @ 0 h, @ 24 h
+    ("I_113",  "SPION_I",  8.23, 3.78),
+    ("II_115", "SPION_II", 3.86, 1.52),
+    ("II_98",  "SPION_II", 3.60, 1.37),
+    ("II_76",  "SPION_II", 2.51, 0.85),
+]
+
+
+def cfe_from_loading(pg_fe_per_cell: float, density: float = CELL_DENSITY_PER_CM3) -> float:
+    """Tumor iron conc [mg Fe/ml] from cellular loading [pg Fe/cell] x density [cells/cm^3].
+
+    c_Fe [mg/ml] = pg_fe * density * 1e-12 g/pg * 1e3 mg/g = pg_fe * density * 1e-9.
+    """
+    return pg_fe_per_cell * density * 1e-9
+
+
+def study_a_inserts(density: float = CELL_DENSITY_PER_CM3):
+    """Study A insert specs: each cellular-loading configuration x timepoint.
+
+    Returns dicts {name, formulation, phi, pg_fe, timepoint, c_fe} -- the tumor iron
+    grounded in the measured loading, each with its formulation's coating phi.
+    """
+    out = []
+    for label, form, pg0, pg24 in CELLULAR_LOADING:
+        for tp, pg in (("0h", pg0), ("24h", pg24)):
+            out.append(dict(name=f"{label}_{tp}", formulation=form,
+                            phi=coating_frac(form), pg_fe=pg, timepoint=tp,
+                            c_fe=cfe_from_loading(pg, density)))
+    return out
 
 # Independent variable: article formulation concentration [mg SPION/ml]
 C_FORM_LEVELS = [0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
