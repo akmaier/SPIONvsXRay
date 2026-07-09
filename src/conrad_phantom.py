@@ -42,22 +42,51 @@ def spion_name(c_form: float) -> str:
     return f"SPION_c{c_form:g}"
 
 
-def _soft_tissue_wac():
-    """A FRESH WeightedAtomicComposition copy of the ICRU soft-tissue matrix.
+# magnetite element mass fractions (Fe3O4 = 3 Fe + 4 O)
+M_FE = 55.845
+M_O = 15.999
+FE_MASS_FRAC_FE3O4 = 3 * M_FE / M_FE3O4
+O_MASS_FRAC_FE3O4 = 4 * M_O / M_FE3O4
 
-    getWeightedAtomicComposition() returns the DB material's LIVE object, so
-    mutating it (adding magnetite) would pollute the shared material and
-    accumulate across concentrations. We copy its composition table into a new
-    WAC per call; the SPION_c0 build below uses the identical copy, so background
-    (SPION_c0) == zero-iron insert exactly.
+
+def _spion_wac(grams_magnetite):
+    """Build a WAC for 1 g of ICRU soft-tissue matrix + grams_magnetite g of Fe3O4.
+
+    CRITICAL: WeightedAtomicComposition.getCompositionTable() stores per-element
+    *mass* (moles*atomicMass), and WAC.add(element, moles) multiplies its argument
+    by the atomic mass. The 4f11336 regression copied the soft-tissue table back in
+    via add(elem, src.get(elem)) -- feeding already-mass-weighted values through the
+    *mass again, inflating the matrix ~16x (O jumped 14.2 -> 227) so the small Fe3O4
+    add washed out (Fe mass fraction ~22x too small; mu even dropped below body).
+
+    Instead we work purely in the mass basis: scale the soft-tissue composition to
+    1 gram total, then add magnetite as elemental *masses* (Fe + O) via a TreeMap
+    passed to setCompositionTable(). This mirrors the known-good pre-4f11336 water
+    host (1 g H2O + grams_magnetite g Fe3O4) but with the soft-tissue matrix as host.
+    grams_magnetite = 0 reproduces plain soft tissue exactly (ΔHU == 0).
     """
     utils = CG("edu.stanford.rsl.conrad.physics.materials.utils")
     WAC = utils.WeightedAtomicComposition
+    MU = utils.MaterialUtils
     DB = CG("edu.stanford.rsl.conrad.physics.materials.database").MaterialsDB
-    src = DB.getMaterialWithName(BODY_MATERIAL).getWeightedAtomicComposition().getCompositionTable()
-    w = WAC()
+    TreeMap = jpype.JClass("java.util.TreeMap")
+
+    body_wac = DB.getMaterialWithName(BODY_MATERIAL).getWeightedAtomicComposition()
+    src = body_wac.getCompositionTable()               # element -> mass (moles*A)
+    mm_soft = float(MU.computeMolarMass(body_wac))      # total mass of one formula unit
+
+    tbl = TreeMap()
     for k in src.keySet():
-        w.add(str(k), float(src.get(k)))
+        tbl.put(str(k), float(src.get(k)) / mm_soft)   # scale to 1 g soft tissue
+    if grams_magnetite > 0:
+        fe_mass = grams_magnetite * FE_MASS_FRAC_FE3O4
+        o_mass = grams_magnetite * O_MASS_FRAC_FE3O4
+        cur_fe = float(tbl.get("Fe")) if tbl.containsKey("Fe") else 0.0
+        cur_o = float(tbl.get("O")) if tbl.containsKey("O") else 0.0
+        tbl.put("Fe", cur_fe + fe_mass)
+        tbl.put("O", cur_o + o_mass)
+    w = WAC()
+    w.setCompositionTable(tbl)
     return w
 
 
@@ -65,29 +94,20 @@ def register_spion_materials():
     """Register a magnetite-oxide-in-soft-tissue Mixture per concentration.
 
     Iron oxide (Fe3O4) is ADDED to the ICRU soft-tissue matrix (config.BODY_MATERIAL),
-    NOT diluted in water (SPEC §5.2). The magnetite mole count is referenced to the
-    soft-tissue matrix's own molar basis so the delivered iron mass is exactly
-    c_Fe [mg Fe/ml] (c_Fe = 0.0543*c_form, FE_FRACTION magnetite). SPION_c0 carries
-    zero iron, so it equals plain soft tissue and ΔHU(c_Fe=0) == 0.
+    NOT diluted in water (SPEC §5.2). The delivered iron mass is exactly c_Fe
+    [mg Fe/ml] (c_Fe = 0.0543*c_form, FE_FRACTION magnetite). SPION_c0 carries zero
+    iron, so it equals plain soft tissue and ΔHU(c_Fe=0) == 0.
     """
     global _registered
     conrad_backend.setup()
     if _registered:
         return
     matpkg = CG("edu.stanford.rsl.conrad.physics.materials")
-    utils = CG("edu.stanford.rsl.conrad.physics.materials.utils")
     DB = CG("edu.stanford.rsl.conrad.physics.materials.database").MaterialsDB
-    MU = utils.MaterialUtils
-    # grams of soft-tissue matrix per one WAC formula-unit (its own molar mass)
-    mm_soft = float(MU.computeMolarMass(DB.getMaterialWithName(BODY_MATERIAL)
-                                        .getWeightedAtomicComposition()))
     for c in C_FORM_LEVELS:
         c_fe = tumor_iron_conc(c)                      # mg Fe/ml
         grams_magnetite = (1e-3 * c_fe) / FE_FRACTION  # g magnetite per g matrix
-        wac = _soft_tissue_wac()
-        if grams_magnetite > 0:
-            # magnetite moles per one soft-tissue formula-unit (mole-consistent add)
-            wac.add("Fe3O4", grams_magnetite * mm_soft / M_FE3O4)
+        wac = _spion_wac(grams_magnetite)
         m = matpkg.Mixture()
         m.setDensity(1.0 + grams_magnetite)            # rho raised by ~0.001*c_Fe (negligible)
         m.setName(spion_name(c))
