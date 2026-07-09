@@ -423,17 +423,23 @@ anatomy and a full three-dimensional study. As a bridge to that study, we have
 already reconstructed the acquisition geometry of a real post-mortem rabbit C-arm
 scan from the RabbitCT benchmark\cite{Rohkohl2009} -- a $745\,\mathrm{mm}$
 source-to-isocenter, $1196\,\mathrm{mm}$ source-to-detector short scan of $496$
-projections over $198^\circ$ -- and inserted a SPION tumor into the rabbit volume
-(Fig.~\ref{fig:rabbit}); a cone-beam forward projection and FDK reconstruction of
-that phantom is the immediate next step.
+projections over $198^\circ$ -- by decoding its projection matrices. Casting rays
+through the reference rabbit volume with that geometry yields cone-beam digital
+radiographs in which the skull and cervical spine appear correctly and rotate with
+view angle, validating the extracted geometry end to end; inserting an
+$8\,\mathrm{cm}^3$ SPION tumor makes it project as a localized signal that tracks
+the anatomy (Fig.~\ref{fig:rabbit}). A full polychromatic cone-beam FDK
+detectability study on this phantom is the immediate next step.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.92\linewidth]{rabbit_slices.png}
-\caption{Real rabbit anatomy for the planned three-dimensional study: orthogonal
-slices of the post-mortem RabbitCT reference volume, whose C-arm geometry
-($745/1196\,\mathrm{mm}$, $496$ views over $198^\circ$) we extracted from the
-benchmark dataset.}
+\includegraphics[width=0.98\linewidth]{rabbit_drr_tumor.png}
+\caption{Toward a three-dimensional study in real anatomy. Top: ray-driven
+cone-beam digital radiographs of the post-mortem RabbitCT rabbit at three view
+angles, using the C-arm geometry ($745/1196\,\mathrm{mm}$, $496$ views over
+$198^\circ$) decoded from the benchmark's projection matrices. Bottom: the
+projected signal of an inserted $8\,\mathrm{cm}^3$ SPION tumor, which tracks the
+anatomy across views.}
 \label{fig:rabbit}
 \end{figure}
 
