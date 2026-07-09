@@ -55,7 +55,8 @@ def _disk_chords(inserts, geo):
         base[ins["name"]] = base.get(ins["name"], np.zeros_like(c)) + c
         insert_sum += c
     body = chord(0.0, 0.0, conrad_phantom.BODY_RADIUS_MM)
-    base["water"] = np.maximum(body - insert_sum, 0.0)
+    body_name = conrad_phantom.spion_name(0.0)                    # soft-tissue body (SPION_c0)
+    base[body_name] = base.get(body_name, np.zeros_like(body)) + np.maximum(body - insert_sum, 0.0)
     return {k: v.astype(np.float32) for k, v in base.items()}
 
 
@@ -75,7 +76,8 @@ def _rasterize_aa(inserts, n, vox, ss=8):
         fine_masks.setdefault(nm, np.zeros((fine, fine), bool))[m] = True
         assigned |= m
     body = ((X * X + Y * Y) <= conrad_phantom.BODY_RADIUS_MM ** 2) & ~assigned
-    fine_masks.setdefault("water", np.zeros((fine, fine), bool))[body] = True
+    body_name = conrad_phantom.spion_name(0.0)                    # soft-tissue body (SPION_c0)
+    fine_masks.setdefault(body_name, np.zeros((fine, fine), bool))[body] = True
     return {nm: fm.reshape(n, ss, n, ss).mean(axis=(1, 3)).astype(np.float32)
             for nm, fm in fine_masks.items()}
 
@@ -248,8 +250,9 @@ if __name__ == "__main__":
     outdir = str(conrad_backend.REPO_ROOT / "results" / "native")
     os.makedirs(outdir, exist_ok=True)
     fig, ax = plt.subplots(1, 3, figsize=(14, 4.6))
-    ax[0].imshow(base["water"], aspect="auto", cmap="viridis")
-    ax[0].set_title("base-material sinogram: water [mm]"); ax[0].set_xlabel("detector"); ax[0].set_ylabel("view")
+    body_name = conrad_phantom.spion_name(0.0)
+    ax[0].imshow(base[body_name], aspect="auto", cmap="viridis")
+    ax[0].set_title("base-material sinogram: soft tissue [mm]"); ax[0].set_xlabel("detector"); ax[0].set_ylabel("view")
     ax[1].imshow(det["eid"], aspect="auto", cmap="gray")
     ax[1].set_title("EID line-integral sinogram")
     lo, hi = np.percentile(recon, [30, 99.5])

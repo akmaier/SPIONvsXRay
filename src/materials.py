@@ -6,18 +6,19 @@ Uses CONRAD's material database via pyconrad for mass attenuation coefficients
     mu_tumor(E) = rho_soft * (mu/rho)_soft(E) + c_Fe[g/cm^3] * (mu/rho)_Fe(E)
 
 i.e. iron is *added* to the soft-tissue matrix (not diluted in water), so a
-zero-iron tumor equals the background exactly (SPEC §5.2). Soft tissue is
-approximated by water (CONRAD ships no ICRU-44 soft-tissue XML); this is a
-standard CT proxy and keeps the c=0 baseline clean.
+zero-iron tumor equals the background exactly (SPEC §5.2). The soft-tissue matrix
+is CONRAD's ICRU-family "body" Mixture (config.BODY_MATERIAL, rho=1.0 g/cm^3), NOT
+water -- this keeps the c=0 baseline == background while using a real soft-tissue
+attenuation curve.
 """
 from __future__ import annotations
 import numpy as np
 
 import conrad_backend
-from config import C_FORM_LEVELS, tumor_iron_conc, SPECTRUM
+from config import C_FORM_LEVELS, tumor_iron_conc, SPECTRUM, BODY_MATERIAL
 
 # Densities [g/cm^3]
-RHO_SOFT = 1.0      # water proxy for soft tissue
+RHO_SOFT = 1.0      # ICRU soft-tissue proxy (config.BODY_MATERIAL, rho=1.0)
 RHO_WATER = 1.0
 
 # The particles are iron OXIDE (magnetite Fe3O4), not pure iron. Per gram of
@@ -81,8 +82,8 @@ def energy_grid() -> np.ndarray:
 
 
 def linear_attenuation_soft(energies_kev: np.ndarray) -> np.ndarray:
-    """Linear attenuation of the soft-tissue matrix [1/cm]."""
-    return RHO_SOFT * mass_attenuation("water", energies_kev)
+    """Linear attenuation of the ICRU soft-tissue matrix [1/cm] (config.BODY_MATERIAL)."""
+    return linear_attenuation(BODY_MATERIAL, energies_kev)
 
 
 def linear_attenuation_bone(energies_kev: np.ndarray) -> np.ndarray:

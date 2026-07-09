@@ -15,6 +15,14 @@ TUMOR_VOLUME_CM3 = 8.0       # cm^3
 # Independent variable: article formulation concentration [mg SPION/ml]
 C_FORM_LEVELS = [0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
 
+# Body / tumor-matrix material (SPEC §5.1/§5.2): iron is loaded into a SOFT-TISSUE
+# matrix, NOT water. CONRAD ships no literal "soft_tissue"/ICRU-44 XML; its
+# ICRU-family soft-tissue phantom proxy is the "body" Mixture (rho=1.0 g/cm^3,
+# H/O, water-equivalent density -- matches SPEC "ICRU soft-tissue (water proxy)").
+# This single name links the phantom body cylinder, the base-material sinogram key,
+# and every mu / precorrection lookup, so a zero-iron insert == background exactly.
+BODY_MATERIAL = "body"
+
 
 def delivered_spion_mg(c_form: float) -> float:
     """Delivered SPION particle mass [mg] for a formulation concentration."""
@@ -37,7 +45,7 @@ def tumor_iron_conc(c_form: float) -> float:
 class Phantom:
     body_diameter_mm: float = 110.0     # rabbit trunk (~11 cm) inside 20 cm FOV
     body_height_mm: float = 140.0
-    body_material: str = "soft_tissue"  # ICRU-44 soft tissue
+    body_material: str = "body"  # CONRAD ICRU-family soft-tissue proxy (see BODY_MATERIAL)
 
     # 8 cm^3 tumor sphere -> radius = (3V/4pi)^(1/3)
     tumor_volume_cm3: float = TUMOR_VOLUME_CM3
@@ -91,7 +99,15 @@ class Spectrum:
     e_min_kev: float = 10.0
     e_max_kev: float = 150.0
     e_delta_kev: float = 0.5
-    photons_per_pixel: float = 70000.0   # unattenuated I0 for Poisson noise
+    photons_per_pixel: float = 70000.0   # documented reference dose (SPEC §5.3)
+
+
+# --------------------------------------------------------------------------
+# Dose as a factor (SPEC §5.3 fixed 70k -> now swept low/high per the C-arm dose
+# research). photons/pixel = unattenuated I0 driving the Poisson/Gaussian noise.
+# 70000 above stays the documented reference; the factorial sweeps these two.
+# --------------------------------------------------------------------------
+DOSE_LEVELS = {"low": 20000.0, "high": 100000.0}
 
 
 # --------------------------------------------------------------------------

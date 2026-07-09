@@ -1,21 +1,27 @@
 """M2 (CONRAD-native) — ED-phantom as a real CONRAD AnalyticPhantom.
 
-Builds the phantom at runtime via pyconrad from CONRAD classes: a soft-tissue
-(water) body Cylinder + 7 SPION concentration insert Cylinders on a circle at
-equal radius + a cortical-bone insert, each a PhysicalObject with a Material.
-The SPION inserts use registered magnetite (Fe3O4-in-water) Mixture materials
-(custom-materials pattern from edu.stanford.rsl.tutorial.physics.CreateCustomMaterial),
-so CONRAD's own attenuation model is the source of truth.
+Builds the phantom at runtime via pyconrad from CONRAD classes: an ICRU
+SOFT-TISSUE (config.BODY_MATERIAL) body Cylinder + 7 SPION concentration insert
+Cylinders on a circle at equal radius + a cortical-bone insert, each a
+PhysicalObject with a Material. The SPION inserts use registered magnetite-oxide
+Mixture materials (custom-materials pattern from
+edu.stanford.rsl.tutorial.physics.CreateCustomMaterial) built by ADDING magnetite
+(Fe3O4) to the SAME soft-tissue matrix (NOT water; SPEC §5.2), so CONRAD's own
+attenuation model is the source of truth and the zero-iron insert (SPION_c0)
+equals plain soft tissue -- ΔHU is pure iron.
+
+The body cylinder is assigned the SPION_c0 material (soft-tissue matrix, zero
+iron), so background == zero-iron insert exactly and ΔHU(c_Fe=0) == 0.
 
 Inserts are added AFTER the body so the PriorityRayTracer lets them override the
-body material where they overlap (verified: water 135 mm + iron 25 mm = 160 mm).
+body material where they overlap.
 """
 from __future__ import annotations
 import math
 import jpype
 
 import conrad_backend
-from config import C_FORM_LEVELS, tumor_iron_conc
+from config import C_FORM_LEVELS, tumor_iron_conc, BODY_MATERIAL
 
 CG = conrad_backend.class_getter
 
@@ -36,8 +42,34 @@ def spion_name(c_form: float) -> str:
     return f"SPION_c{c_form:g}"
 
 
+def _soft_tissue_wac():
+    """A FRESH WeightedAtomicComposition copy of the ICRU soft-tissue matrix.
+
+    getWeightedAtomicComposition() returns the DB material's LIVE object, so
+    mutating it (adding magnetite) would pollute the shared material and
+    accumulate across concentrations. We copy its composition table into a new
+    WAC per call; the SPION_c0 build below uses the identical copy, so background
+    (SPION_c0) == zero-iron insert exactly.
+    """
+    utils = CG("edu.stanford.rsl.conrad.physics.materials.utils")
+    WAC = utils.WeightedAtomicComposition
+    DB = CG("edu.stanford.rsl.conrad.physics.materials.database").MaterialsDB
+    src = DB.getMaterialWithName(BODY_MATERIAL).getWeightedAtomicComposition().getCompositionTable()
+    w = WAC()
+    for k in src.keySet():
+        w.add(str(k), float(src.get(k)))
+    return w
+
+
 def register_spion_materials():
-    """Register a magnetite (Fe3O4-in-water) Mixture per concentration."""
+    """Register a magnetite-oxide-in-soft-tissue Mixture per concentration.
+
+    Iron oxide (Fe3O4) is ADDED to the ICRU soft-tissue matrix (config.BODY_MATERIAL),
+    NOT diluted in water (SPEC §5.2). The magnetite mole count is referenced to the
+    soft-tissue matrix's own molar basis so the delivered iron mass is exactly
+    c_Fe [mg Fe/ml] (c_Fe = 0.0543*c_form, FE_FRACTION magnetite). SPION_c0 carries
+    zero iron, so it equals plain soft tissue and ΔHU(c_Fe=0) == 0.
+    """
     global _registered
     conrad_backend.setup()
     if _registered:
@@ -45,17 +77,19 @@ def register_spion_materials():
     matpkg = CG("edu.stanford.rsl.conrad.physics.materials")
     utils = CG("edu.stanford.rsl.conrad.physics.materials.utils")
     DB = CG("edu.stanford.rsl.conrad.physics.materials.database").MaterialsDB
-    WAC = utils.WeightedAtomicComposition
     MU = utils.MaterialUtils
-    water_particles_1g = 1.0 / MU.computeMolarMass(WAC("H2O"))
+    # grams of soft-tissue matrix per one WAC formula-unit (its own molar mass)
+    mm_soft = float(MU.computeMolarMass(DB.getMaterialWithName(BODY_MATERIAL)
+                                        .getWeightedAtomicComposition()))
     for c in C_FORM_LEVELS:
         c_fe = tumor_iron_conc(c)                      # mg Fe/ml
-        grams_magnetite = (1e-3 * c_fe) / FE_FRACTION  # g magnetite per ml (~per g water)
-        wac = WAC("H2O", water_particles_1g)
+        grams_magnetite = (1e-3 * c_fe) / FE_FRACTION  # g magnetite per g matrix
+        wac = _soft_tissue_wac()
         if grams_magnetite > 0:
-            wac.add("Fe3O4", grams_magnetite / M_FE3O4)
+            # magnetite moles per one soft-tissue formula-unit (mole-consistent add)
+            wac.add("Fe3O4", grams_magnetite * mm_soft / M_FE3O4)
         m = matpkg.Mixture()
-        m.setDensity(1.0 + grams_magnetite)
+        m.setDensity(1.0 + grams_magnetite)            # rho raised by ~0.001*c_Fe (negligible)
         m.setName(spion_name(c))
         m.setWeightedAtomicComposition(wac)
         DB.put(m)
@@ -99,7 +133,8 @@ def build_phantom(with_bone=True):
         po.setShape(shape)
         scene.add(po)
 
-    add(_cyl(BODY_RADIUS_MM, 0.0, 0.0), DB.getMaterialWithName("water"))   # body first
+    # body = zero-iron soft tissue (SPION_c0), so background == zero-iron insert
+    add(_cyl(BODY_RADIUS_MM, 0.0, 0.0), DB.getMaterialWithName(spion_name(0.0)))  # body first
 
     inserts = []
     n_slots = len(C_FORM_LEVELS) + 1

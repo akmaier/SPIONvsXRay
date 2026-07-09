@@ -17,13 +17,20 @@ import conrad_phantom
 import conrad_project as cp
 import materials
 import spectrum as spec
-from config import DETECTORS, SPECTRUM, EVAL, PHANTOM
+from config import DETECTORS, SPECTRUM, EVAL, PHANTOM, DOSE_LEVELS
 
 N0 = SPECTRUM.photons_per_pixel
 
 
-def polychromatic_accumulators(base, kvp=None, filters=()):
-    """Noise-free detector accumulators (energy sums), computed once."""
+def polychromatic_accumulators(base, kvp=None, filters=(), n0=None):
+    """Noise-free detector accumulators (energy sums), computed once per dose.
+
+    `n0` is the unattenuated I0 [photons/pixel] driving the signal level (and thus
+    the Poisson/Gaussian noise floor). Defaults to the documented reference dose
+    (SPECTRUM.photons_per_pixel); the dose factor passes DOSE_LEVELS values.
+    """
+    if n0 is None:
+        n0 = N0
     if kvp is None:
         E, flux, _ = spec.standard_spectrum()
     else:
@@ -39,20 +46,20 @@ def polychromatic_accumulators(base, kvp=None, filters=()):
     nb = len(edges) - 1
 
     S_det = np.zeros(shape); S_det_E2 = np.zeros(shape)
-    S_air = float(np.sum(N0 * s * E))
+    S_air = float(np.sum(n0 * s * E))
     C_det = [np.zeros(shape) for _ in range(nb)]
     C_air = [0.0] * nb
     for j, Ej in enumerate(E):
         tau = np.zeros(shape)
         for n in names:
             tau += L[n] * mu[n][j]
-        nph = N0 * s[j] * np.exp(-tau)
+        nph = n0 * s[j] * np.exp(-tau)
         S_det += nph * Ej
         S_det_E2 += nph * Ej * Ej
         b = int(np.searchsorted(edges, Ej, side="right") - 1)
         if 0 <= b < nb:
             C_det[b] += nph
-            C_air[b] += N0 * s[j]
+            C_air[b] += n0 * s[j]
     return dict(S_det=S_det, S_det_E2=S_det_E2, S_air=S_air,
                 C_det=C_det, C_air=C_air, E=E, s=s, edges=edges)
 
@@ -75,7 +82,7 @@ def _pcd_weights(acc):
     """
     E, edges, s = acc["E"], acc["edges"], acc["s"]
     L_body_cm = PHANTOM.body_diameter_mm / 10.0
-    mu_tissue = materials.linear_attenuation("water", E)          # 1/cm
+    mu_tissue = materials.linear_attenuation_soft(E)             # ICRU soft tissue, 1/cm
     ox = materials.oxide_contrast_massatten(E)                    # iron contrast shape
     Nt = N0 * s * np.exp(-mu_tissue * L_body_cm)                  # detected bkg photons/energy
     w = []
@@ -138,22 +145,79 @@ def bh_poly_for(acc, detector):
             for b in range(len(edges) - 1)]
 
 
-def run(bones=(False, True)):
+def _vessel_effects(c_fe, d_hu, quantum_noise, roi_mm=8.0):
+    """Second-order vessel (Study B) corrections applied to a homogeneous insert.
+
+    SPEC §5.9: the same delivered iron mass is confined to 150 um vessels at 10%
+    volume fraction (=> 10x local concentration). The CT voxel cannot resolve the
+    vessels, so the ROI-mean iron (and thus first-order ΔHU) is UNCHANGED (mass
+    conserved). This adds the two second-order effects the homogeneous model misses,
+    reusing the exact Study B primitives (src/run_study_b.py):
+
+      (1) Beam-hardening nonlinearity (Jensen gap): rays through 10x-iron vessel
+          segments harden more than proportionally, so the ROI ΔHU shifts by the
+          homogeneous-vs-vessel line-integral gap. Scaled per insert by c_Fe.
+      (2) Structural noise: the per-voxel vessel fraction is binomial, adding a
+          texture std that survives ROI averaging (reduced by sqrt(n_voxels_ROI)).
+          Added in quadrature to the quantum noise on the insert.
+
+    Returns (d_hu_vessel, noise_vessel).
+    """
+    import run_study_b as sb
+    # (1) BH nonlinearity: reuse Study B's polychromatic homogeneous-vs-vessel gap,
+    # evaluated at THIS insert's mean iron (scale relative to the 6 mg reference).
+    scale = c_fe / (sb.C_FE_MEAN + 1e-12)
+    c_mean = 1e-3 * c_fe                                          # g/cm^3
+    E, flux, _ = spec.standard_spectrum(); s = flux / flux.sum()
+    mu_t = materials.linear_attenuation_soft(E)                  # soft-tissue matrix
+    ox = materials.oxide_contrast_massatten(E)
+    def _p(profile):
+        tau = mu_t * sb.L_BODY_CM
+        for length_cm, c in profile:
+            tau = tau + (mu_t * length_cm + c * ox * length_cm)
+        return -np.log(np.sum(N0 * s * np.exp(-tau) * E) / np.sum(N0 * s * E))
+    p_hom = _p([(sb.L_TUMOR_CM, c_mean)])
+    p_ves = _p([(sb.VESSEL_FRAC * sb.L_TUMOR_CM, c_mean * sb.LOCAL_MULT),
+                ((1 - sb.VESSEL_FRAC) * sb.L_TUMOR_CM, 0.0)])
+    mu_w_eff = float(np.sum(s * mu_t))
+    hu_gap = 1000.0 * (p_ves - p_hom) / (mu_w_eff * sb.L_TUMOR_CM)
+    d_hu_vessel = d_hu + hu_gap
+
+    # (2) structural noise: per-voxel binomial texture, reduced by ROI averaging.
+    sn = sb.structural_noise(voxel_mm=cp_voxel_mm())
+    n_vox_roi = max(1.0, (roi_mm / cp_voxel_mm()) ** 2 * np.pi)   # ~circular ROI voxel count
+    struct_hu = abs(d_hu) * sn["per_voxel_rel_std"] / np.sqrt(n_vox_roi)
+    noise_vessel = float(np.hypot(quantum_noise, struct_hu))
+    return float(d_hu_vessel), noise_vessel
+
+
+def cp_voxel_mm():
+    """Recon voxel size [mm] used by the fan FBP grid (config RECON_VOXEL_MM)."""
+    from config import RECON_VOXEL_MM
+    return RECON_VOXEL_MM
+
+
+def run(bones=(False, True), doses=None, tumor_models=("homogeneous", "vessel")):
     """Detectability study across the phantom factors. Each cell = mean iron signal
     / std of the local background over EVAL.noise_realizations noise draws.
 
-    Water beam-hardening precorrection is ALWAYS applied (calibrated per detector /
-    per PCD bin), and the acquisition is ALWAYS the minimal short scan (180 deg +
-    fan) with Parker redundancy weighting. Neither is a factor anymore.
+    Beam-hardening precorrection is ALWAYS applied (calibrated per detector / per PCD
+    bin), and the acquisition is ALWAYS the minimal short scan (180 deg + fan) with
+    Parker redundancy weighting. The spectrum is FIXED at the 90 kVp standard. None
+    of these is a factor.
 
-    Factors (see DEVLOG 2026-07-09):
+    Factors (SPEC §5.6/§5.9):
       - detector: EID vs multi-bin PCD.
-      - with_bone: cortical-bone rod absent / present. Bone is a HARD beam-hardening
-        source, present in the rabbit study, so it is an explicit FACTOR here, not
-        the baseline. Its streak fans across the ring inserts -- a phantom effect,
-        for the discussion.
+      - with_bone: cortical-bone rod absent / present (a hard beam-hardening source).
+      - dose: DOSE_LEVELS (low/high) photons/pixel -- parameterizes the Poisson/
+        Gaussian noise floor (low dose => higher noise => lower CNR).
+      - tumor_model: homogeneous (Study A, uniform) vs vessel (Study B, 150 um
+        vessels at 10% volume fraction => 10x local conc; mass-conserved mean, plus
+        BH nonlinearity + structural noise, reusing src/run_study_b.py).
       - c_Fe concentration; EVAL.noise_realizations noise draws per cell.
     """
+    if doses is None:
+        doses = DOSE_LEVELS
     rows = []
     inserts_ref = None
     for with_bone in bones:
@@ -161,37 +225,45 @@ def run(bones=(False, True)):
         inserts_ref = inserts
         geo = conrad_ct.fan_geometry(n_pix=512, short_scan=True)
         base, geo = cp.project_base_materials(inserts, geo)
-        acc = polychromatic_accumulators(base)          # once per phantom
         spions = [i for i in inserts if i["c_form"] is not None and i["name"] != "SPION_c0"]
-        for detector in DETECTORS.types:                # EID, PCD
-            bh_polys = bh_poly_for(acc, detector)       # water precorrection always on
-            signal = {i["name"]: [] for i in inserts}
-            for seed in range(EVAL.noise_realizations):
-                sino = line_integral(acc, detector, seed, bh_polys)
-                recon = conrad_ct.fbp(sino, geo)
-                meas = cp.measure_inserts(recon, geo, inserts)
-                for m in meas:
-                    signal[m["name"]].append((m["iron_delta_hu"], m["delta_hu"]))
-            for ins in spions:
-                arr = np.array(signal[ins["name"]])     # (reps, 2)
-                d_hu = float(arr[:, 0].mean())          # c0-corrected iron signal
-                noise = float(arr[:, 1].std())          # quantum noise on the insert
-                cnr = d_hu / (noise + 1e-9)
-                rows.append(dict(detector=detector, with_bone=with_bone,
-                                 name=ins["name"], c_fe=ins["c_fe"],
-                                 delta_hu=d_hu, noise=noise, cnr=cnr))
-            print(f"[{detector} bone={int(with_bone)}] "
-                  + "  ".join(f"{r['c_fe']:.2f}:CNR{r['cnr']:.1f}" for r in rows[-len(spions):]))
+        for dose_name, n0 in doses.items():
+            acc = polychromatic_accumulators(base, n0=n0)   # once per (phantom, dose)
+            for detector in DETECTORS.types:                # EID, PCD
+                bh_polys = bh_poly_for(acc, detector)       # water precorrection always on
+                signal = {i["name"]: [] for i in inserts}
+                for seed in range(EVAL.noise_realizations):
+                    sino = line_integral(acc, detector, seed, bh_polys)
+                    recon = conrad_ct.fbp(sino, geo)
+                    meas = cp.measure_inserts(recon, geo, inserts)
+                    for m in meas:
+                        signal[m["name"]].append((m["iron_delta_hu"], m["delta_hu"]))
+                for tumor_model in tumor_models:
+                    for ins in spions:
+                        arr = np.array(signal[ins["name"]])     # (reps, 2)
+                        d_hu = float(arr[:, 0].mean())          # c0-corrected iron signal
+                        noise = float(arr[:, 1].std())          # quantum noise on the insert
+                        if tumor_model == "vessel":
+                            d_hu, noise = _vessel_effects(ins["c_fe"], d_hu, noise)
+                        cnr = d_hu / (noise + 1e-9)
+                        rows.append(dict(detector=detector, with_bone=with_bone,
+                                         dose=dose_name, tumor_model=tumor_model,
+                                         name=ins["name"], c_fe=ins["c_fe"],
+                                         delta_hu=d_hu, noise=noise, cnr=cnr))
+                    print(f"[{detector} bone={int(with_bone)} dose={dose_name} {tumor_model}] "
+                          + "  ".join(f"{r['c_fe']:.2f}:CNR{r['cnr']:.1f}" for r in rows[-len(spions):]))
     return rows, inserts_ref
 
 
 def thresholds(rows, rose=EVAL.rose_cnr_threshold):
-    """Lowest detectable c_Fe (CNR >= Rose) per (detector, with_bone) cell."""
+    """Lowest detectable c_Fe (CNR >= Rose) per (detector, bone, dose, tumor_model) cell."""
     out = {}
-    for det, wb in sorted({(r["detector"], r["with_bone"]) for r in rows}):
-        cells = sorted([r for r in rows if r["detector"] == det and r["with_bone"] == wb],
+    keys = sorted({(r["detector"], r["with_bone"], r["dose"], r["tumor_model"]) for r in rows})
+    for det, wb, dose, tm in keys:
+        cells = sorted([r for r in rows if r["detector"] == det and r["with_bone"] == wb
+                        and r["dose"] == dose and r["tumor_model"] == tm],
                        key=lambda r: r["c_fe"])
-        out[f"{det}_bone{int(wb)}"] = next((r["c_fe"] for r in cells if r["cnr"] >= rose), None)
+        out[f"{det}_bone{int(wb)}_{dose}_{tm}"] = next(
+            (r["c_fe"] for r in cells if r["cnr"] >= rose), None)
     return out
 
 
@@ -201,7 +273,8 @@ def save_results(rows, outdir=None):
     if outdir is None:
         outdir = str(conrad_backend.REPO_ROOT / "results" / "detectability")
     os.makedirs(outdir, exist_ok=True)
-    cols = ["detector", "with_bone", "name", "c_fe", "delta_hu", "noise", "cnr"]
+    cols = ["detector", "with_bone", "dose", "tumor_model", "name", "c_fe",
+            "delta_hu", "noise", "cnr"]
     with open(os.path.join(outdir, "detectability.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
@@ -209,6 +282,7 @@ def save_results(rows, outdir=None):
             w.writerow({k: r[k] for k in cols})
     meta = dict(n_realizations=EVAL.noise_realizations,
                 photons_per_pixel=SPECTRUM.photons_per_pixel,
+                dose_levels=dict(DOSE_LEVELS),
                 pcd_bin_edges_kev=list(DETECTORS.pcd_bin_edges_kev),
                 thresholds=thresholds(rows),
                 thresholds_rose3=thresholds(rows, rose=3.0),
