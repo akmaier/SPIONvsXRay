@@ -28,8 +28,11 @@ original magnetite fraction is `R_m/1.034` = **84.8 % (SPION I)** and
 **64.2 % (SPION II)**. The complement is PAA: **φ ≈ 0.15 for SPION I** and
 **φ ≈ 0.36 for SPION II** — so SPION II carries roughly twice the coating. (The
 earlier single central estimate φ = 0.15 turned out ≈ exact for SPION I.) Each
-formulation therefore uses **its own coating fraction**; SPION I gives
-`c_NP ≈ 1.625·c_Fe` and SPION II `c_NP ≈ 2.16·c_Fe`. φ sets **only** the reported
+Study A configuration therefore carries **its formulation's coating** — SPION I
+gives `c_NP ≈ 1.625·c_Fe`, SPION II `c_NP ≈ 2.16·c_Fe`. *(The current pipeline
+still applies a single φ = 0.15 — exact for SPION I; per-formulation φ enters with
+the Study A per-configuration sampling, in progress — see [`HANDOFF.md`](HANDOFF.md).)*
+φ sets **only** the reported
 mg SPION/ml; the PAA is low-Z (C/H/O), tissue/water-equivalent, so it is
 **negligible for the X-ray μ** — adding it shifts the monochromatic iron ΔHU at
 the top dose by only ≈ 3.6 % at φ = 0.15 (3.62 → 3.75 HU @ 60 keV). *Iron*
@@ -83,9 +86,12 @@ two biological distributions, run as a single directly-comparable factor:
 > (b) **Study B** **injection concentration** (article suspension 1–10 mg Fe/ml, or
 > a specific injected dose). Both are placeholders until fixed.
 
-**Factorial** (per phantom): formulation conc. {0, 0.5, 1, 2, 5, 10, 20 mg/ml} ×
-detector {EID, multi-bin PCD} × beam-hardening {off, on} × 10 noise realizations
-@ **70 000 photons/pixel**. Detectability reported as **ΔHU and CNR** (Rose ≥ 3–5).
+**Detectability study** (a multi-factor effects study, *not* a mathematical
+factorial): formulation conc. {0, 0.5, 1, 2, 5, 10, 20 mg/ml} × detector {EID,
+multi-bin PCD} × bone {absent, present} × dose {low 20 000, high 100 000
+photons/px} × distribution {homogeneous, vessel}, with **30 noise realizations**
+per cell. Water beam-hardening precorrection and the minimal short scan are
+**always on** (not factors). Detectability reported as **ΔHU and CNR** (Rose ≥ 3–5).
 See [`SPEC.md`](SPEC.md) for full parameters.
 
 ## Key findings so far
@@ -95,8 +101,9 @@ See [`SPEC.md`](SPEC.md) for full parameters.
   ~7–9 HU at 2× dose. Detectability crosses the Rose criterion (CNR ≈ 5) *exactly*
   at the realistic dose (c_Fe ≈ 0.54 mg Fe/ml: CNR 5.4 EID / 5.1 PCD @ 70 000
   photons/px, 0.5 mm voxels) — the 6 mg SPION load is a borderline, not a
-  comfortable, detection. *(GPU 0.5 mm factorial, 30 noise realizations/cell;
-  `results/factorial/`.)*
+  comfortable, detection. *(GPU 0.5 mm detectability run, 30 noise realizations/cell,
+  70 000 photons reference dose; `results/factorial/`. These headline numbers predate
+  the dose/distribution/per-formulation redesign — pending regeneration.)*
 - **Neither photon-counting nor beam-hardening correction lowers the threshold.**
   All four cells (EID/PCD × BH off/on) share the same detection limit
   (~0.54 mg Fe/ml). PCD's matched-filter energy weighting delivers its ideal
@@ -134,7 +141,7 @@ See [`SPEC.md`](SPEC.md) for full parameters.
 | `src/conrad_phantom.py` | CONRAD `AnalyticPhantom` (ED phantom + registered full-particle SPION materials: magnetite core + PAA coating) |
 | `src/conrad_project.py` | `PriorityRayTracer` base-material sinograms + polychromatic EID/PCD + noise |
 | `src/conrad_ct.py` | CONRAD fan-beam projection + FBP (GPU when available) + calibrated water precorrection |
-| `src/run_factorial.py` | the full factorial: per-insert ΔHU + CNR + detection thresholds |
+| `src/run_detectability.py` | the detectability study: per-insert ΔHU + CNR + detection thresholds |
 
 ## Spectral processing (EID vs. PCD)
 
@@ -165,7 +172,7 @@ zero). Beam hardening is **energy-dependent / per-bin**: each bin is corrected o
 **corrected count** `C_b_corr = C_air_b·exp(−poly_b(p_b))` before the count-domain
 combination. This linearizes each narrower bin's hardening on its own spectrum while
 keeping the count-domain noise robustness (a pure per-bin *log-domain* combination is
-equivalent for water cupping but noisier, so it is not used in the noisy factorial).
+equivalent for water cupping but noisier, so it is not used in the noisy study).
 
 The uncorrected water precorrection (a fixed `p + 0.10·p²`) is deprecated — it was
 ~7× too strong and over-corrected cupping into capping; the calibrated polynomial

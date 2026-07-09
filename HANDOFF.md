@@ -50,9 +50,15 @@ returns all-zero on JOCL/Apple (host buffer never uploaded) — use
   `WAC.add()` expects **moles** — mixing them zeroed the iron. Build in mass basis.
 - **Full particle simulated:** `c_NP = c_Fe/(0.724·(1−φ))`; PAA (C₃H₄O₂) registered as
   a CONRAD C/H/O material. Coating is low-Z → negligible for μ (~+3.6 % ΔHU at φ=0.15).
-- **Coating fraction φ, PER-FORMULATION, from the supplement TGA (Table A.1):**
-  SPION I (12 nm) magnetite 84.8 % → **φ ≈ 15 %**; SPION II (8 nm) magnetite 64.2 %
-  → **φ ≈ 36 %** (after the +3.4 % magnetite→hematite oxidation correction).
+- **Coating fraction φ — decided value, NOT yet coded per-formulation.** The
+  supplement TGA (Table A.1, `...-mmc1.pdf` in repo root) fixes φ per formulation:
+  SPION I (12 nm) inorganic residual 87.7 % → magnetite 84.8 % → **φ ≈ 15 %**;
+  SPION II (8 nm) 66.4 % → 64.2 % → **φ ≈ 36 %** (after the +3.4 % magnetite→hematite
+  oxidation, article Eq A.1). **BUT `config.py` still hardcodes a single
+  `PAA_MASS_FRAC = 0.15`** (exact for SPION I) and the phantom applies it to every
+  insert — so per-formulation φ is a REMAINING task, folded into the Study A
+  per-configuration sampling (§6/§7). README/SPEC document the per-formulation values
+  as the model; the code has not been switched yet.
 - Iron μ verified: mono ΔHU at c10 (0.543 mg Fe/ml) ≈ **+3.6 HU** (matches SPEC §5.2
   ~3 HU); `SPION_c0 == soft-tissue body` exact.
 

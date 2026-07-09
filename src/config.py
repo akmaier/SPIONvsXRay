@@ -19,18 +19,18 @@ TUMOR_VOLUME_CM3 = 8.0       # cm^3
 # (Fe3O4) core + a polyacrylic-acid (PAA, monomer (C3H4O2)n) coating. The reported
 # whole-nanoparticle mass (mg SPION/ml) therefore = magnetite mass + coating mass.
 #
-# PAA_MASS_FRAC (phi) is the coating's fraction of the whole-particle mass. Its
-# EXACT value lives in the article's supplementary TGA (Fig A.1), NOT in this repo,
-# so this is a DOCUMENTED ESTIMATE. Two bounds bracket it:
-#   * magnetometry: SPION I saturation magnetisation ~91 emu/g is near bulk magnetite
-#     (~92-98 emu/g) => magnetite ~93-99% of the particle => coating ~1-7%;
-#   * literature PAA-coated co-precipitated SPIONs run ~10-30% coating.
-# We adopt a central phi = 0.15 (range 0.05-0.30). This estimate sets ONLY the
-# reported whole-particle concentration (mg SPION/ml); it is NEGLIGIBLE for the
-# X-ray mu (PAA is low-Z C/H/O, tissue/water-equivalent) and does NOT move the iron
-# contrast. The independent variable stays the tumor IRON concentration c_Fe.
-PAA_MASS_FRAC = 0.15          # phi: PAA coating mass fraction of the whole particle
-PAA_MASS_FRAC_RANGE = (0.05, 0.30)
+# PAA_MASS_FRAC (phi) is the coating's fraction of the whole-particle mass. The
+# article's supplementary TGA (mmc1.pdf, Table A.1 / Fig A.1 -- now in the repo root)
+# fixes it PER FORMULATION: the iron-oxide residual is 87.7% (SPION I) / 66.4%
+# (SPION II); on heating, magnetite -> hematite (+3.4%, article Eq A.1), so magnetite
+# = R_m/1.034 and the PAA complement is phi ~= 0.15 (SPION I, 12 nm cores) and ~= 0.36
+# (SPION II, 8 nm cores). TODO: this module still uses a SINGLE central phi = 0.15
+# (exact for SPION I); per-formulation phi enters with the Study A per-configuration
+# sampling (see HANDOFF.md). phi sets ONLY the reported whole-particle concentration
+# (mg SPION/ml); it is NEGLIGIBLE for the X-ray mu (PAA is low-Z C/H/O, tissue/water-
+# equivalent) and does NOT move the iron contrast. Independent variable: tumor c_Fe.
+PAA_MASS_FRAC = 0.15          # phi (SPION I): single value for now; per-formulation TODO
+PAA_MASS_FRAC_RANGE = (0.15, 0.36)   # SPION I .. SPION II (TGA, supplement Table A.1)
 
 # Independent variable: article formulation concentration [mg SPION/ml]
 C_FORM_LEVELS = [0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
@@ -233,9 +233,12 @@ def summary() -> str:
     lines.append(f"Projections: {GEOMETRY.num_projections}, FOV: {GEOMETRY.fov_mm} mm")
     lines.append(f"Photons/pixel: {SPECTRUM.photons_per_pixel:.0f}")
     lines.append(f"Detectors: {DETECTORS.types}, PCD bins: {DETECTORS.pcd_num_bins}")
-    lines.append(f"Factorial cells: {len(C_FORM_LEVELS)}x{len(DETECTORS.types)}"
-                 f"x{len(RECON.bh_correction_states)}x{EVAL.noise_realizations}"
-                 f" = {len(C_FORM_LEVELS)*len(DETECTORS.types)*len(RECON.bh_correction_states)*EVAL.noise_realizations}")
+    n_cells = (len(C_FORM_LEVELS) * len(DETECTORS.types) * 2 * len(DOSE_LEVELS)
+               * len(TUMOR_MODELS) * EVAL.noise_realizations)
+    lines.append(f"Detectability cells: conc {len(C_FORM_LEVELS)} x detector "
+                 f"{len(DETECTORS.types)} x bone 2 x dose {len(DOSE_LEVELS)} x "
+                 f"distribution {len(TUMOR_MODELS)} x {EVAL.noise_realizations} reps "
+                 f"= {n_cells}  (BH + short scan always on, not factors)")
     return "\n".join(lines)
 
 
