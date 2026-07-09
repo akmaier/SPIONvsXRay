@@ -105,6 +105,22 @@ def line_integral(acc, detector, seed):
     return -np.log(np.clip(M, eps, None) / max(M_air, eps))
 
 
+def bh_poly_for(acc, detector):
+    """Calibrated water precorrection polynomial for a detector's effective spectrum
+    (EID weights energy by E; PCD by the per-bin matched-filter weight)."""
+    E, s, edges = acc["E"], acc["s"], acc["edges"]
+    mu_w = materials.linear_attenuation("water", E)     # 1/cm
+    if detector == "EID":
+        w_eff = s * E
+    else:
+        w = _pcd_weights(acc)
+        w_eff = np.zeros_like(s)
+        for b in range(len(edges) - 1):
+            m = (E >= edges[b]) & (E < edges[b + 1])
+            w_eff[m] = w[b] * s[m]
+    return conrad_ct.water_precorrection_poly(E, w_eff, mu_w)
+
+
 def run():
     scene, inserts = conrad_phantom.build_phantom()
     geo = conrad_ct.fan_geometry(n_pix=512)
@@ -114,11 +130,12 @@ def run():
 
     rows = []
     for detector in DETECTORS.types:                    # EID, PCD
+        bh_poly = bh_poly_for(acc, detector)            # calibrated per detector
         for bh in (False, True):
             signal = {i["name"]: [] for i in inserts}
             for seed in range(EVAL.noise_realizations):
                 sino = line_integral(acc, detector, seed)
-                recon = conrad_ct.fbp(sino, geo, bh_correction=bh)
+                recon = conrad_ct.fbp(sino, geo, bh_correction=bh, bh_poly=bh_poly)
                 meas = cp.measure_inserts(recon, geo, inserts)
                 for m in meas:
                     signal[m["name"]].append((m["iron_delta_hu"], m["delta_hu"]))

@@ -102,11 +102,36 @@ def project(image_np, geo, gpu=None):
     return grid2d_to_np(fp.projectRayDriven(g))               # CPU
 
 
-def fbp(sino_np, geo, bh_correction=False, bh_c2=0.10):
+def water_precorrection_poly(E, w_eff, mu_water_percm, Lmax_cm=30.0, deg=4):
+    """Calibrated water beam-hardening precorrection polynomial.
+
+    Given a detector's effective per-energy weighting w_eff(E) (EID: s*E;
+    PCD-combined: bin-weight*s) and water linear attenuation mu(E) [1/cm], tabulate
+    the polychromatic water line integral p_poly(L) = -log(sum w exp(-mu L)) and fit
+    p_mono = poly(p_poly), where p_mono = mu_ref*L is the linear (monochromatic)
+    response at the spectrum-weighted mean mu_ref. Applying poly() to a measured
+    line integral linearizes the water response, so a water cylinder reconstructs
+    flat (removing cupping) instead of relying on a guessed quadratic coefficient.
+    """
+    w = np.asarray(w_eff, float); w = w / w.sum()
+    L = np.linspace(0.0, Lmax_cm, 400)
+    p_poly = np.array([-np.log(np.sum(w * np.exp(-mu_water_percm * l))) for l in L])
+    mu_ref = float(np.sum(w * mu_water_percm))        # low-dose slope dp/dL at L=0
+    return np.polyfit(p_poly, mu_ref * L, deg)
+
+
+def fbp(sino_np, geo, bh_correction=False, bh_poly=None, bh_c2=0.10):
     """Fan-beam FBP: (optional water beam-hardening precorrection ->) cosine ->
-    ramp filter -> CONRAD distance-weighted backprojection."""
+    ramp filter -> CONRAD distance-weighted backprojection.
+
+    Water precorrection: pass a calibrated `bh_poly` (from water_precorrection_poly);
+    the legacy fixed `bh_c2` quadratic is only a fallback and is NOT spectrum-matched.
+    """
     if bh_correction:
-        sino_np = sino_np + bh_c2 * sino_np ** 2      # nominal water precorrection
+        if bh_poly is not None:
+            sino_np = np.polyval(bh_poly, sino_np)    # calibrated water precorrection
+        else:
+            sino_np = sino_np + bh_c2 * sino_np ** 2   # legacy fallback (uncalibrated)
     n_ang, n_det = sino_np.shape
     t = (np.arange(n_det) - (n_det - 1) / 2.0) * geo["deltaT"]
     cos_w = geo["focal"] / np.sqrt(geo["focal"] ** 2 + t ** 2)   # fan cosine weight
