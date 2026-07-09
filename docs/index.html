@@ -146,19 +146,37 @@
         enters that concentration bookkeeping.</p>
       <p>For X-ray this is the right anchor. Contrast is driven by the <b>iron oxide</b>, and we model
         the oxide (magnetite), whose iron mass fraction is <b>0.724</b> (3·55.85/231.5) — so the bound
-        oxygen is included (~+7% over pure Fe). The <b>PAA coating is low-Z (C/H/O),
-        essentially tissue/water-equivalent, and negligible</b> for attenuation at diagnostic
-        energies, so it is correctly left out of the μ model. (Its exact mass fraction sits in the
-        article's supplementary TGA and does not change the iron-anchored contrast model.)</p>
+        oxygen is included (~+7% over pure Fe).</p>
+      <h3>Full-nanoparticle simulation (magnetite core + PAA coating)</h3>
+      <p>We simulate the <b>whole particle</b>, not just the iron: the tumor material is the ICRU
+        soft-tissue matrix + magnetite (mass = c<sub>Fe</sub>/0.724) + the <b>PAA coating</b>
+        (polyacrylic acid, monomer C<sub>3</sub>H<sub>4</sub>O<sub>2</sub>, registered as a CONRAD
+        C/H/O material). From the tumor iron concentration we estimate the whole-nanoparticle
+        concentration <code>c<sub>NP</sub> = c<sub>Fe</sub> / (0.724 · (1 − φ))</code>, where φ is the
+        coating's mass fraction of the particle.</p>
+      <p>φ is an <b>honest estimate</b>: its exact value lives in the article's supplementary TGA
+        (Fig A.1), which is not in this repo. Two bounds bracket it — the near-bulk saturation
+        magnetisation (SPION I ≈ 91 emu/g vs bulk magnetite ≈ 92–98) implies magnetite ≈ 93–99 %, so
+        coating ≈ 1–7 %; literature PAA-coated co-precipitated SPIONs run ≈ 10–30 %. We adopt a
+        central <b>φ = 0.15 (range 0.05–0.30)</b>, giving <code>c<sub>NP</sub> = 1.625 · c<sub>Fe</sub></code>.
+        This φ sets <b>only</b> the reported mg SPION/ml; the PAA is low-Z (C/H/O), essentially
+        tissue/water-equivalent, so it is <b>negligible for the X-ray μ</b> — adding it moves the
+        monochromatic iron ΔHU at the top dose by only ≈ 3.6 % (3.62 → 3.75 HU @ 60 keV), and the
+        iron contrast is unchanged.</p>
       <h3>Particle concentration vs. iron concentration</h3>
       <p>These two are easy to conflate, so we keep them separate. The independent variable is a
         <b>particle</b> concentration (mg SPION/ml); via the delivered-mass model it maps to a tumor
-        <b>iron</b> concentration <code>c<sub>Fe</sub> = 0.0543 · c<sub>form</sub></code> (mg Fe/ml).
+        <b>iron</b> concentration <code>c<sub>Fe</sub> = 0.0543 · c<sub>form</sub></code> (mg Fe/ml),
+        and to a whole-nanoparticle concentration c<sub>NP</sub> = 1.625 · c<sub>Fe</sub>.
         All contrast and detectability numbers on this page are reported as <b>mg Fe/ml in the
         tumor</b>.</p>
       <div class="note">The in-tumor iron concentrations here (~0.03–1.09&nbsp;mg Fe/ml) are about an
         order of magnitude <b>below</b> the article's 1–10&nbsp;mg Fe/ml suspension range — by design.
-        We model the <b>diluted delivered dose in the tumor</b>, not the concentrated vial.</div>
+        We model the <b>diluted delivered dose in the tumor</b>, not the concentrated vial. The tumor
+        concentration is grounded in the article's measured <b>cellular loading</b>: SPION I
+        ~8.23 pg Fe/cell (fresh; 3.78 after 24 h), SPION II ~3.86/3.60/2.51 pg Fe/cell in B16-F10
+        melanoma cells; at a tumor cell density ~10⁸–10⁹ cells/cm³ this gives ~0.25–8 mg Fe/ml
+        (realistic band ~1–2.5 mg Fe/ml for SPION I), which brackets the sweep.</div>
     </div>
 
     <div class="grid">
@@ -233,6 +251,20 @@
     <p class="lead" style="margin-top:14px">The detection limit is ≈ <b>0.54 mg Fe/ml</b> — the realistic 6 mg
       dose — essentially independent of detector and beam-hardening correction. SPIONs are
       <b>borderline-visible</b> at realistic loading.</p>
+
+    <div class="audit">
+      <h3>Two experiments: cellular uptake vs. vascular (fresh) delivery</h3>
+      <p>The same delivered iron mass is imaged under two biological distributions, run as one
+        directly comparable factor (uniform vs. vessel) within a single design:</p>
+      <ul class="tight">
+        <li><b>Study A — homogeneous (cellular uptake).</b> SPIONs internalised by tumor cells give a
+          ~uniform tumor iron distribution (the homogeneous level). Grounded in the article's measured
+          per-cell loading × tumor cell density.</li>
+        <li><b>Study B — vascular / fresh delivery.</b> Freshly delivered SPIONs still in the
+          blood/vasculature, not yet taken up — contrast confined to the ~150 µm vessels (~10 % of tumor
+          volume, 10× local concentration), heterogeneous (the vessel level).</li>
+      </ul>
+    </div>
   </section>
 
   <section id="spectral">
@@ -250,12 +282,14 @@
   </section>
 
   <section id="studyb">
-    <h2><span class="n">09</span>Study B — vascular uptake</h2>
-    <p class="lead">The same iron mass confined to 150 µm vessels (10% of tumor volume, 10× local).
-      At the 0.5 mm voxel the vessels are unresolved, so partial-volume averaging with mass
-      conservation makes the tumor-ROI contrast identical to the homogeneous case; the
-      beam-hardening nonlinearity is &lt; 10⁻³ HU and per-voxel structural texture averages out.
-      Vascular uptake is therefore CT-indistinguishable from homogeneous uptake.</p>
+    <h2><span class="n">09</span>Study B — vascular (fresh) delivery</h2>
+    <p class="lead">The vascular/fresh phase (freshly delivered SPIONs still in the vessels, not yet
+      taken up by cells) vs. Study A's homogeneous cellular uptake. The same iron mass is confined to
+      150 µm vessels (10% of tumor volume, 10× local). At the 0.5 mm voxel the vessels are unresolved,
+      so partial-volume averaging with mass conservation makes the tumor-ROI contrast identical to the
+      homogeneous case; the beam-hardening nonlinearity is &lt; 10⁻³ HU and per-voxel structural texture
+      averages out. Vascular (fresh) delivery is therefore CT-indistinguishable from homogeneous
+      cellular uptake.</p>
     <div class="grid">
       <figure><img src="assets/fig_study_b.png" alt="study b" onerror="markPending(this)">
         <figcaption>Partial-volume averaging: ROI-mean is invariant; the per-voxel peak reaches the

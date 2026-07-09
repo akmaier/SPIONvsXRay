@@ -22,16 +22,21 @@ contrast (Hounsfield Units / attenuation) and detectability.
 
 - X-ray attenuation of a dilute nanoparticle suspension is driven almost entirely
   by the **iron content** (Z=26, K-edge 7.1 keV); the water matrix and the thin
-  PAA/carbon coating contribute negligibly at diagnostic energies.
-- The nanoparticle core is an iron oxide — **magnetite Fe₃O₄** (ρ ≈ 5.17 g/cm³,
-  Fe mass fraction 0.724) or **maghemite γ-Fe₂O₃** (ρ ≈ 4.9 g/cm³, Fe fraction
-  0.700). For the X-ray model, only the delivered **mg Fe/ml** matters; core
-  polymorph mainly affects how we convert particle mass ↔ Fe mass.
-- The iron-loaded tumor at concentration `c` [mg Fe/ml] is modeled as **ICRU
-  soft tissue + magnetite (Fe₃O₄) oxide** added to the tissue matrix (NOT diluted in
-  water — see §5.2), so a zero-iron tumor equals the soft-tissue background (ΔHU = 0)
-  and all contrast is attributable to iron. Built with the CONRAD custom-material
-  "mixture" recipe.
+  PAA/carbon coating contribute negligibly at diagnostic energies. We nonetheless
+  **simulate the full particle** (core + coating) for completeness — the coating is
+  included as mass but, being low-Z, barely moves μ (see §5.2).
+- The nanoparticle is a **PAA-coated magnetite (Fe₃O₄) cluster** (Heinen et al.):
+  iron-oxide cores ~8/12 nm assembling into ~70–250 nm hydrodynamic clusters, with a
+  **polyacrylic-acid (PAA, monomer (C₃H₄O₂)ₙ) coating**. The core is magnetite
+  (ρ ≈ 5.17 g/cm³, Fe mass fraction 0.724) — maghemite γ-Fe₂O₃ (ρ ≈ 4.9, Fe 0.700) is
+  the alternative polymorph. For the X-ray model, only the delivered **mg Fe/ml**
+  drives contrast; the polymorph mainly affects particle-mass ↔ Fe-mass conversion.
+- The nanoparticle-loaded tumor at iron concentration `c_Fe` [mg Fe/ml] is modeled as
+  **ICRU soft tissue + magnetite (Fe₃O₄) core + PAA coating** added to the tissue
+  matrix (NOT diluted in water — see §5.2), so a zero-iron tumor equals the
+  soft-tissue background (ΔHU = 0) and all contrast is attributable to iron. Built
+  with the CONRAD custom-material "mixture" recipe (PAA registered as a C/H/O
+  material).
 
 ## 3. Approach Overview
 
@@ -97,17 +102,34 @@ no organ heterogeneity.
 ### 5.2 Materials & dose model
 
 - **Core model:** magnetite **Fe₃O₄** (ρ ≈ 5.17 g/cm³, **Fe mass fraction
-  0.724**). "6 mg of SPIONs" = whole-particle mass; iron content = 0.724 × mass.
+  0.724**). "6 mg of SPIONs" = whole-particle mass; iron content = 0.724 × magnetite
+  mass.
 - **Attenuation uses the OXIDE, not pure Fe:** contrast is modeled as magnetite —
   per gram of iron, `Δμ = c_Fe·[(μ/ρ)_Fe + 0.382·(μ/ρ)_O]` (0.382 g bound O per
   g Fe). Oxygen is near tissue-equivalent, so it adds ~+7% over pure iron
   (realistic-dose tumor HU 2.85 → 3.04) — small but included for correctness.
-- **Iron-loaded tumor:** the tumor host medium is the **same ICRU soft tissue**
-  as the phantom background, with Fe **added** (density raised by 0.001·c_Fe
-  g/cm³, mass negligible; high-Z iron drives the contrast). The iron is **not
-  diluted in water** — this keeps **c_Fe = 0 ≡ background (ΔHU = 0)**, so all
-  contrast is attributable to iron and the tumor-free soft tissue is a true
-  iron-free reference.
+- **Full-nanoparticle model (core + PAA coating):** the whole particle is
+  magnetite core + a **polyacrylic-acid (PAA, monomer (C₃H₄O₂)ₙ) coating**, so the
+  tumor material per ml = soft-tissue matrix + magnetite (mass = c_Fe/0.724) + PAA
+  (mass = φ·c_NP). From the tumor iron concentration we estimate the
+  **whole-nanoparticle** concentration
+  `c_NP = c_Fe / (0.724·(1 − φ))`, where **φ = PAA coating mass fraction**.
+  - **φ is an estimate** (documented, not measured here): the exact value is the
+    article's supplementary **TGA (Fig A.1)**, not in this repo. Magnetometry — SPION I
+    saturation magnetisation ≈ 91 emu/g vs bulk magnetite ≈ 92–98 — implies magnetite
+    ≈ 93–99 % ⇒ coating ≈ 1–7 %; literature PAA-coated co-precipitated SPIONs run
+    ≈ 10–30 %. We adopt a **central φ = 0.15 (range 0.05–0.30)** ⇒ `c_NP = 1.625·c_Fe`.
+  - **φ sets ONLY the reported mg SPION/ml** (particle basis). The PAA is low-Z
+    (C/H/O), tissue/water-equivalent, so it is **negligible for μ**: registering it and
+    adding its mass moves the monochromatic iron ΔHU at the top dose by only ≈ 3.6 %
+    (3.62 → 3.75 HU @ 60 keV). *Iron* (mg Fe/ml) and *particle* (mg SPION/ml)
+    concentrations are reported distinctly.
+- **Nanoparticle-loaded tumor:** the tumor host medium is the **same ICRU soft
+  tissue** as the phantom background, with the **full particle** (magnetite + PAA)
+  **added** (density raised by ~0.001·c_Fe g/cm³, mass negligible; high-Z iron drives
+  the contrast). The particle is **not diluted in water** — this keeps
+  **c_Fe = 0 ≡ background (ΔHU = 0)**, so all contrast is attributable to iron and the
+  tumor-free soft tissue is a true iron-free reference.
 
 **Dose model — delivered mass, not a fixed suspension concentration.** The
 independent variable is the article's **formulation concentration** `c_form`
@@ -121,19 +143,30 @@ c_Fe      = 0.724 × c_tumor               # tumor IRON concentration (drives X-
           = 0.0543 × c_form  [mg Fe/ml]
 ```
 
-| `c_form` (mg/ml) | delivered SPION (mg) | tumor SPION (mg/ml) | **tumor Fe (mg/ml)** |
-|---:|---:|---:|---:|
-| 0    | 0    | 0      | **0**     |
-| 0.5  | 0.3  | 0.0375 | **0.027** |
-| 1    | 0.6  | 0.075  | **0.054** |
-| 2    | 1.2  | 0.15   | **0.109** |
-| 5    | 3.0  | 0.375  | **0.271** |
-| 10   | 6.0  | 0.75   | **0.543** |
-| 20   | 12.0 | 1.5    | **1.086** |
+Reported concentrations: **tumor Fe** (mg Fe/ml, drives μ) and the **whole-particle**
+`c_NP = 1.625·c_Fe` (mg SPION/ml, φ = 0.15) with its PAA-coating mass.
+
+| `c_form` (mg/ml) | delivered SPION (mg) | **tumor Fe (mg/ml)** | tumor c_NP (mg SPION/ml) | tumor PAA (mg/ml) |
+|---:|---:|---:|---:|---:|
+| 0    | 0    | **0**     | 0      | 0      |
+| 0.5  | 0.3  | **0.027** | 0.044  | 0.0066 |
+| 1    | 0.6  | **0.054** | 0.088  | 0.0132 |
+| 2    | 1.2  | **0.109** | 0.176  | 0.0265 |
+| 5    | 3.0  | **0.271** | 0.441  | 0.0662 |
+| 10   | 6.0  | **0.543** | 0.882  | 0.1324 |
+| 20   | 12.0 | **1.086** | 1.765  | 0.2647 |
 
 **Note:** even the top dose yields only ~0.5 mg Fe/ml in the tumor — roughly an
 order of magnitude below iodine CT enhancement (~2–15 mg/ml). Quantifying whether
 this is detectable is a central outcome of the study.
+
+**Concentration basis — cellular-loading anchor.** The tumor iron band is grounded
+in the article's **measured cellular loading** (Heinen et al., B16-F10 melanoma):
+SPION I ≈ **8.23 pg Fe/cell** (fresh; 3.78 after 24 h), SPION II ≈ 3.86/3.60/2.51
+pg Fe/cell. At a tumor cell density ~10⁸–10⁹ cells/cm³ this gives ~**0.25–8 mg Fe/ml**
+(realistic ~1–2.5 mg Fe/ml for SPION I), which brackets the swept tumor
+concentrations. This *justifies* the range; it does not change the delivered-mass
+sweep above.
 
 ### 5.3 Spectrum & dose
 
@@ -238,13 +271,20 @@ contrast is **photoelectric** and lives at low energy. Computed with
 Added study dimension: sweep `KVP_LEVELS` and `FILTER_CONFIGS` (config.py) and
 report EID vs PCD-unweighted vs PCD-optimal-weighted CNR.
 
-### 5.9 Tumor distribution factor — vascular (vessel) model
+### 5.9 Tumor distribution factor — two experiments (cellular vs vascular)
 
-The **tumor-distribution factor** (§5.6) has a uniform level and a vessel level.
-Realistic alternative to the uniform tumor: the contrast agent resides in
-**tumor vasculature — 150 µm vessels occupying 10 % of the tumor volume** — not
-uniformly dissolved. Same delivered iron mass, now confined to 10 % of the
-volume → **10× local vessel concentration**.
+The **tumor-distribution factor** (§5.6) encodes two biological phases of the same
+delivered iron mass, run as one directly-comparable factor:
+
+- **Study A — homogeneous (cellular uptake).** SPIONs internalised by the tumor
+  cells give a ~uniform tumor iron distribution (the uniform level). This is the
+  phase the article's per-cell loading (§5.2 cellular anchor) describes.
+- **Study B — vascular / fresh delivery.** Freshly delivered SPIONs still in the
+  **blood/vasculature, not yet taken up** — contrast confined to **150 µm vessels
+  occupying 10 % of the tumor volume** (the vessel level), heterogeneous.
+
+For Study B the same delivered iron mass is confined to 10 % of the volume →
+**10× local vessel concentration**.
 
 Key physics: the CT voxel (~390 µm) **cannot resolve** 150 µm vessels, so each
 tumor voxel partial-volume-averages vessel + tissue. With mass conserved the

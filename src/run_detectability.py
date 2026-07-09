@@ -211,9 +211,11 @@ def run(bones=(False, True), doses=None, tumor_models=("homogeneous", "vessel"))
       - with_bone: cortical-bone rod absent / present (a hard beam-hardening source).
       - dose: DOSE_LEVELS (low/high) photons/pixel -- parameterizes the Poisson/
         Gaussian noise floor (low dose => higher noise => lower CNR).
-      - tumor_model: homogeneous (Study A, uniform) vs vessel (Study B, 150 um
-        vessels at 10% volume fraction => 10x local conc; mass-conserved mean, plus
-        BH nonlinearity + structural noise, reusing src/run_study_b.py).
+      - tumor_model: two experiments -- homogeneous (Study A, cellular uptake:
+        SPIONs internalised -> ~uniform tumor iron) vs vessel (Study B, vascular/
+        fresh delivery: SPIONs still in 150 um vessels at 10% volume fraction, not
+        yet taken up => 10x local conc; mass-conserved mean, plus BH nonlinearity +
+        structural noise, reusing src/run_study_b.py).
       - c_Fe concentration; EVAL.noise_realizations noise draws per cell.
     """
     if doses is None:

@@ -12,6 +12,26 @@ FE_FRACTION = 0.724          # iron mass fraction of magnetite Fe3O4
 DELIVERED_AT_10_MG = 6.0     # mg SPION delivered into the tumor at c_form = 10 mg/ml
 TUMOR_VOLUME_CM3 = 8.0       # cm^3
 
+# --------------------------------------------------------------------------
+# Full-nanoparticle model (magnetite core + PAA coating).
+# --------------------------------------------------------------------------
+# The nanoparticle is a PAA-coated magnetite cluster (Heinen et al.): a magnetite
+# (Fe3O4) core + a polyacrylic-acid (PAA, monomer (C3H4O2)n) coating. The reported
+# whole-nanoparticle mass (mg SPION/ml) therefore = magnetite mass + coating mass.
+#
+# PAA_MASS_FRAC (phi) is the coating's fraction of the whole-particle mass. Its
+# EXACT value lives in the article's supplementary TGA (Fig A.1), NOT in this repo,
+# so this is a DOCUMENTED ESTIMATE. Two bounds bracket it:
+#   * magnetometry: SPION I saturation magnetisation ~91 emu/g is near bulk magnetite
+#     (~92-98 emu/g) => magnetite ~93-99% of the particle => coating ~1-7%;
+#   * literature PAA-coated co-precipitated SPIONs run ~10-30% coating.
+# We adopt a central phi = 0.15 (range 0.05-0.30). This estimate sets ONLY the
+# reported whole-particle concentration (mg SPION/ml); it is NEGLIGIBLE for the
+# X-ray mu (PAA is low-Z C/H/O, tissue/water-equivalent) and does NOT move the iron
+# contrast. The independent variable stays the tumor IRON concentration c_Fe.
+PAA_MASS_FRAC = 0.15          # phi: PAA coating mass fraction of the whole particle
+PAA_MASS_FRAC_RANGE = (0.05, 0.30)
+
 # Independent variable: article formulation concentration [mg SPION/ml]
 C_FORM_LEVELS = [0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
 
@@ -36,6 +56,26 @@ def tumor_iron_conc(c_form: float) -> float:
     """
     c_spion = delivered_spion_mg(c_form) / TUMOR_VOLUME_CM3
     return FE_FRACTION * c_spion
+
+
+def nanoparticle_conc_from_fe(c_fe: float, phi: float = PAA_MASS_FRAC) -> float:
+    """Whole-nanoparticle concentration [mg SPION/ml] from tumor iron conc [mg Fe/ml].
+
+    A whole particle = magnetite core + PAA coating. Iron is FE_FRACTION (0.724) of
+    the magnetite, and magnetite is the (1 - phi) non-coating fraction of the whole
+    particle, so the whole-particle iron fraction is FE_FRACTION*(1 - phi) and
+
+        c_NP = c_Fe / (FE_FRACTION * (1 - phi)).
+
+    This is the REPORTED mg SPION/ml (particle basis); phi is an estimate (see
+    PAA_MASS_FRAC) and is negligible for the X-ray mu.
+    """
+    return c_fe / (FE_FRACTION * (1.0 - phi))
+
+
+def tumor_paa_conc(c_form: float, phi: float = PAA_MASS_FRAC) -> float:
+    """PAA-coating mass concentration in the tumor [mg PAA/ml] = phi * c_NP."""
+    return phi * nanoparticle_conc_from_fe(tumor_iron_conc(c_form), phi)
 
 
 # --------------------------------------------------------------------------
@@ -154,8 +194,12 @@ class Evaluation:
 # Phantom background and tumor distribution models (SPEC §5.1 / §5.9).
 # Decision 2026-07-08: single round geometric phantom (no digital rabbit exists;
 # ROBY=rat, MOBY=mouse). Realistic-anatomy arm dropped.
-PHANTOM_BACKGROUNDS = ["round"]              # (A) geometric rabbit-scale cylinder
-TUMOR_MODELS = ["homogeneous", "vessel"]     # Study A (uniform), Study B (150 µm vessels @10%)
+PHANTOM_BACKGROUNDS = ["round"]              # geometric rabbit-scale cylinder
+# Two experiments (one comparable factor):
+#   Study A homogeneous = cellular uptake (SPIONs internalised -> ~uniform tumor iron)
+#   Study B vessel      = vascular/fresh delivery (SPIONs still in 150 µm vessels @10%
+#                         volume, not yet taken up -> 10x local conc, heterogeneous)
+TUMOR_MODELS = ["homogeneous", "vessel"]
 
 # Study B vessel model (SPEC §5.9)
 VESSEL_DIAMETER_UM = 150.0
@@ -177,10 +221,14 @@ EVAL = Evaluation()
 def summary() -> str:
     lines = ["SPIONvsXRay configuration", "=" * 40]
     lines.append(f"Formulation levels (mg SPION/ml): {C_FORM_LEVELS}")
-    lines.append("Tumor iron per level (mg Fe/ml):")
+    lines.append(f"Full nanoparticle: magnetite core + PAA coating (phi={PAA_MASS_FRAC:g},"
+                 f" range {PAA_MASS_FRAC_RANGE[0]:g}-{PAA_MASS_FRAC_RANGE[1]:g}; estimate)")
+    lines.append("Tumor loading per level (iron mg Fe/ml -> whole-particle mg SPION/ml, PAA mg/ml):")
     for c in C_FORM_LEVELS:
+        cfe = tumor_iron_conc(c)
         lines.append(f"  c_form={c:5.1f} -> delivered={delivered_spion_mg(c):5.2f} mg"
-                     f" -> {tumor_iron_conc(c):.4f} mg Fe/ml")
+                     f" -> {cfe:.4f} mg Fe/ml -> {nanoparticle_conc_from_fe(cfe):.4f} mg SPION/ml"
+                     f" (PAA {tumor_paa_conc(c):.4f} mg/ml)")
     lines.append(f"Tumor radius: {PHANTOM.tumor_radius_mm:.2f} mm (8 cm^3 sphere)")
     lines.append(f"Projections: {GEOMETRY.num_projections}, FOV: {GEOMETRY.fov_mm} mm")
     lines.append(f"Photons/pixel: {SPECTRUM.photons_per_pixel:.0f}")

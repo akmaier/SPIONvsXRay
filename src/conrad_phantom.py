@@ -21,7 +21,8 @@ import math
 import jpype
 
 import conrad_backend
-from config import C_FORM_LEVELS, tumor_iron_conc, BODY_MATERIAL
+from config import (C_FORM_LEVELS, tumor_iron_conc, tumor_paa_conc,
+                    nanoparticle_conc_from_fe, PAA_MASS_FRAC, BODY_MATERIAL)
 
 CG = conrad_backend.class_getter
 
@@ -45,12 +46,23 @@ def spion_name(c_form: float) -> str:
 # magnetite element mass fractions (Fe3O4 = 3 Fe + 4 O)
 M_FE = 55.845
 M_O = 15.999
+M_C = 12.011
+M_H = 1.008
 FE_MASS_FRAC_FE3O4 = 3 * M_FE / M_FE3O4
 O_MASS_FRAC_FE3O4 = 4 * M_O / M_FE3O4
 
+# PAA coating: polyacrylic acid, monomer (C3H4O2)n. Low-Z (C/H/O), tissue/water-
+# equivalent -> negligible for the X-ray mu, but included so the FULL nanoparticle
+# (magnetite core + PAA coating) is simulated, not just the iron.
+M_PAA_MONOMER = 3 * M_C + 4 * M_H + 2 * M_O          # (C3H4O2) g/mol = 72.06
+C_MASS_FRAC_PAA = 3 * M_C / M_PAA_MONOMER
+H_MASS_FRAC_PAA = 4 * M_H / M_PAA_MONOMER
+O_MASS_FRAC_PAA = 2 * M_O / M_PAA_MONOMER
 
-def _spion_wac(grams_magnetite):
-    """Build a WAC for 1 g of ICRU soft-tissue matrix + grams_magnetite g of Fe3O4.
+
+def _spion_wac(grams_magnetite, grams_paa=0.0):
+    """Build a WAC for 1 g of ICRU soft-tissue matrix + grams_magnetite g of Fe3O4
+    + grams_paa g of PAA coating (polyacrylic acid, monomer C3H4O2).
 
     CRITICAL: WeightedAtomicComposition.getCompositionTable() stores per-element
     *mass* (moles*atomicMass), and WAC.add(element, moles) multiplies its argument
@@ -78,25 +90,32 @@ def _spion_wac(grams_magnetite):
     tbl = TreeMap()
     for k in src.keySet():
         tbl.put(str(k), float(src.get(k)) / mm_soft)   # scale to 1 g soft tissue
+    def _add(elem, mass):
+        cur = float(tbl.get(elem)) if tbl.containsKey(elem) else 0.0
+        tbl.put(elem, cur + mass)
     if grams_magnetite > 0:
-        fe_mass = grams_magnetite * FE_MASS_FRAC_FE3O4
-        o_mass = grams_magnetite * O_MASS_FRAC_FE3O4
-        cur_fe = float(tbl.get("Fe")) if tbl.containsKey("Fe") else 0.0
-        cur_o = float(tbl.get("O")) if tbl.containsKey("O") else 0.0
-        tbl.put("Fe", cur_fe + fe_mass)
-        tbl.put("O", cur_o + o_mass)
+        _add("Fe", grams_magnetite * FE_MASS_FRAC_FE3O4)
+        _add("O", grams_magnetite * O_MASS_FRAC_FE3O4)
+    if grams_paa > 0:                                  # PAA coating: C/H/O (low-Z)
+        _add("C", grams_paa * C_MASS_FRAC_PAA)
+        _add("H", grams_paa * H_MASS_FRAC_PAA)
+        _add("O", grams_paa * O_MASS_FRAC_PAA)
     w = WAC()
     w.setCompositionTable(tbl)
     return w
 
 
 def register_spion_materials():
-    """Register a magnetite-oxide-in-soft-tissue Mixture per concentration.
+    """Register a FULL-nanoparticle-in-soft-tissue Mixture per concentration.
 
-    Iron oxide (Fe3O4) is ADDED to the ICRU soft-tissue matrix (config.BODY_MATERIAL),
-    NOT diluted in water (SPEC §5.2). The delivered iron mass is exactly c_Fe
-    [mg Fe/ml] (c_Fe = 0.0543*c_form, FE_FRACTION magnetite). SPION_c0 carries zero
-    iron, so it equals plain soft tissue and ΔHU(c_Fe=0) == 0.
+    The whole nanoparticle (magnetite Fe3O4 core + PAA coating, monomer C3H4O2) is
+    ADDED to the ICRU soft-tissue matrix (config.BODY_MATERIAL), NOT diluted in water
+    (SPEC §5.2). The delivered iron mass is exactly c_Fe [mg Fe/ml]
+    (c_Fe = 0.0543*c_form, FE_FRACTION magnetite); the magnetite mass = c_Fe/0.724 and
+    the PAA-coating mass = phi*c_NP (config.tumor_paa_conc, phi = PAA_MASS_FRAC). The
+    PAA coating is low-Z (C/H/O), tissue/water-equivalent -> negligible for mu but
+    included so the full particle is simulated. SPION_c0 carries zero particle mass, so
+    it equals plain soft tissue and ΔHU(c_Fe=0) == 0.
     """
     global _registered
     conrad_backend.setup()
@@ -107,9 +126,10 @@ def register_spion_materials():
     for c in C_FORM_LEVELS:
         c_fe = tumor_iron_conc(c)                      # mg Fe/ml
         grams_magnetite = (1e-3 * c_fe) / FE_FRACTION  # g magnetite per g matrix
-        wac = _spion_wac(grams_magnetite)
+        grams_paa = 1e-3 * tumor_paa_conc(c)           # g PAA coating per g matrix
+        wac = _spion_wac(grams_magnetite, grams_paa)
         m = matpkg.Mixture()
-        m.setDensity(1.0 + grams_magnetite)            # rho raised by ~0.001*c_Fe (negligible)
+        m.setDensity(1.0 + grams_magnetite + grams_paa)  # rho raised by particle mass (negligible)
         m.setName(spion_name(c))
         m.setWeightedAtomicComposition(wac)
         DB.put(m)
