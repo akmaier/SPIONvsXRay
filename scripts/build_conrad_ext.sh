@@ -16,8 +16,9 @@ rm -rf "$OUT"; mkdir -p "$OUT"
 # Ensure the sibling kernel the class also loads (Ray) is present next to Pixel.
 CSRC=/Users/maier/Documents/CONRAD/src/edu/stanford/rsl/tutorial/fan
 [ -f "$SRC/FanBeamBackProjectorRay.cl" ] || cp "$CSRC/FanBeamBackProjectorRay.cl" "$SRC/" 2>/dev/null || true
-echo "Compiling patched FanBeamBackprojector2D (spacing fix) against CONRAD jar ..."
-"$JH/bin/javac" -source 8 -target 8 -cp "$JAR" -d "$OUT" "$SRC/FanBeamBackprojector2D.java"
+echo "Compiling CONRAD fan extensions (patched FanBeamBackprojector2D spacing fix +"
+echo "  analytic projector FanBeamAnalyticProjector2D) against CONRAD jar ..."
+"$JH/bin/javac" -source 8 -target 8 -cp "$JAR" -d "$OUT" "$SRC"/*.java
 # .cl resources must sit next to the .class for getResourceAsStream()
 cp "$SRC"/*.cl "$OUT/edu/stanford/rsl/tutorial/fan/"
 
@@ -26,5 +27,13 @@ FSRC="conrad_ext/edu/stanford/rsl/tutorial/filters"
 if compgen -G "$FSRC/*.java" > /dev/null; then
   echo "Compiling patched filter kernels (SheppLogan deltaS fix) against CONRAD jar ..."
   "$JH/bin/javac" -source 8 -target 8 -cp "$JAR" -d "$OUT" "$FSRC"/*.java
+fi
+
+# Compile new projection-domain filtering tools (single-material water
+# beam-hardening precorrection), if present.
+PSRC="conrad_ext/edu/stanford/rsl/conrad/filtering"
+if compgen -G "$PSRC/*.java" > /dev/null; then
+  echo "Compiling projection-domain filtering tools (WaterPrecorrectionTool) against CONRAD jar ..."
+  "$JH/bin/javac" -source 8 -target 8 -cp "$JAR" -d "$OUT" "$PSRC"/*.java
 fi
 echo "Built:"; find "$OUT" -type f

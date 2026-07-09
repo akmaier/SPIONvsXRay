@@ -34,8 +34,8 @@ def _disk_chords(inserts, geo):
     """
     focal, maxT, deltaT = geo["focal"], geo["maxT"], geo["deltaT"]
     maxBeta, deltaBeta = geo["maxBeta"], geo["deltaBeta"]
-    n_views = int(round(maxBeta / deltaBeta))
-    n_det = int(round(maxT / deltaT))
+    n_views = int(maxBeta / deltaBeta)             # match CONRAD's (int) truncation
+    n_det = int(maxT / deltaT)
     beta = (np.arange(n_views) * deltaBeta)[:, None]                # [views,1]
     t = ((np.arange(n_det) + 0.5) * deltaT - maxT / 2.0)[None, :]   # [1,det] bin centers [mm]
     cb, sb = np.cos(beta), np.sin(beta)
@@ -80,15 +80,31 @@ def _rasterize_aa(inserts, n, vox, ss=8):
             for nm, fm in fine_masks.items()}
 
 
-def project_base_materials(inserts, geo=None, n_pix=512, method="aa"):
+def _project_conrad_analytic(scene, geo):
+    """Exact per-material path-length sinograms via CONRAD's FanBeamAnalyticProjector2D
+    (PriorityRayTracer.castRay + accumulatePathLenghtForEachMaterial -> a per-material
+    MultiChannelGrid2D). Priority/overlap is handled by the ray tracer. Path lengths
+    in mm, sinogram [views, det], geometry identical to conrad_ct.fbp."""
+    FAP = CG("edu.stanford.rsl.tutorial.fan").FanBeamAnalyticProjector2D
+    proj = FAP(geo["focal"], geo["maxBeta"], geo["deltaBeta"], geo["maxT"], geo["deltaT"])
+    mc = proj.projectRayDrivenMaterials(scene)
+    mats = proj.getMaterials()                       # List<Material>, index == channel
+    return {str(mats[c].getName()): conrad_ct.grid2d_to_np(mc.getChannel(c))
+            for c in range(int(mats.size()))}
+
+
+def project_base_materials(inserts, geo=None, n_pix=512, method="aa", scene=None):
     """CONRAD-native fan-beam base-material sinograms (path lengths [mm]).
 
     method="aa" (default): anti-aliased fractional-coverage rasterisation projected
       with CONRAD's OpenCL grid projector FanBeamProjector2D.projectRayDrivenCL.
       Sub-pixel-accurate path lengths (fixes the hard-0/1 quantisation bias that
       corrupted low-c_Fe iron dHU) with band-limited edges (low ramp overshoot).
-    method="analytic": exact closed-form disk-chord Radon (no grid); ground-truth
-      path lengths for validating "aa" (sharp edges -> higher ramp overshoot).
+    method="analytic": exact per-material path lengths via CONRAD's
+      FanBeamAnalyticProjector2D (ray tracer) when a PrioritizableScene is given;
+      falls back to the numpy _disk_chords oracle (disks only) if scene is None.
+    method="disk_chords": the numpy closed-form disk-chord oracle directly (used to
+      unit-test the CONRAD analytic projector).
 
     Returns ({material_name: sino[views, det]} in mm, geo), matching the recon
     geometry in `geo`. Inserts override the water body.
@@ -96,10 +112,13 @@ def project_base_materials(inserts, geo=None, n_pix=512, method="aa"):
     conrad_backend.setup()
     if geo is None:
         geo = conrad_ct.fan_geometry(n_pix=n_pix)
-    if method == "analytic":
+    if method == "disk_chords":
         return _disk_chords(inserts, geo), geo
+    if method == "analytic":
+        return (_project_conrad_analytic(scene, geo) if scene is not None
+                else _disk_chords(inserts, geo)), geo
     if method != "aa":
-        raise ValueError(f"unknown projection method {method!r} (use 'aa' or 'analytic')")
+        raise ValueError(f"unknown projection method {method!r} (use 'aa'/'analytic'/'disk_chords')")
     n = int(round(geo["maxT"] / geo["deltaT"]))          # detector-matched, 1 px = deltaT mm
     vox = geo["deltaT"]
     masks = _rasterize_aa(inserts, n, vox)
