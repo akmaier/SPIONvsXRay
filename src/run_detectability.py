@@ -160,7 +160,7 @@ def run(short_scan=False, bones=(False, True), bhs=(False, True)):
         scene, inserts = conrad_phantom.build_phantom(with_bone=with_bone)
         inserts_ref = inserts
         geo = conrad_ct.fan_geometry(n_pix=512, short_scan=short_scan)
-        base, geo = cp.project_base_materials(scene, geo)
+        base, geo = cp.project_base_materials(inserts, geo)
         acc = polychromatic_accumulators(base)          # once per phantom
         spions = [i for i in inserts if i["c_form"] is not None and i["name"] != "SPION_c0"]
         for detector in DETECTORS.types:                # EID, PCD

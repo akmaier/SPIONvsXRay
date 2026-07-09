@@ -32,7 +32,7 @@ def main():
     # discussion). The quantitative factorial always keeps the bone source.
     scene, inserts = conrad_phantom.build_phantom(with_bone=False)
     geo = conrad_ct.fan_geometry(n_pix=512)
-    base, geo = cp.project_base_materials(scene, geo)
+    base, geo = cp.project_base_materials(inserts, geo)
     acc = rf.polychromatic_accumulators(base)
     sp = geo["voxel_mm"]
 

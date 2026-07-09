@@ -32,7 +32,7 @@ def _bin_poly(E, s, mu_w, lo, hi):
 def main():
     scene, inserts = conrad_phantom.build_phantom(with_bone=True)   # realistic BH source
     geo = conrad_ct.fan_geometry(n_pix=512)
-    base, geo = cp.project_base_materials(scene, geo)
+    base, geo = cp.project_base_materials(inserts, geo)
     acc = rf.polychromatic_accumulators(base)
     E, s, edges = acc["E"], acc["s"], acc["edges"]
     mu_w = materials.linear_attenuation("water", E)

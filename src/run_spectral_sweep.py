@@ -23,7 +23,7 @@ from config import DETECTORS, EVAL, KVP_LEVELS, FILTER_CONFIGS
 def sweep(n_reps=15):
     scene, inserts = conrad_phantom.build_phantom()
     geo = conrad_ct.fan_geometry(n_pix=512)
-    base, geo = cp.project_base_materials(scene, geo)          # geometry-only, once
+    base, geo = cp.project_base_materials(inserts, geo)        # geometry-only, once
     spions = [i for i in inserts if i["c_form"] is not None and i["name"] != "SPION_c0"]
 
     # spectra: kVp variants (no added filter) + filter configs at the 90 kVp base

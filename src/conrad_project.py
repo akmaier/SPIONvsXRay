@@ -1,18 +1,16 @@
-"""M4 (CONRAD-native) — fan-beam base-material sinograms via PriorityRayTracer.
+"""M4 (CONRAD-native) — fan-beam base-material sinograms via projectRayDrivenCL.
 
-Replicates FanBeamProjector2D's geometry (source at focal*(cosb,sinb), flat
-detector through iso, StraightLine(source, detector-pixel)) so the resulting
-sinograms reconstruct with conrad_ct.fbp (FanBeamBackprojector2D). For each
-(view, detector-pixel) ray, PriorityRayTracer.castRay returns material segments;
-XRayDetector.accumulatePathLenghtForEachMaterial gives base-material path lengths
-[mm]. These are combined polychromatically (per-material CONRAD attenuation over
-the real 90 kVp spectrum) into EID + multi-bin PCD line-integral sinograms with
-Poisson noise. Sinogram layout: [views, det], matching conrad_ct.
+Each material is rasterized into an indicator grid on the detector-matched grid
+(1 px = deltaT mm, so FanBeamProjector2D geometry is in mm) and forward-projected
+with CONRAD's OpenCL grid projector FanBeamProjector2D.projectRayDrivenCL, giving
+base-material path lengths [mm]. The projector geometry matches conrad_ct.fbp
+(FanBeamBackprojector2D), so the sinograms reconstruct directly. Path lengths are
+combined polychromatically (per-material CONRAD attenuation over the real 90 kVp
+spectrum) into EID + multi-bin PCD line-integral sinograms with Poisson noise.
+Sinogram layout: [views, det], matching conrad_ct.
 """
 from __future__ import annotations
-import math
 import numpy as np
-import jpype
 
 import conrad_backend
 import conrad_ct
@@ -24,55 +22,41 @@ CG = conrad_backend.class_getter
 N0 = SPECTRUM.photons_per_pixel
 
 
-def project_base_materials(scene, geo=None, n_pix=512):
-    """Cast fan-beam rays with PriorityRayTracer -> {material_name: sino[views,det]} [mm].
+def project_base_materials(inserts, geo=None, n_pix=512):
+    """CONRAD-native fan-beam base-material sinograms (OpenCL projector).
 
-    Geometry-driven so the output matches conrad_ct.fbp exactly: n_det = maxTIndex,
-    n_views = maxBeta/deltaBeta from `geo` (default conrad_ct.fan_geometry(n_pix)).
+    Rasterizes each material into an indicator grid on the detector-matched grid
+    (1 px = deltaT mm, so FanBeamProjector2D geometry is in mm) and projects each
+    with projectRayDrivenCL. Returns ({material_name: sino[views, det]} in mm, geo),
+    matching the recon geometry in `geo`. Inserts override the water body, matching
+    the PriorityRayTracer scene ordering (inserts added after the body).
     """
     conrad_backend.setup()
-    shapes = CG("edu.stanford.rsl.conrad.geometry.shapes.simple")
-    render = CG("edu.stanford.rsl.conrad.rendering")
-    XRayDetector = CG("edu.stanford.rsl.conrad.physics.detector").XRayDetector
-    PointND = shapes.PointND
-    StraightLine = shapes.StraightLine
-
-    tracer = render.PriorityRayTracer()
-    tracer.setScene(scene)
-
     if geo is None:
         geo = conrad_ct.fan_geometry(n_pix=n_pix)
-    focal, maxT, deltaT = geo["focal"], geo["maxT"], geo["deltaT"]
-    maxBeta, deltaBeta = geo["maxBeta"], geo["deltaBeta"]
-    n_views = int(round(maxBeta / deltaBeta))
-    n_det = int(round(maxT / deltaT))
-
-    def P(x, y):
-        return PointND(jpype.JArray(jpype.JDouble)([float(x), float(y), 0.0]))
-
-    sinos: dict = {}
-
-    def channel(name):
-        if name not in sinos:
-            sinos[name] = np.zeros((n_views, n_det), dtype=np.float32)
-        return sinos[name]
-
-    for i in range(n_views):
-        beta = deltaBeta * i
-        cb, sb = math.cos(beta), math.sin(beta)
-        a = P(focal * cb, focal * sb)                       # source
-        p0x, p0y = -maxT / 2.0 * sb, maxT / 2.0 * cb        # detector start
-        # detector direction = normalize(-p0) = (sb, -cb)
-        for t in range(n_det):
-            step = 0.5 * deltaT + t * deltaT
-            p = P(p0x + sb * step, p0y - cb * step)
-            segments = tracer.castRay(StraightLine(a, p))
-            if segments is None:
-                continue
-            m = XRayDetector.accumulatePathLenghtForEachMaterial(segments)
-            for mat in m.keySet():
-                channel(mat.getName())[i, t] = float(m.get(mat))
-    return sinos, geo
+    n = int(round(geo["maxT"] / geo["deltaT"]))          # detector-matched, 1 px = deltaT mm
+    vox = geo["deltaT"]
+    yy, xx = np.mgrid[0:n, 0:n]
+    x = (xx - n / 2.0) * vox
+    y = (yy - n / 2.0) * vox
+    assigned = np.zeros((n, n), bool)
+    masks = {}
+    for ins in inserts:                                  # inserts override body
+        cx, cy = ins["center_mm"]; r = ins["radius_mm"]; nm = ins["name"]
+        m = ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) & ~assigned
+        masks.setdefault(nm, np.zeros((n, n), np.float32))[m] = 1.0
+        assigned |= m
+    body = ((x * x + y * y) <= conrad_phantom.BODY_RADIUS_MM ** 2) & ~assigned
+    masks.setdefault("water", np.zeros((n, n), np.float32))[body] = 1.0
+    FP = CG("edu.stanford.rsl.tutorial.fan").FanBeamProjector2D
+    fp = FP(geo["focal"], geo["maxBeta"], geo["deltaBeta"], geo["maxT"], geo["deltaT"])
+    base = {}
+    for nm, mask in masks.items():
+        g = conrad_ct.np_to_grid2d(mask)
+        g.setSpacing(vox, vox)
+        g.setOrigin(-(n * vox) / 2.0, -(n * vox) / 2.0)
+        base[nm] = conrad_ct.grid2d_to_np(fp.projectRayDrivenCL(g)) * vox   # path length [mm]
+    return base, geo
 
 
 def _material_mu(names, energies):
@@ -175,7 +159,7 @@ if __name__ == "__main__":
     scene, inserts = conrad_phantom.build_phantom()
     geo = conrad_ct.fan_geometry(n_pix=512)
     t = time.time()
-    base, geo = project_base_materials(scene, geo)
+    base, geo = project_base_materials(inserts, geo)
     print(f"[native] base-material projection {time.time()-t:.1f}s, "
           f"sino {next(iter(base.values())).shape}, materials {len(base)}")
 
