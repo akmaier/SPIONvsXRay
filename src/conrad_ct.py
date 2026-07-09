@@ -60,10 +60,13 @@ def grid2d_to_np(g) -> np.ndarray:
     return buf.reshape(h, w)
 
 
-def fan_geometry(fov_mm=FOV_MM, n_pix=None, voxel_mm=None):
+def fan_geometry(fov_mm=FOV_MM, n_pix=None, voxel_mm=None, short_scan=False):
     """Fan-beam geometry. Recon = n_pix x n_pix at `voxel_mm` (fixed CL backprojector).
 
     voxel_mm defaults to config.RECON_VOXEL_MM (0.5 mm); recon FOV = n_pix*voxel_mm.
+    short_scan=True uses a 180 deg + full-fan angular range (the realistic C-arm
+    protocol, matching the RabbitCT scan) and requires Parker redundancy weighting
+    in fbp; the default is a full 360 deg scan.
     """
     from config import RECON_VOXEL_MM
     if n_pix is None:
@@ -74,11 +77,34 @@ def fan_geometry(fov_mm=FOV_MM, n_pix=None, voxel_mm=None):
     mag = SDD_MM / SID_MM
     maxT = fov_mm * mag * 1.15
     deltaT = maxT / (n_pix * 2)
-    maxBeta = 2.0 * np.pi
+    gamma_max = float(np.arctan((maxT / 2.0) / SDD_MM))     # half fan angle
+    maxBeta = (np.pi + 2.0 * gamma_max) if short_scan else 2.0 * np.pi
     deltaBeta = maxBeta / N_VIEWS
     return dict(focal=SDD_MM, maxBeta=maxBeta, deltaBeta=deltaBeta,
                maxT=maxT, deltaT=deltaT, imgN=n_pix, spacing=voxel_mm,
-               voxel_mm=voxel_mm)
+               voxel_mm=voxel_mm, gamma_max=gamma_max, short_scan=short_scan)
+
+
+def parker_weights(geo):
+    """Parker short-scan redundancy weights [n_views, n_det] for a flat detector.
+
+    Over beta in [0, pi + 2*gamma_max], rays in the [180 deg, 180+2*gamma] overlap
+    are measured twice; Parker weighting smoothly tapers the redundant data so each
+    ray contributes unit total weight, removing the short-scan shading/streaks.
+    """
+    n_views = int(round(geo["maxBeta"] / geo["deltaBeta"]))
+    n_det = int(round(geo["maxT"] / geo["deltaT"]))
+    t = (np.arange(n_det) - (n_det - 1) / 2.0) * geo["deltaT"]
+    gamma = np.arctan(t / geo["focal"])                     # fan angle per column
+    gmax = geo["gamma_max"]
+    beta = np.arange(n_views) * geo["deltaBeta"]
+    B, G = np.meshgrid(beta, gamma, indexing="ij")
+    w = np.ones((n_views, n_det))
+    r1 = B < 2.0 * (gmax - G)                                # start feather
+    w[r1] = np.sin(np.pi / 4.0 * B[r1] / np.maximum(gmax - G[r1], 1e-6)) ** 2
+    r3 = B > (np.pi - 2.0 * G)                               # end feather
+    w[r3] = np.sin(np.pi / 4.0 * (np.pi + 2.0 * gmax - B[r3]) / np.maximum(gmax + G[r3], 1e-6)) ** 2
+    return np.clip(w, 0.0, 1.0).astype(np.float32)
 
 
 def use_cl():
@@ -132,6 +158,8 @@ def fbp(sino_np, geo, bh_correction=False, bh_poly=None, bh_c2=0.10):
             sino_np = np.polyval(bh_poly, sino_np)    # calibrated water precorrection
         else:
             sino_np = sino_np + bh_c2 * sino_np ** 2   # legacy fallback (uncalibrated)
+    if geo.get("short_scan"):
+        sino_np = sino_np * parker_weights(geo)       # short-scan redundancy weighting
     n_ang, n_det = sino_np.shape
     t = (np.arange(n_det) - (n_det - 1) / 2.0) * geo["deltaT"]
     cos_w = geo["focal"] / np.sqrt(geo["focal"] ** 2 + t ** 2)   # fan cosine weight
