@@ -9,8 +9,13 @@
 
 \graphicspath{{figures/}}
 
-\title{Are magnetic nanoparticles visible in CT? A simulation study of SPION
-detectability with energy-integrating and photon-counting detectors}
+% Visible placeholder marker for first-draft results still to be filled in.
+% (Rendered in the PDF so gaps are obvious; grep "TODO" to find them.)
+\newcommand{\TODO}[1]{\textbf{[TODO: #1]}}
+\newcommand{\NUM}{\textbf{[--]}}
+
+\title{Can superparamagnetic iron-oxide nanoparticles be seen in CT?
+A CONRAD-native simulation study}
 
 \author[a]{Andreas Maier}
 \author[b]{Stefan Lyer}
@@ -28,471 +33,593 @@ Otorhinolaryngology, Universit\"atsklinikum Erlangen / FAU, Germany}
 \begin{document}
 \maketitle
 
+% =====================================================================
 \begin{abstract}
-Superparamagnetic iron-oxide nanoparticles (SPIONs) are increasingly used for
-magnetic drug targeting, hyperthermia, and cell tracking, yet it is rarely asked
-whether the iron they deposit is actually visible in a computed tomography (CT)
-scan. We study this question by simulation. Starting from a real magnetite SPION
-formulation, we build a physically grounded \emph{delivered-mass} dose model: a
-fixed particle mass is spread through an $8\,\mathrm{cm}^3$ tumor, which for the
-reference $6\,\mathrm{mg}$ dose leaves only $\sim\!0.54\,\mathrm{mg\,Fe/ml}$ --
-about an order of magnitude below iodine CT enhancement. Using the CONRAD
-framework we simulate a rabbit-scale phantom imaged with a polychromatic
-$90\,\mathrm{kVp}$ C-arm spectrum at $70{,}000$ photons per pixel, and run a
-factorial experiment over iron dose, detector type (energy-integrating, EID, vs.\
-three-bin photon-counting, PCD), and water beam-hardening correction, scoring
-detectability by iron contrast ($\Delta$HU) and contrast-to-noise ratio (CNR)
-against the Rose criterion. We find that the reference dose sits \emph{right at}
-the detection limit: iron contrast is only $3.4\,$HU (EID) to $4.7\,$HU (PCD) with
-CNR $\approx 5$. The detection threshold is $\approx 0.54\,\mathrm{mg\,Fe/ml}$ and
-is essentially unchanged by detector type or beam-hardening correction; a
-matched-filter PCD gain of $\sim\!1.3\times$ appears only at twice the dose, once
-the photon-starved low-energy bin carries enough counts. Lowering the tube voltage
-helps and hardening filters hurt, consistent with the photoelectric origin of iron
-contrast. SPIONs are therefore borderline-visible at realistic loading -- a result
-with direct consequences for image-guided nanoparticle therapy.
+Superparamagnetic iron-oxide nanoparticles (SPIONs) are used for magnetic drug
+targeting, hyperthermia, and cell tracking. A simple question is often left open:
+can the deposited iron be seen in a computed tomography (CT) scan? We answer this
+by simulation. We start from a real magnetite SPION formulation. We build a
+delivered-mass dose model. A fixed particle mass is spread through an
+$8\,\mathrm{cm}^3$ tumor. At realistic loading this leaves only a fraction of a
+milligram of iron per millilitre. That is about ten times below iodine CT
+enhancement. Iron has no usable K-edge in the diagnostic range. Its contrast is
+photoelectric and lives at low energy. We simulate the whole particle: a magnetite
+core plus a polyacrylic-acid coating, with the coating fraction taken per
+formulation from the article's thermogravimetry. The imaging chain is
+CONRAD-native. It uses a fan-beam short scan with Parker weighting, cosine and
+Shepp-Logan filtering, a distance-weighted backprojector, and an always-on water
+beam-hardening precorrection. We compare an energy-integrating detector (EID) with
+a photon-counting detector (PCD). We optimize the tube voltage, the aluminium
+filtration, and the PCD energy bins for iron. We score detectability by iron
+$\Delta$HU, contrast-to-noise ratio (CNR), and the Rose criterion. We study
+homogeneous cellular uptake and vascular delivery, and verify the result in three
+dimensions on rabbit anatomy. %TODO: insert headline numbers once the runs are
+% regenerated (detection threshold in mg Fe/ml; EID vs PCD gain; kVp effect).
+The finding is that SPIONs sit near the CT detection limit at realistic load, and
+that tumor cell density is the dominant factor for visibility.
 \end{abstract}
 
 \keywords{SPION, iron oxide nanoparticles, computed tomography, photon counting,
-detectability, contrast-to-noise ratio, simulation, CONRAD}
+detectability, contrast-to-noise ratio, spectral optimization, simulation, CONRAD}
 
+% =====================================================================
 \section{INTRODUCTION}
 \label{sec:intro}
 
-Superparamagnetic iron-oxide nanoparticles (SPIONs) have become a workhorse of
-nanomedicine. They are steered by magnetic fields for local drug delivery, heated
-for hyperthermia, and used as labels for cell tracking. A natural clinical
-question follows: once these particles have accumulated in a target region, can we
-simply \emph{see} them in a routine CT scan? The answer matters for dose planning,
-for interpreting incidental findings, and for image-guided delivery, where one
-would like to confirm that particles reached the target without an additional
+Superparamagnetic iron-oxide nanoparticles (SPIONs) are a workhorse of
+nanomedicine. Magnetic fields steer them for local drug delivery. They can be
+heated for hyperthermia. They can label cells for tracking. The particles we study
+are those of Heinen et al.\cite{Heinen2026}. They are polyacrylic-acid
+(PAA)-coated magnetite ($\mathrm{Fe_3O_4}$) clusters. The cores are about $8$ and
+$12\,\mathrm{nm}$. They assemble into hydrodynamic clusters of about
+$70$--$250\,\mathrm{nm}$. They are used at iron concentrations of about
+$1$--$10\,\mathrm{mg\,Fe/ml}$.
+
+A clinical question follows. Once these particles reach a target, can we simply see
+them in a routine CT scan? The answer matters. It matters for dose planning. It
+matters for reading incidental findings. It matters most for image-guided delivery,
+where one wants to confirm that particles reached the target without a second
 imaging modality.
 
-At first sight iron looks promising: it is denser and higher in atomic number than
-soft tissue. The difficulty is the amount. At biologically realistic loading the
-delivered iron mass is small. If a few milligrams of particles are distributed
-through a cubic-centimeter-scale tumor, the resulting iron concentration is on the
-order of tenths of a milligram per millilitre -- roughly ten times below the iodine
-concentrations that produce comfortable CT enhancement. Whether that little iron
-rises above image noise is not obvious, and it is exactly the kind of question a
-careful simulation can answer before any animal is scanned.
+At first sight iron looks promising. It is denser and higher in atomic number than
+soft tissue. But the amount is the problem. At biologically realistic loading the
+delivered iron mass is small. A few milligrams of particles spread through a
+cubic-centimetre tumor leave only tenths of a milligram of iron per millilitre.
+That is roughly ten times below the iodine concentrations that give comfortable CT
+enhancement. Whether this little iron rises above image noise is not obvious.
 
-Despite a large literature on SPIONs and a parallel surge of interest in
-photon-counting CT, there is little quantitative simulation of SPION CT
-detectability across modern detectors. We address this gap. Our contributions are:
-(i) a physically grounded \emph{delivered-mass} dose model tied to a real magnetite
-SPION formulation, which converts a formulation concentration into an in-tumor iron
-concentration; (ii) a factorial detectability study that compares an
-energy-integrating detector (EID) with a multi-bin photon-counting detector (PCD),
-with and without beam-hardening correction; and (iii) reported detection thresholds
-in $\mathrm{mg\,Fe/ml}$, scored by both iron contrast ($\Delta$HU) and
-contrast-to-noise ratio (CNR) against the Rose criterion. The entire pipeline is
-built on the open-source CONRAD framework\cite{Maier2013}, and the code, figures,
-and intermediate results are public for audit.
+The physics is also unhelpful. Iron has a K-edge at $7.1\,\mathrm{keV}$. This is
+far below the diagnostic window. So there is no K-edge jump to exploit, unlike
+iodine or gadolinium. The iron contrast is purely photoelectric. It is strongest at
+low energy and fades quickly as energy rises. This shapes every result that
+follows: a soft spectrum helps, a hard spectrum hurts, and photon-counting can only
+help where low-energy photons survive the body.
 
-We deliberately keep the paper honest: if the realistic dose turns out to be
-borderline, that is itself a useful and publishable finding for anyone planning to
-image nanoparticle therapy with CT.
+Despite a large SPION literature and a surge of interest in photon-counting CT,
+there is little quantitative simulation of SPION CT detectability across modern
+detectors. We address this gap. Our contributions are: (i) a delivered-mass dose
+model tied to a real magnetite SPION formulation, with a whole-particle
+(core~+~coating) material model and a per-formulation coating fraction from
+thermogravimetry; (ii) a CONRAD-native fan-beam pipeline in which every
+reconstruction step is a CONRAD class; (iii) a spectrum-and-detector optimization
+that picks the CNR-optimal tube voltage, aluminium filter, and PCD energy bins for
+iron; (iv) two biological uptake models -- homogeneous cellular uptake and vascular
+fresh injection -- grounded in the article's measured cellular loading; and (v) a
+three-dimensional cone-beam verification on real rabbit anatomy. The pipeline is
+open and every intermediate result is public for audit.
 
+We keep the paper honest. If the realistic dose turns out to be borderline, that is
+itself a useful and publishable finding for anyone planning to image nanoparticle
+therapy with CT.
+
+% =====================================================================
 \section{MATERIALS AND METHODS}
 \label{sec:methods}
 
-We first fix the dose model, then the phantom, then the X-ray simulation,
-reconstruction, and the detectability metrics. Each choice is made to keep the
-$c_{\mathrm{Fe}}=0$ case identical to background, so that any measured contrast is
-attributable to iron alone.
+We fix the parts in order. First the nanoparticle and dose model. Then the phantom.
+Then the CONRAD-native imaging chain. Then the two detectors. Then the experiments
+and metrics. Each choice keeps the $c_{\mathrm{Fe}}=0$ case identical to
+background, so any measured contrast is attributable to iron alone.
 
 \subsection{Nanoparticle and delivered-mass dose model}
-The formulation we ground on is a real polyacrylic-acid (PAA)-coated magnetite
-($\mathrm{Fe_3O_4}$) SPION suspension\cite{Heinen2026}, with iron-oxide cores of
-$\sim\!8$ and $\sim\!12\,\mathrm{nm}$ that assemble into hydrodynamic clusters of
-$\sim\!70$--$250\,\mathrm{nm}$. It is worth being explicit about how the particles
-are quantified, because the particle-versus-iron distinction is easy to conflate.
-The reference article characterizes the suspension by its \emph{iron} concentration
-in $\mathrm{mg\,Fe/ml}$, measured by ICP-MAES on acid-digested particles, over a
-working range of $1$--$10\,\mathrm{mg\,Fe/ml}$; the PAA coating never enters that
-concentration bookkeeping. For X-ray contrast this is the right anchor: attenuation
-is driven by the iron oxide, whereas the PAA coating is low-$Z$ ($\mathrm{C/H/O}$),
-essentially tissue/water-equivalent, and negligible for attenuation at diagnostic
-energies -- so it is correctly left out of the $\mu$ model. (Its exact mass fraction
-sits in the article's supplementary TGA and does not affect the iron-anchored
-contrast model.)
+\label{sec:dose}
+We model the whole particle, not iron alone. The whole particle is a magnetite
+($\mathrm{Fe_3O_4}$) core plus a PAA coating (monomer $\mathrm{C_3H_4O_2}$). The
+iron mass fraction of magnetite is $0.724$ ($3\times55.85/231.5$). The bound oxygen
+is nearly tissue-equivalent. It adds only a few percent to the attenuation per gram
+of iron. The PAA coating is low-$Z$ ($\mathrm{C/H/O}$). It is essentially
+water-equivalent. It is therefore negligible for the X-ray attenuation, but we
+still include its mass so the reported particle concentration is honest.
 
-The particles are iron oxide, not pure iron. We model the magnetite core, whose
-iron mass fraction is $72.4\%$ ($3\times55.85/231.5$); the bound oxygen is
-nearly tissue-equivalent and adds only a few percent ($\sim\!+7\%$) to the
-attenuation per gram of iron. Rather than assume a fixed vial concentration, we
-spread a fixed particle
-mass through the tumor and ask how much iron that leaves per millilitre. Anchoring
-at $6\,\mathrm{mg}$ of SPIONs delivered for the $10\,\mathrm{mg/ml}$ formulation
-over an $8\,\mathrm{cm}^3$ tumor and scaling with concentration gives the linear
-relation
+We keep two concentrations distinct throughout. The iron concentration
+$c_{\mathrm{Fe}}$ (mg~Fe/ml) drives the attenuation. The whole-particle
+concentration $c_{\mathrm{NP}}$ (mg~SPION/ml) is derived from it. The link is the
+coating fraction. From an iron concentration we recover the whole-particle
+concentration by
+\begin{equation}
+c_{\mathrm{NP}} = \frac{c_{\mathrm{Fe}}}{0.724\,(1-\varphi)},
+\label{eq:cnp}
+\end{equation}
+where $\varphi$ is the PAA coating mass fraction. All contrast numbers are reported
+as mg~Fe/ml in the tumor.
+
+The coating fraction is taken per formulation from the article's supplementary
+thermogravimetry (TGA)\cite{Heinen2026}. The inorganic (iron-oxide) residual is
+$87.7\%$ for SPION~I ($12\,\mathrm{nm}$ cores) and $66.4\%$ for SPION~II
+($8\,\mathrm{nm}$ cores). On heating the residual oxidizes magnetite to hematite,
+adding $3.4\%$ mass. Correcting for this, the original magnetite fraction is
+$84.8\%$ for SPION~I and $64.2\%$ for SPION~II. The complement is PAA. So
+$\varphi\approx0.15$ for SPION~I and $\varphi\approx0.36$ for SPION~II. SPION~II
+carries roughly twice the coating. Each formulation is therefore simulated with its
+own coating: $c_{\mathrm{NP}}\approx1.63\,c_{\mathrm{Fe}}$ for SPION~I and
+$c_{\mathrm{NP}}\approx2.16\,c_{\mathrm{Fe}}$ for SPION~II. Adding the coating mass
+moves the monochromatic iron $\Delta$HU by only about $3.6\%$ at $\varphi=0.15$, so
+the attenuation stays iron-dominated. Table~\ref{tab:comp} lists the composition of
+the two formulations.
+
+We use a delivered-mass dose model, not a fixed vial concentration. We spread a
+fixed particle mass through the tumor and ask how much iron that leaves per
+millilitre. We anchor at $6\,\mathrm{mg}$ of SPIONs delivered for the
+$10\,\mathrm{mg/ml}$ formulation over an $8\,\mathrm{cm}^3$ tumor and scale with
+concentration. This gives the linear relation
 \begin{equation}
 c_{\mathrm{Fe}} = 0.0543 \cdot c_{\mathrm{form}} \quad [\mathrm{mg\,Fe/ml}],
 \label{eq:dose}
 \end{equation}
-where $c_{\mathrm{form}}$ is the formulation concentration in $\mathrm{mg/ml}$.
-Table~\ref{tab:dose} lists the seven dose levels we study. The reference
-$6\,\mathrm{mg}$ dose corresponds to $c_{\mathrm{Fe}}=0.54\,\mathrm{mg\,Fe/ml}$;
-the top level doubles that. Iron is \emph{added} to the soft-tissue matrix by the
-mixture rule, so a zero-iron insert equals background exactly. Note that these
-in-tumor iron concentrations ($\sim\!0.03$--$1.09\,\mathrm{mg\,Fe/ml}$) are about
-an order of magnitude below the article's $1$--$10\,\mathrm{mg\,Fe/ml}$ suspension
-range. This is by design: we model the \emph{diluted delivered dose in the tumor},
-not the concentrated vial. All contrast and detectability numbers below are
-therefore reported as iron concentration ($\mathrm{mg\,Fe/ml}$) in the tumor, not
-as particle concentration ($\mathrm{mg\,SPION/ml}$).
+where $c_{\mathrm{form}}$ is the formulation concentration in mg/ml. The reference
+$6\,\mathrm{mg}$ dose gives $c_{\mathrm{Fe}}=0.54\,\mathrm{mg\,Fe/ml}$. Even the top
+level of the sweep is only about $1\,\mathrm{mg\,Fe/ml}$. This is by design: we
+model the diluted delivered dose in the tumor, not the concentrated vial.
+
+The material attenuation is taken from CONRAD's database. As a cross-check we
+compared the magnetite mass attenuation against an independent NIST-based model. The
+two agree to five decimals, so the physics underlying every result is validated.
+Figure~\ref{fig:physics} shows the linear attenuation of soft tissue, cortical bone,
+and iron-loaded tumor, and where the iron contrast lives in energy.
 
 \begin{table}[ht]
-\caption{Delivered-mass dose model. A fixed SPION mass is spread through an
-$8\,\mathrm{cm}^3$ tumor; the resulting in-tumor iron concentration follows
-Eq.~\eqref{eq:dose}. The $6\,\mathrm{mg}$ row is the biologically realistic
-reference dose.}
-\label{tab:dose}
+\caption{Nanoparticle composition (E1). The whole particle is a magnetite core plus
+a PAA coating. The coating fraction $\varphi$ is from the article's TGA. Iron mass
+fraction of magnetite is $0.724$. $c_{\mathrm{NP}}$ per unit $c_{\mathrm{Fe}}$
+follows Eq.~\eqref{eq:cnp}.}
+\label{tab:comp}
 \begin{center}
-\begin{tabular}{rrr}
+\begin{tabular}{lccccc}
 \toprule
-$c_{\mathrm{form}}$ [mg/ml] & delivered SPION [mg] & $c_{\mathrm{Fe}}$ [mg/ml] \\
+Formulation & core size [nm] & TGA inorganic & magnetite frac. & $\varphi$ (PAA) &
+$c_{\mathrm{NP}}/c_{\mathrm{Fe}}$ \\
 \midrule
-0.5  & 0.30  & 0.027 \\
-1.0  & 0.60  & 0.054 \\
-2.0  & 1.20  & 0.109 \\
-5.0  & 3.00  & 0.272 \\
-10.0 & 6.00  & \textbf{0.543} \\
-20.0 & 12.00 & 1.086 \\
+SPION~I  & 12 & $87.7\%$ & $84.8\%$ & $0.15$ & $1.63$ \\
+SPION~II & 8  & $66.4\%$ & $64.2\%$ & $0.36$ & $2.16$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{table}
 
-The material attenuation is taken from CONRAD's database. As a cross-check we
-compared the magnetite mass attenuation against an independent NIST-based model and
-found agreement to five decimals, so the physics underlying every result below is
-validated. Figure~\ref{fig:mu} shows the linear attenuation of soft tissue,
-cortical bone, and the iron-loaded tumor: the iron contribution is purely
-photoelectric and therefore concentrated at low energy, a fact that drives the
-detector and spectral results.
-
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.62\linewidth]{mu_vs_energy.png}
-\caption{Linear attenuation versus energy for soft tissue, cortical bone, and the
-iron-loaded tumor at three formulation concentrations. Iron has no usable K-edge
-(7.1\,keV); its contrast is photoelectric and lives at low energy.}
-\label{fig:mu}
+\includegraphics[width=0.9\linewidth]{mu_vs_energy.png}
+\caption{Physics of iron contrast (E1). Left: linear attenuation versus energy for
+soft tissue, cortical bone, and iron-loaded tumor at several concentrations. Iron
+has no usable K-edge ($7.1\,\mathrm{keV}$); the excess attenuation is photoelectric
+and concentrated at low energy. Right: per-energy iron contrast through the phantom,
+which motivates a soft spectrum and low-energy PCD bins.}
+\label{fig:physics}
 \end{figure}
 
 \subsection{Digital phantom}
-Having fixed the dose model, we now describe the phantom. We use a rabbit-scale,
-electron-density-style calibration phantom: a $110\,\mathrm{mm}$ soft-tissue
-cylinder containing the seven iron concentration inserts arranged on a common ring
-(so that beam-hardening cupping is common-mode across inserts) plus a cortical-bone
-rod as a deliberate beam-hardening source. Each insert is a disk of iron-loaded
-soft tissue; the tumor volume corresponds to an $8\,\mathrm{cm}^3$ sphere
-($r=12.4\,\mathrm{mm}$). Soft tissue is approximated by water, a standard CT proxy
-that keeps the zero-iron baseline clean. Figure~\ref{fig:phantom} shows an axial
-slice. The reconstruction field of view is $20\,\mathrm{cm}$.
+\label{sec:phantom}
+We use a rabbit-scale, electron-density-style calibration phantom. It is a
+$110\,\mathrm{mm}$ soft-tissue cylinder. It holds the iron-concentration inserts on
+a common ring, so beam-hardening cupping is common-mode across inserts. It also
+holds a cortical-bone rod as a deliberate beam-hardening source, which makes the
+bone factor meaningful. Each insert is a disk of iron-loaded soft tissue. Iron is
+added to the tissue matrix by the mixture rule, so a zero-iron insert equals
+background exactly. Soft tissue is approximated by a water-equivalent CONRAD body
+material, which keeps the zero-iron baseline clean. The tumor volume corresponds to
+an $8\,\mathrm{cm}^3$ sphere ($r=12.4\,\mathrm{mm}$). The reconstruction field of
+view is $20\,\mathrm{cm}$. Figure~\ref{fig:phantom} shows an axial slice and an
+example EID/PCD reconstruction.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.42\linewidth]{phantom_axial.png}
-\caption{Axial slice of the rabbit-scale phantom: a soft-tissue cylinder with the
-seven iron-concentration inserts on a ring and a cortical-bone rod (beam-hardening
-source).}
+\includegraphics[width=0.9\linewidth]{phantom_axial.png}
+\caption{Digital phantom and CONRAD-native reconstruction. Left: axial slice of the
+rabbit-scale phantom -- a soft-tissue cylinder with iron-concentration inserts on a
+ring and a cortical-bone rod. Center/right: example EID and PCD reconstructions of
+the same slice through the fan-beam short-scan pipeline (water precorrection on).
+\TODO{replace with the final EID vs PCD reconstruction montage}}
 \label{fig:phantom}
 \end{figure}
 
-\subsection{X-ray simulation}
-We image the phantom with the CONRAD standard polychromatic spectrum
-($90\,\mathrm{kVp}$, mean energy $55.4\,\mathrm{keV}$; Fig.~\ref{fig:spectrum}) in a
-standard C-arm cone-beam geometry with $500$ projections over a short scan. The
-base-material path lengths are obtained analytically by ray tracing the phantom,
-and combined polychromatically per energy through the Beer--Lambert law. We
-simulate two detectors. The EID integrates the transmitted spectrum weighted by
-photon energy; the PCD sorts photons into three energy bins with thresholds at
-$37.5$ and $50\,\mathrm{keV}$, which an ideal-observer analysis identified as
-near-optimal for this task, and combines the bins with matched-filter weights.
-Quantum noise is Poisson at $70{,}000$ photons per pixel, applied per energy on the
-photon counts \emph{before} energy weighting or binning; this is important, because
-the variance of an energy-integrated signal is $\sum_E E^2 n_E$, which a single
-Poisson draw on the summed signal would not reproduce.
+\subsection{CONRAD-native fan-beam pipeline}
+\label{sec:pipeline}
+Every reconstruction step is a CONRAD class, in CONRAD's geometry convention. We do
+not hand-roll ramp filters, Parker weights, or geometry. The fan-beam geometry uses
+a source-to-isocentre distance of $750\,\mathrm{mm}$ and a virtual detector at the
+isocentre sampled at $\Delta_T = 1\,\mathrm{mm}$. We use $500$ views over a minimal
+short scan ($180^\circ$ plus fan), with Parker redundancy weighting. The chain is:
+forward projection, Parker weighting, cosine filter, Shepp-Logan ramp filter, and a
+distance-weighted fan-beam backprojector. Reconstruction is on a
+$0.5\,\mathrm{mm}$ isotropic grid. A water beam-hardening precorrection is
+\emph{always on}. The precorrection polynomial is calibrated so a water cylinder
+reconstructs flat to about $0.1\%$; it is not a factor of the study.
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.6\linewidth]{spectrum.png}
-\caption{CONRAD polychromatic C-arm spectra (tungsten anode with characteristic
-lines) at three tube voltages. The $90\,\mathrm{kVp}$ spectrum is the study
-standard.}
-\label{fig:spectrum}
-\end{figure}
+The GPU backprojector used here required a fix to the CONRAD OpenCL kernel, which
+never received the reconstruction pixel spacing. The corrected kernel matches the
+CPU reference to about $10^{-5}$ and is roughly $850\times$ faster. It has been
+contributed upstream, together with the analytic fan projector, the reinstated
+distance weighting, and the water precorrection tool.
 
-\subsection{Reconstruction}
-Each noisy sinogram is reconstructed with filtered back-projection on a
-$0.5\,\mathrm{mm}$ isotropic grid. Beam-hardening correction is applied in a water
-precorrection variant that we switch on and off. Figure~\ref{fig:recon} shows an
-example sinogram and reconstruction. The GPU back-projector used here required a
-fix to the CONRAD OpenCL kernel, which never received the reconstruction pixel
-spacing; the corrected kernel matches the CPU reference to $\sim\!10^{-5}$ and is
-roughly $850\times$ faster, and has been contributed upstream.
+\subsection{Detectors: EID and PCD}
+\label{sec:detectors}
+Both detectors start from the same polychromatic forward model. For each energy $E$
+the transmitted photons are $N(E)=N_0\,s(E)\,e^{-\tau(E)}$, with $s$ the normalized
+spectrum and $\tau$ the material path integral. Quantum noise is Poisson per energy.
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.92\linewidth]{native_pipeline.png}
-\caption{Example of the CONRAD-native pipeline: base-material sinogram (left),
-energy-integrated line-integral sinogram (center), and fan-beam FBP reconstruction
-(right).}
-\label{fig:recon}
-\end{figure}
+The energy-integrating detector (EID) weights photons by energy:
+$S=\sum_E N(E)\,E$. Its variance is the exact second moment $\sum_E N(E)\,E^2$, not
+a single Poisson draw on the summed signal. The line integral is
+$p=-\log(S/S_{\mathrm{air}})$. A single water precorrection linearizes the response.
 
-\subsection{Evaluation}
-We score detectability with two metrics. The iron contrast $\Delta$HU is the mean
-insert value minus a local annular background (which shares the insert's cupping and
-streak level), corrected by subtracting the zero-iron insert so that only iron
-remains. The CNR is that contrast divided by the background noise measured over
-noise realizations. An insert is called detectable when its CNR clears the Rose
-criterion (we report both $\mathrm{CNR}\ge 3$ and $\ge 5$). The full factorial is
-seven doses $\times$ two detectors $\times$ two beam-hardening states $\times$ $30$
-noise realizations. A separate sweep varies the tube voltage
-($60$--$120\,\mathrm{kVp}$) and adds hardening filters, to test the spectral
-dependence predicted by the photoelectric nature of iron.
+The photon-counting detector (PCD) sorts photons into three energy bins. We combine
+the bins with a \emph{post-combination matched filter}. We first form a
+matched-filter weighted sum of the bin counts, then take a single logarithm, then
+apply one water precorrection on the combined spectrum. The matched-filter weights
+$w_b \propto S_b/V_b$ are the CNR-optimal weighting that reaches the ideal-observer
+ceiling. Combining in the count domain before the logarithm is robust to the
+photon-starved low-energy bin, whose per-bin logarithm would diverge when its counts
+reach zero. This post-combination scheme gives about $1.2\times$ the EID CNR. We note
+that a per-bin pre-sum correction, where each bin is corrected on its own spectrum
+before the sum, is noisier and gives only about $1.0\times$; we therefore do not use
+it in the noisy study.
+
+\subsection{Experiments}
+\label{sec:experiments}
+We run five experiments. Table~\ref{tab:params} lists the shared simulation
+parameters.
+
+\textbf{E1 -- material and physics validation.} We confirm the magnetite
+attenuation against NIST, confirm the iron K-edge is out of range, and confirm the
+whole-particle model keeps the attenuation iron-dominated
+(Fig.~\ref{fig:physics}, Table~\ref{tab:comp}).
+
+\textbf{E2 -- spectrum and detector optimization.} Iron contrast is photoelectric,
+so it favours low energy. We sweep the feasible C-arm tube voltage
+($70$--$120\,\mathrm{kVp}$) crossed with inherent aluminium filtration
+(Al~$1.0$--$8.0\,\mathrm{mm}$) for both detectors, end-to-end through the pipeline.
+We drop hardening metals (Cu, Sn); they only hurt iron contrast. E2 then (a) picks
+the CNR-optimal spectrum, (b) re-optimizes the PCD three-bin thresholds for that
+spectrum, and (c) feeds the winning setting to E3, E4, and E5. The optimum is a
+soft $70\,\mathrm{kVp}$ beam with $5\,\mathrm{mm}$ aluminium. All later experiments
+run at this E2 optimum \emph{and} at a $90\,\mathrm{kVp}$ baseline, so the optimum
+can be compared to a standard C-arm spectrum.
+
+\textbf{E3 -- Study~A, homogeneous cellular uptake.} Iron internalized by tumor
+cells gives a roughly uniform tumor iron distribution. We sample the article's
+measured cellular loading (Heinen et al., Fig.~5, B16-F10 melanoma; $0\,\mathrm{h}$
+/ $24\,\mathrm{h}$): SPION~I-113~nm $8.23/3.78$, SPION~II-115 $3.86/1.52$,
+II-98 $3.60/1.37$, II-76 $2.51/0.85\,\mathrm{pg\,Fe/cell}$. Each configuration
+converts to a tumor iron concentration through a tumor cell density. Cell density is
+uncertain, so it is a factor with three levels ($10^8$, $3\times10^8$,
+$10^9\,\mathrm{cells/cm}^3$), which gives a detectability band. Each configuration
+uses its formulation's coating. We also cross the bone and dose factors.
+Table~\ref{tab:grid} lists the loading-by-density grid.
+
+\textbf{E4 -- Study~B, vascular / fresh injection.} Freshly injected SPIONs are
+still in the blood carrier inside the vessels, before cellular uptake. The contrast
+is confined to $150\,\mu\mathrm{m}$ vessels occupying about $10\%$ of the tumor
+volume, at a tenfold local concentration. The vessel-local level is the independent
+variable ($5$--$15\,\mathrm{mg\,Fe/ml}$). The $0.5\,\mathrm{mm}$ CT voxel cannot
+resolve the vessels, so each insert is homogenized to its tumor-mean iron, which is
+what the reconstruction sees to first order. We then add the second-order effects
+that the homogeneous model omits: the beam-hardening nonlinearity from concentrating
+iron, and the structural noise from the binomial per-voxel vessel count.
+
+\textbf{E5 -- three-dimensional cone-beam verification.} We verify the result in
+three dimensions on real anatomy. We use the post-mortem RabbitCT rabbit
+volume\cite{Rohkohl2009} and its C-arm geometry, decoded from the benchmark's
+projection matrices ($745\,\mathrm{mm}$ source-to-isocentre, $1196\,\mathrm{mm}$
+source-to-detector, $496$ views over $198^\circ$). We forward-project
+poly-energetically, insert a material-separated $8\,\mathrm{cm}^3$ SPION tumor, and
+reconstruct with cone-beam FDK. E5 also runs at the E2 optimum and the
+$90\,\mathrm{kVp}$ baseline.
+
+\subsection{Metrics}
+\label{sec:metrics}
+We score detectability with three quantities. The iron contrast $\Delta$HU is the
+mean insert value minus a local annular background, corrected by subtracting the
+zero-iron insert so only iron remains. The CNR is that contrast divided by the
+background noise measured over noise realizations. An insert is called detectable
+when its CNR clears the Rose criterion; we report both $\mathrm{CNR}\ge3$ and
+$\ge5$. We use $30$ noise realizations per cell.
 
 \begin{table}[ht]
-\caption{Simulation parameters.}
+\caption{Shared simulation parameters. The E2 optimum and a $90\,\mathrm{kVp}$
+baseline are both run in E3--E5.}
 \label{tab:params}
 \begin{center}
 \begin{tabular}{ll}
 \toprule
 Parameter & Value \\
 \midrule
-Spectrum & CONRAD standard, $90\,\mathrm{kVp}$ (mean $55.4\,\mathrm{keV}$), W anode \\
-Photons per pixel & $70{,}000$ (Poisson) \\
-Geometry & C-arm cone beam, $500$ projections, short scan \\
-Source-to-isocenter / detector & $750\,\mathrm{mm}$ / $1200\,\mathrm{mm}$ \\
-Field of view & $200\,\mathrm{mm}$ \\
-Reconstruction & FBP, $0.5\,\mathrm{mm}$ isotropic voxels \\
-Phantom & $110\,\mathrm{mm}$ soft-tissue cylinder + cortical-bone rod \\
+Spectrum & E2 optimum ($70\,\mathrm{kVp}$, Al~$5\,\mathrm{mm}$) and
+$90\,\mathrm{kVp}$ baseline, W anode \\
+Photons per pixel & low $20{,}000$ / high $100{,}000$ (Poisson), factor \\
+Geometry (2D) & C-arm fan beam, $500$ views, minimal short scan, Parker weighted \\
+Source-to-isocentre / detector & $750\,\mathrm{mm}$ / $1200\,\mathrm{mm}$,
+$\Delta_T=1\,\mathrm{mm}$ \\
+Reconstruction (2D) & fan FBP (cosine + Shepp-Logan + distance backprojector),
+$0.5\,\mathrm{mm}$ voxels \\
+Beam hardening & water precorrection always on \\
+Phantom & $110\,\mathrm{mm}$ soft-tissue cylinder + cortical-bone rod (factor) \\
 Tumor & $8\,\mathrm{cm}^3$ ($r=12.4\,\mathrm{mm}$), iron-loaded \\
-Detectors & EID; 3-bin PCD, thresholds $37.5/50\,\mathrm{keV}$ \\
-Dose levels & $c_{\mathrm{Fe}} \in \{0.027,\dots,1.086\}\,\mathrm{mg/ml}$ (Table~\ref{tab:dose}) \\
+Detectors & EID; 3-bin PCD (post-combination matched filter) \\
+3D (E5) & RabbitCT geometry ($745/1196\,\mathrm{mm}$, $496$ views, $198^\circ$),
+cone-beam FDK \\
 Noise realizations & $30$ per cell \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{table}
 
+% =====================================================================
 \section{RESULTS}
 \label{sec:results}
 
-\subsection{Iron contrast and detectability versus dose}
-The central result is that SPIONs sit right at the CT detection limit at the
-realistic dose. Figure~\ref{fig:dhu} shows iron contrast rising smoothly with
-concentration. At the reference $6\,\mathrm{mg}$ dose
-($c_{\mathrm{Fe}}=0.54\,\mathrm{mg/ml}$) the contrast is only $3.4\,$HU for the EID
-and $4.7\,$HU for the PCD; at twice the dose it reaches $7.1$ and $9.0\,$HU. The
-photon-counting detector produces the larger contrast, as expected from its
-low-energy weighting.
+% The result numbers below are placeholders pending regeneration of the runs with the
+% E2-optimum spectrum, per-formulation coating, and Study-A density sampling. Each
+% subsection points to its figure/table. Fill the %TODO gaps with the final numbers.
+
+\subsection{E2 spectrum and detector optimum}
+\label{sec:res-e2}
+Because iron contrast is photoelectric, it should favour a soft spectrum. The E2
+sweep confirms this end-to-end. CNR falls as tube voltage rises and as aluminium
+hardens the beam. %TODO: state the CNR-optimal (kVp, Al) with its CNR gain over the
+% 90 kVp baseline, and the re-optimized PCD 3-bin thresholds; report the EID vs PCD
+% vs PCD-optimal CNR at the representative concentration. The optimum is a soft
+% 70 kVp / Al 5 mm beam.
+Figure~\ref{fig:e2} shows the CNR surface over tube voltage and filter for both
+detectors, with the selected optimum marked. Table~\ref{tab:pcdcnr} reports the
+EID versus PCD CNR at the optimum.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.58\linewidth]{fig_dhu_vs_conc.pdf}
-\caption{Iron contrast $\Delta$HU versus in-tumor iron concentration for the two
-detectors (beam-hardening off). The dotted line marks the realistic $6\,\mathrm{mg}$
-dose.}
-\label{fig:dhu}
+\includegraphics[width=0.7\linewidth]{fig_spectral_sweep.pdf}
+\caption{E2 spectral optimization. CNR versus tube voltage across aluminium filters,
+for EID and PCD. Lower tube voltage helps; hardening filters hurt. The selected
+CNR-optimal spectrum ($70\,\mathrm{kVp}$, Al~$5\,\mathrm{mm}$) feeds E3--E5.
+\TODO{mark the optimum and add the re-optimized PCD bins}}
+\label{fig:e2}
 \end{figure}
 
-Turning contrast into detectability, Fig.~\ref{fig:cnr} plots CNR against dose with
-the Rose lines overlaid. Detectability crosses $\mathrm{CNR}\approx 5$ exactly at
-the realistic dose: $5.4$ for the EID and $5.1$ for the PCD. The resulting
-detection threshold is $\approx 0.54\,\mathrm{mg\,Fe/ml}$ and, strikingly, it is
-the same for all four combinations of detector and beam-hardening correction
-(Table~\ref{tab:thresh}). Beam-hardening correction changes iron detectability
-negligibly, which is expected: iron contrast is a genuine material signal, not a
-cupping artifact.
+\subsection{Study~A: homogeneous cellular uptake and the cell-density band}
+\label{sec:res-a}
+The central result is that SPIONs sit near the CT detection limit at realistic load.
+Figure~\ref{fig:cnr_a} plots iron $\Delta$HU and CNR against tumor iron
+concentration for both detectors, with the Rose lines overlaid and a shaded
+cell-density band. The band comes from the three cell-density levels: the same
+cellular loading maps to different tumor iron concentrations as density changes, so
+visibility is dominated by how densely the tumor is packed with cells.
+%TODO: state the detection threshold in mg Fe/ml at the E2 optimum and at 90 kVp,
+% for EID and PCD; state which cellular-loading configurations clear Rose-5 at each
+% cell density; give the delta-HU and CNR at the reference load.
+Figure~\ref{fig:density} shows a reconstruction montage across the cell-density
+levels. Table~\ref{tab:grid} lists the loading-by-density grid, and
+Table~\ref{tab:thresh} the detection thresholds.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.58\linewidth]{fig_cnr_vs_conc.pdf}
-\caption{CNR versus dose for both detectors, beam-hardening on/off, with the Rose
-$3$ and $5$ lines. The realistic dose (dotted) lands on the Rose-$5$ boundary.}
-\label{fig:cnr}
+\includegraphics[width=0.9\linewidth]{fig_cnr_vs_conc.pdf}
+\caption{Study~A detectability. Iron $\Delta$HU (left) and CNR (right) versus
+in-tumor iron concentration for EID and PCD, with the Rose $3$ and $5$ lines. The
+shaded band spans the three tumor cell densities
+($10^8$--$10^9\,\mathrm{cells/cm}^3$); it shows that visibility is dominated by cell
+density. \TODO{overlay the measured cellular-loading configurations}}
+\label{fig:cnr_a}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\linewidth]{phantom_axial.png}
+\caption{Study~A cell-density montage. Reconstructions of the iron-loaded tumor at
+increasing tumor cell density
+($10^8 \to 3\times10^8 \to 10^9\,\mathrm{cells/cm}^3$), at fixed cellular loading.
+\TODO{replace with the final density montage figure}}
+\label{fig:density}
 \end{figure}
 
 \begin{table}[ht]
-\caption{Detection thresholds -- the lowest $c_{\mathrm{Fe}}$ [mg/ml] reaching the
-Rose criterion -- per detector and beam-hardening state. The threshold coincides
-with the realistic $6\,\mathrm{mg}$ dose and is essentially detector-independent.}
-\label{tab:thresh}
+\caption{Study~A loading $\times$ cell-density grid. Measured cellular loading
+(Heinen et al., Fig.~5; $0\,\mathrm{h}$ / $24\,\mathrm{h}$) converted to tumor iron
+concentration $c_{\mathrm{Fe}}$ [mg~Fe/ml] via cell density $\rho$.}
+\label{tab:grid}
 \begin{center}
-\begin{tabular}{lcc}
+\begin{tabular}{lccccc}
 \toprule
-Condition & Rose $\ge 3$ & Rose $\ge 5$ \\
+Configuration & formulation & loading [pg Fe/cell] &
+$\rho=10^8$ & $\rho=3\times10^8$ & $\rho=10^9$ \\
 \midrule
-EID, BH off & 0.54 & 0.54 \\
-EID, BH on  & 0.54 & 0.54 \\
-PCD, BH off & 0.54 & 0.54 \\
-PCD, BH on  & 0.54 & 0.54 \\
+I-113  & SPION~I  & $8.23$ / $3.78$ & \NUM & \NUM & \NUM \\
+II-115 & SPION~II & $3.86$ / $1.52$ & \NUM & \NUM & \NUM \\
+II-98  & SPION~II & $3.60$ / $1.37$ & \NUM & \NUM & \NUM \\
+II-76  & SPION~II & $2.51$ / $0.85$ & \NUM & \NUM & \NUM \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{table}
 
-\subsection{Where the photon-counting advantage appears}
-Photon counting is often expected to rescue low-contrast tasks. Here it does, but
-only partly. The matched-filter PCD attains its ideal-observer advantage of
-$\sim\!1.3\times$ EID CNR at the top dose ($11.5$ vs.\ $8.8$), where the
-high-contrast low-energy bin carries enough counts to be useful. At the realistic
-dose the two detectors are indistinguishable, because the low-energy bin is
-photon-starved through $\sim\!11\,\mathrm{cm}$ of tissue. Figure~\ref{fig:pcd}
-shows where iron contrast lives in energy and the near-optimal three-bin
-thresholds; the entire spectral gain is concentrated in a band that receives few
-transmitted photons.
+\begin{table}[ht]
+\caption{Detection thresholds -- the lowest $c_{\mathrm{Fe}}$ [mg~Fe/ml] reaching
+the Rose criterion -- per detector and spectrum.
+\TODO{fill from the regenerated detectability run}}
+\label{tab:thresh}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Condition & Rose $\ge3$ & Rose $\ge5$ \\
+\midrule
+EID, $90\,\mathrm{kVp}$ baseline & \NUM & \NUM \\
+EID, E2 optimum & \NUM & \NUM \\
+PCD, $90\,\mathrm{kVp}$ baseline & \NUM & \NUM \\
+PCD, E2 optimum & \NUM & \NUM \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.6\linewidth]{pcd_bins.png}
-\caption{Per-energy iron detectability density through the phantom, with the
-near-optimal three-bin PCD thresholds ($37.5/50\,\mathrm{keV}$). The contrast lives
-where transmitted photons are scarce, which limits the realized PCD gain.}
-\label{fig:pcd}
-\end{figure}
-
-\subsection{Spectral shaping}
-Because iron contrast is photoelectric, it should favor low energy. The tube-voltage
-and filter sweep (Fig.~\ref{fig:sweep}) confirms this end-to-end: EID CNR at the top
-dose falls monotonically from $9.9$ at $60\,\mathrm{kVp}$ to $7.6$ at
-$120\,\mathrm{kVp}$, and the detection threshold improves to
-$0.54\,\mathrm{mg\,Fe/ml}$ at $60$--$80\,\mathrm{kVp}$ but degrades to
-$1.09\,\mathrm{mg\,Fe/ml}$ at $100$--$120\,\mathrm{kVp}$. Hardening filters move the
-spectrum the wrong way; an ideal-observer analysis on the same spectra gives a
-$1.34\times$ CNR gain at $60\,\mathrm{kVp}$ and a $0.58\times$ penalty for a
-$0.5\,\mathrm{mm}$ tin filter. The practical message is simple: to see iron, use a
-soft spectrum.
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.75\linewidth]{fig_spectral_sweep.pdf}
-\caption{Spectral shaping. CNR at the top dose for both detectors across tube
-voltages and added filters. Lower tube voltage helps; hardening filters hurt.
-(PCD estimates use fewer noise realizations and are correspondingly noisier.)}
-\label{fig:sweep}
-\end{figure}
-
-\subsection{Heterogeneous (vascular) uptake}
-Real uptake is vascular, not uniform, so we also test a two-compartment tumor in
-which the same delivered iron mass is confined to $150\,\mu\mathrm{m}$ vessels
-occupying $10\%$ of the tumor volume -- a tenfold local concentration. The decisive
-fact is one of scale: a $0.5\,\mathrm{mm}$ voxel is more than three times wider than
-a vessel, so each voxel partial-volume-averages many vessels. With mass conserved,
-the volume-averaged iron per voxel is therefore unchanged, and the tumor-ROI
-contrast is identical to the homogeneous case; our simulation confirms a ROI-mean
-iron concentration equal to the homogeneous mean at every voxel size we tested, and
-a per-voxel peak that reaches the true tenfold value only as the voxel shrinks
-toward the vessel size (Fig.~\ref{fig:studyb}). Two second-order effects that the
-homogeneous model omits both prove negligible here: the beam-hardening
-nonlinearity from concentrating iron into vessels is below $10^{-3}\,$HU even at
-five times the reference dose, because iron is such a small perturbation of the
-line integral; and although the per-voxel vessel count is binomial and adds
-substantial texture ($\sim\!90\%$ relative per-voxel at $0.5\,\mathrm{mm}$, with
-$\sim\!11$ vessels per voxel), this averages out over the tumor ROI. In short, at
-realistic resolution and dose, vascular uptake is CT-indistinguishable from
-homogeneous uptake, and the simpler homogeneous model is adequate for the
-detectability question.
+\subsection{Study~B: vascular / fresh injection}
+\label{sec:res-b}
+Real fresh-injection uptake is vascular, not uniform. The decisive fact is one of
+scale. A $0.5\,\mathrm{mm}$ voxel is more than three times wider than a
+$150\,\mu\mathrm{m}$ vessel, so each voxel partial-volume-averages many vessels. With
+mass conserved, the volume-averaged iron per voxel is unchanged, and the tumor-ROI
+contrast matches the homogeneous case. The two second-order effects are small: the
+beam-hardening nonlinearity is well below $10^{-3}\,\mathrm{HU}$, and the binomial
+per-voxel vessel count adds texture that averages out over the ROI.
+%TODO: state the ROI-mean CNR for Study B at the operating point and confirm it
+% matches Study A at the same total dose.
+Figure~\ref{fig:studyb} shows that vascular uptake is CT-indistinguishable from
+homogeneous uptake at realistic resolution.
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.58\linewidth]{fig_study_b.pdf}
-\caption{Vascular uptake and partial-volume averaging. The ROI-mean iron
-concentration is invariant (mass conservation), while the per-voxel peak approaches
-the resolved tenfold value only as the voxel shrinks toward the
-$150\,\mu\mathrm{m}$ vessel size; at the $0.5\,\mathrm{mm}$ CT voxel the vessels are
-unresolved.}
+\caption{Study~B, vascular uptake. The ROI-mean iron concentration is invariant
+(mass conservation), while the per-voxel peak approaches the resolved tenfold value
+only as the voxel shrinks toward the $150\,\mu\mathrm{m}$ vessel size. At the
+$0.5\,\mathrm{mm}$ CT voxel the vessels are unresolved.}
 \label{fig:studyb}
 \end{figure}
 
-\section{DISCUSSION}
-\label{sec:discussion}
+\subsection{EID versus PCD}
+\label{sec:res-pcd}
+Photon counting helps, but only partly. The post-combination matched-filter PCD
+gives about $1.2\times$ the EID CNR when the low-energy bin carries enough counts.
+At the realistic dose the low-energy bin is photon-starved through the body, so the
+gain shrinks. \TODO{report EID vs PCD CNR at the reference load and at twice the
+load; report the per-bin pre-sum variant at $\sim$1.0$\times$ for comparison.}
+Figure~\ref{fig:pcd} shows where the iron contrast lives in energy and the
+re-optimized bin thresholds; the gain sits in a band that receives few transmitted
+photons. Table~\ref{tab:pcdcnr} reports the EID versus PCD CNR.
 
-The picture that emerges is coherent. At biologically realistic loading, SPIONs
-deposit little iron, that iron produces only a few Hounsfield units of contrast,
-and the resulting CNR lands on the Rose criterion rather than comfortably above it.
-The reference $6\,\mathrm{mg}$ dose is therefore borderline-visible: detectable in
-principle at low noise and a soft spectrum, but not a robust, everyday finding. To
-put the number in context, the top-end iron concentration we study
-($\sim\!1\,\mathrm{mg\,Fe/ml}$) is still about an order of magnitude below typical
-iodinated-contrast enhancement, so it is unsurprising that detectability is marginal.
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.6\linewidth]{pcd_bins.png}
+\caption{EID versus PCD. Per-energy iron detectability through the phantom, with the
+re-optimized three-bin PCD thresholds. The contrast lives where transmitted photons
+are scarce, which limits the realized PCD gain to about $1.2\times$ EID.
+\TODO{update thresholds to the E2-optimum re-optimization}}
+\label{fig:pcd}
+\end{figure}
 
-Which knob helps most? Not the detector, and not beam-hardening correction. A
-three-bin photon-counting detector with optimal energy weighting delivers its
-theoretical $\sim\!1.3\times$ advantage only once the dose is high enough for the
-low-energy bin to matter; at the realistic dose that bin is photon-starved and the
-advantage vanishes into noise. The lever that does move the threshold is the
-spectrum: a softer beam (lower kVp, no hardening filtration) raises iron contrast
-where it is photoelectric. This is consistent across the ideal-observer analysis,
-the full reconstruction pipeline, and the physical intuition.
+\begin{table}[ht]
+\caption{EID versus PCD CNR at the E2 optimum, by iron load. The PCD uses the
+post-combination matched filter.
+\TODO{fill from the regenerated run; include the per-bin pre-sum variant, expected
+$\sim$1.0$\times$}}
+\label{tab:pcdcnr}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+$c_{\mathrm{Fe}}$ [mg/ml] & EID CNR & PCD CNR & PCD/EID \\
+\midrule
+reference ($0.54$) & \NUM & \NUM & \NUM \\
+$2\times$ ($1.09$) & \NUM & \NUM & \NUM \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
 
-We state the limitations candidly, because they bound the claim. The study is a
-simulation with idealized, ideal-energy detectors and no scatter or patient motion.
-The phantom is a round, geometric, rabbit-scale cylinder rather than real rabbit
-anatomy -- no standard digital rabbit phantom exists -- so beam hardening and
-scatter are idealized; results are reported for a central slice. Soft tissue is a
-water proxy, since CONRAD ships no ICRU-44 soft-tissue definition, and the residual
-bone-streak bias is suppressed but not eliminated by the local-background and
-zero-iron subtraction. The homogeneous-uptake assumption is relaxed by the vascular
-model of Sec.~\ref{sec:results}, which shows that sub-resolution vessels do not
-change detectability at the same total dose; what remains is the absence of true
-anatomy and a full three-dimensional study. As a bridge to that study, we have
-already reconstructed the acquisition geometry of a real post-mortem rabbit C-arm
-scan from the RabbitCT benchmark\cite{Rohkohl2009} -- a $745\,\mathrm{mm}$
-source-to-isocenter, $1196\,\mathrm{mm}$ source-to-detector short scan of $496$
-projections over $198^\circ$ -- by decoding its projection matrices. Casting rays
-through the reference rabbit volume with that geometry yields cone-beam digital
-radiographs in which the skull and cervical spine appear correctly and rotate with
-view angle, validating the extracted geometry end to end; inserting an
-$8\,\mathrm{cm}^3$ SPION tumor makes it project as a localized signal that tracks
-the anatomy (Fig.~\ref{fig:rabbit}). A full polychromatic cone-beam FDK
-detectability study on this phantom is the immediate next step.
+\subsection{Three-dimensional verification}
+\label{sec:res-3d}
+Finally we verify the result in real anatomy. Casting rays through the RabbitCT
+volume with the decoded C-arm geometry reproduces the skull and cervical spine, and
+they rotate correctly with view angle, validating the geometry end to end. Inserting
+an $8\,\mathrm{cm}^3$ SPION tumor makes it project as a localized signal that tracks
+the anatomy. %TODO: report the 3D FDK iron delta-HU and CNR at the E2 optimum and at
+% 90 kVp, and confirm consistency with the 2D detection limit.
+Figure~\ref{fig:rabbit} shows the cone-beam projections and the reconstructed
+tumor.
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.98\linewidth]{rabbit_drr_tumor.png}
-\caption{Toward a three-dimensional study in real anatomy. Top: ray-driven
-cone-beam digital radiographs of the post-mortem RabbitCT rabbit at three view
-angles, using the C-arm geometry ($745/1196\,\mathrm{mm}$, $496$ views over
-$198^\circ$) decoded from the benchmark's projection matrices. Bottom: the
+\caption{E5 three-dimensional verification. Top: ray-driven cone-beam projections of
+the post-mortem RabbitCT rabbit at three view angles, using the decoded C-arm
+geometry ($745/1196\,\mathrm{mm}$, $496$ views over $198^\circ$). Bottom: the
 projected signal of an inserted $8\,\mathrm{cm}^3$ SPION tumor, which tracks the
-anatomy across views.}
+anatomy. \TODO{add the poly-energetic FDK reconstruction with the iron ROI}}
 \label{fig:rabbit}
 \end{figure}
 
+% =====================================================================
+\section{DISCUSSION}
+\label{sec:discussion}
+
+The picture is coherent. At biologically realistic load, SPIONs deposit little iron.
+That iron produces only a few Hounsfield units of contrast. The resulting CNR lands
+near the Rose criterion, not comfortably above it. So the reference dose is
+borderline-visible: detectable in principle at low noise and a soft spectrum, but
+not a robust everyday finding. The top iron concentration we study is still about an
+order of magnitude below iodinated-contrast enhancement, so marginal detectability
+is expected.
+
+Which factor helps most? Cell density. In Study~A the same cellular loading maps to
+a wide range of tumor iron concentrations depending on how densely the tumor is
+packed. Visibility is therefore dominated by tumor cell density, not by the
+formulation alone. The next lever is the spectrum. A soft beam (low tube voltage, no
+hardening filtration) raises iron contrast because the contrast is photoelectric.
+This is consistent across the E2 sweep, the ideal-observer analysis, and physical
+intuition. The photon-counting detector gives a modest gain of about $1.2\times$,
+and only when the low-energy bin survives the body; the noisier per-bin correction
+gives essentially nothing. Beam-hardening correction does not change iron
+detectability, because iron contrast is a genuine material signal, not a cupping
+artifact.
+
+We state the limitations candidly. The study is a simulation with idealized,
+ideal-energy detectors and no scatter or patient motion. The 2D phantom is a round,
+geometric, rabbit-scale cylinder rather than full rabbit anatomy, so beam hardening
+and scatter are idealized. Streaks from the bone rod are suppressed but not
+eliminated by the local-background and zero-iron subtraction. Soft tissue is a
+water-equivalent proxy. The homogeneous-uptake assumption is relaxed by Study~B,
+which shows that sub-resolution vessels do not change detectability at the same total
+dose. The E5 cone-beam verification brings in real anatomy, but a full 3D
+detectability sweep is still future work. The open decisions are the tumor cell
+density used in Study~A and the injection concentration used in Study~B; both are
+reported as bands rather than single numbers.
+
+% =====================================================================
 \section{CONCLUSION}
 \label{sec:conclusion}
 
-Are magnetic nanoparticles visible in CT? At realistic biological loading, only
-barely. Our simulation places the detection limit at
-$\approx 0.54\,\mathrm{mg\,Fe/ml}$ -- essentially the reference $6\,\mathrm{mg}$
-SPION dose -- with an iron contrast of a few Hounsfield units and a CNR on the Rose
-boundary. Neither photon counting nor beam-hardening correction lowers that limit
-at realistic dose; a soft spectrum is the most effective lever. For image-guided
-nanoparticle therapy this means that routine CT confirmation of SPION delivery is
-feasible only at the upper end of realistic loading and with a spectrum tuned for
-iron. The path forward is experimental validation against phantom and \emph{ex
-vivo} measurements, a heterogeneous (vascular) uptake model, and a full
-three-dimensional anatomical study; all of the simulation machinery used here,
-including GPU-native spectral detectors and noise generators contributed to CONRAD,
-is openly available to support that work.
+Can superparamagnetic iron-oxide nanoparticles be seen in CT? At realistic
+biological load, only barely. Our CONRAD-native simulation places the detection
+limit near the reference SPION dose, with an iron contrast of a few Hounsfield units
+and a CNR on the Rose boundary. Visibility is dominated by tumor cell density.
+Photon counting adds about $1.2\times$; a soft spectrum is the most effective lever;
+beam-hardening correction does not move the limit. For image-guided nanoparticle
+therapy this means routine CT confirmation of SPION delivery is feasible only at the
+upper end of realistic loading and with a spectrum tuned for iron. The path forward
+is a full three-dimensional anatomical detectability study and experimental
+validation against phantom and \emph{ex vivo} measurements. All of the simulation
+machinery used here, including GPU-native spectral detectors and noise generators
+contributed to CONRAD, is openly available to support that work.
 
+% =====================================================================
 \section*{Code and data availability}
 The complete simulation pipeline, intermediate results, and figure sources are
 public, with an audit dashboard at \url{https://akmaier.github.io/SPIONvsXRay/}. The
-project is MIT-licensed; the GPU OpenCL detector, noise-generator, and
-back-projector contributions have been upstreamed to CONRAD.
+project is MIT-licensed. The GPU OpenCL detector, noise generator, analytic fan
+projector, water precorrection tool, and back-projector fixes have been upstreamed
+to CONRAD.
 
 \acknowledgments
 This work builds on the CONRAD framework of the Pattern Recognition Lab, FAU
 Erlangen-N\"urnberg. The nanoparticle formulation and dose grounding are provided by
 the SEON group.
 
+% =====================================================================
 \begin{thebibliography}{9}
 \bibitem{Maier2013} A.~Maier et al., ``CONRAD -- a software framework for cone-beam
 imaging in radiology,'' \emph{Medical Physics} \textbf{40}(11), 111914 (2013).
