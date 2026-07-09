@@ -22,32 +22,87 @@ CG = conrad_backend.class_getter
 N0 = SPECTRUM.photons_per_pixel
 
 
-def project_base_materials(inserts, geo=None, n_pix=512):
-    """CONRAD-native fan-beam base-material sinograms (OpenCL projector).
+def _disk_chords(inserts, geo):
+    """Exact fan-beam projection of the all-cylinder phantom (closed-form chords).
 
-    Rasterizes each material into an indicator grid on the detector-matched grid
-    (1 px = deltaT mm, so FanBeamProjector2D geometry is in mm) and projects each
-    with projectRayDrivenCL. Returns ({material_name: sino[views, det]} in mm, geo),
-    matching the recon geometry in `geo`. Inserts override the water body, matching
-    the PriorityRayTracer scene ordering (inserts added after the body).
+    Every object is a centered/offset cylinder, so the line integral through a disk
+    is the analytic chord 2*sqrt(r^2 - d^2), d = perpendicular ray-to-center
+    distance. Inserts sit inside the water body and override it, so
+    water_path = body_chord - sum(insert_chords). Exact (no rasterisation bias);
+    the ground-truth forward used to validate the anti-aliased grid projection.
+    Path lengths [mm], sinogram [views, det] matching FanBeamProjector2D.
+    """
+    focal, maxT, deltaT = geo["focal"], geo["maxT"], geo["deltaT"]
+    maxBeta, deltaBeta = geo["maxBeta"], geo["deltaBeta"]
+    n_views = int(round(maxBeta / deltaBeta))
+    n_det = int(round(maxT / deltaT))
+    beta = (np.arange(n_views) * deltaBeta)[:, None]                # [views,1]
+    t = ((np.arange(n_det) + 0.5) * deltaT - maxT / 2.0)[None, :]   # [1,det] bin centers [mm]
+    cb, sb = np.cos(beta), np.sin(beta)
+    ax, ay = focal * cb, focal * sb                                 # source     [views,1]
+    px, py = t * sb, -t * cb                                        # det. point [views,det]
+    dx, dy = px - ax, py - ay                                       # ray direction A->P
+    L = np.hypot(dx, dy)
+
+    def chord(cx, cy, r):
+        d = np.abs(dx * (ay - cy) + dy * (cx - ax)) / L            # |(C-A) x dir| / |dir|
+        return np.where(d < r, 2.0 * np.sqrt(np.maximum(r * r - d * d, 0.0)), 0.0)
+
+    base = {}
+    insert_sum = np.zeros((n_views, n_det))
+    for ins in inserts:
+        c = chord(ins["center_mm"][0], ins["center_mm"][1], ins["radius_mm"])
+        base[ins["name"]] = base.get(ins["name"], np.zeros_like(c)) + c
+        insert_sum += c
+    body = chord(0.0, 0.0, conrad_phantom.BODY_RADIUS_MM)
+    base["water"] = np.maximum(body - insert_sum, 0.0)
+    return {k: v.astype(np.float32) for k, v in base.items()}
+
+
+def _rasterize_aa(inserts, n, vox, ss=8):
+    """Anti-aliased rasterisation of the all-cylinder phantom on an n x n grid at
+    `vox` mm/px, inserts overriding the water body. Each pixel gets the FRACTION of
+    its area inside a material (ss x ss subsamples), so edges are band-limited and
+    path lengths are sub-pixel accurate (fixes the hard-0/1 quantisation bias)."""
+    fine = n * ss
+    coord = ((np.arange(fine) + 0.5) / ss - 0.5 - n / 2.0) * vox    # subpixel centers [mm]
+    X, Y = np.meshgrid(coord, coord)                               # [fine,fine], X=col, Y=row
+    assigned = np.zeros((fine, fine), bool)
+    fine_masks = {}
+    for ins in inserts:
+        cx, cy = ins["center_mm"]; r = ins["radius_mm"]; nm = ins["name"]
+        m = ((X - cx) ** 2 + (Y - cy) ** 2 <= r * r) & ~assigned
+        fine_masks.setdefault(nm, np.zeros((fine, fine), bool))[m] = True
+        assigned |= m
+    body = ((X * X + Y * Y) <= conrad_phantom.BODY_RADIUS_MM ** 2) & ~assigned
+    fine_masks.setdefault("water", np.zeros((fine, fine), bool))[body] = True
+    return {nm: fm.reshape(n, ss, n, ss).mean(axis=(1, 3)).astype(np.float32)
+            for nm, fm in fine_masks.items()}
+
+
+def project_base_materials(inserts, geo=None, n_pix=512, method="aa"):
+    """CONRAD-native fan-beam base-material sinograms (path lengths [mm]).
+
+    method="aa" (default): anti-aliased fractional-coverage rasterisation projected
+      with CONRAD's OpenCL grid projector FanBeamProjector2D.projectRayDrivenCL.
+      Sub-pixel-accurate path lengths (fixes the hard-0/1 quantisation bias that
+      corrupted low-c_Fe iron dHU) with band-limited edges (low ramp overshoot).
+    method="analytic": exact closed-form disk-chord Radon (no grid); ground-truth
+      path lengths for validating "aa" (sharp edges -> higher ramp overshoot).
+
+    Returns ({material_name: sino[views, det]} in mm, geo), matching the recon
+    geometry in `geo`. Inserts override the water body.
     """
     conrad_backend.setup()
     if geo is None:
         geo = conrad_ct.fan_geometry(n_pix=n_pix)
+    if method == "analytic":
+        return _disk_chords(inserts, geo), geo
+    if method != "aa":
+        raise ValueError(f"unknown projection method {method!r} (use 'aa' or 'analytic')")
     n = int(round(geo["maxT"] / geo["deltaT"]))          # detector-matched, 1 px = deltaT mm
     vox = geo["deltaT"]
-    yy, xx = np.mgrid[0:n, 0:n]
-    x = (xx - n / 2.0) * vox
-    y = (yy - n / 2.0) * vox
-    assigned = np.zeros((n, n), bool)
-    masks = {}
-    for ins in inserts:                                  # inserts override body
-        cx, cy = ins["center_mm"]; r = ins["radius_mm"]; nm = ins["name"]
-        m = ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) & ~assigned
-        masks.setdefault(nm, np.zeros((n, n), np.float32))[m] = 1.0
-        assigned |= m
-    body = ((x * x + y * y) <= conrad_phantom.BODY_RADIUS_MM ** 2) & ~assigned
-    masks.setdefault("water", np.zeros((n, n), np.float32))[body] = 1.0
+    masks = _rasterize_aa(inserts, n, vox)
     FP = CG("edu.stanford.rsl.tutorial.fan").FanBeamProjector2D
     fp = FP(geo["focal"], geo["maxBeta"], geo["deltaBeta"], geo["maxT"], geo["deltaT"])
     base = {}
