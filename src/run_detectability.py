@@ -350,7 +350,8 @@ def run_study_a(spectrum_name="optimum", n_reps=None, densities=None,
                                                           with_bone=with_bone)
             geo = conrad_ct.fan_geometry(n_pix=512, short_scan=True)
             base, geo = cp.project_base_materials(inserts, geo)
-            spions = [i for i in inserts if i["c_form"] is None and i["name"] != "SPION_c0"]
+            spions = [i for i in inserts if i["c_form"] is None
+                      and i["name"] not in ("SPION_c0", "bone")]
             for dose_name, n0 in doses.items():
                 acc = polychromatic_accumulators(base, kvp=sp["kvp"], filters=sp["filters"],
                                                  n0=n0, bin_edges=sp["bin_edges"])

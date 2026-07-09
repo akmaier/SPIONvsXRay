@@ -194,13 +194,48 @@ def detector_sinograms(base_sinos, kvp=None, filters=(), add_noise=True, seed=0)
     return dict(eid=p_eid, pcd=p_pcd, edges=edges)
 
 
+BG_BONE_CUT = 1.5   # trim annulus pixels > 1.5x the annulus median (bone-streak reject)
+
+
+def _robust_bg(vals):
+    """Robust (mean, std) of a local-background annulus, insensitive to a bone rod
+    (or its high-value streak) intruding into the ring — while being an EXACT no-op
+    on a bone-free annulus (so with_bone=False results are unchanged bit-for-bit).
+
+    The soft-tissue/water background is unimodal and low-valued; a cortical-bone rod
+    clips the annulus (build_phantom sits the bone on the insert ring, so the 15..22 mm
+    annulus of the SPION_c0 reference AND of the insert opposite the bone overlap it),
+    injecting a tail of pixels at ~4x the water value (>300% over the annulus median).
+    Those few outliers wreck the plain mean/std: they push mu_bg up ~13% -> the
+    SPION_c0 reference reads a spurious -115 HU, and the c0 subtraction then inflates
+    EVERY insert's iron ΔHU by ~+120 HU (all cells trip the Rose threshold, so the
+    reported bone=True threshold collapses to 0.00); the annulus std blows up to ~490
+    HU (nonsense CNR). We reject only pixels ABOVE BG_BONE_CUT x the annulus median,
+    which quantum noise never reaches on a clean annulus (even at the lowest study
+    dose, water-annulus pixels stay within ~+20% of the median), and take the mean/std
+    of the survivors. On any bone-free annulus NOTHING is trimmed, so this returns the
+    plain mean/std identically; only a bone-contaminated annulus is cleaned.
+    """
+    med = float(np.median(vals))
+    if med <= 0.0:                       # degenerate annulus -> plain estimator
+        return float(vals.mean()), float(vals.std())
+    keep = vals <= BG_BONE_CUT * med     # reject bone/streak pixels (one-sided, high tail)
+    kv = vals[keep]
+    if kv.size < 8:                      # too few survivors -> fall back to the median
+        return med, float(vals.std())
+    return float(kv.mean()), float(kv.std())
+
+
 def measure_inserts(recon, geo, inserts, roi_mm=8.0, bg_inner_mm=15.0, bg_outer_mm=22.0):
     """Per-insert ΔHU/noise vs a LOCAL annular background around each insert.
 
     A ring just outside each insert (all within the water body) shares that
     insert's local cupping/streak level, so subtracting it cancels the
     bone-streak bias that a single global reference cannot. ΔHU = 1000·(μ_insert −
-    μ_localBG)/μ_localBG; noise = σ(localBG) in HU (for CNR).
+    μ_localBG)/μ_localBG; noise = σ(localBG) in HU (for CNR). The annular mean/std
+    are computed ROBUSTLY (`_robust_bg`) so a cortical-bone rod intruding into the
+    ring — which corrupts the SPION_c0 reference and, via the c0 subtraction, every
+    insert — is trimmed out; on a bone-free annulus this equals the plain mean/std.
     """
     N = recon.shape[0]
     sp = geo.get("voxel_mm", 1.0)   # recon grid spacing (mm/px), set by fbp
@@ -213,8 +248,7 @@ def measure_inserts(recon, geo, inserts, roi_mm=8.0, bg_inner_mm=15.0, bg_outer_
         roi = r2 <= (roi_mm / sp) ** 2
         bg = (r2 >= (bg_inner_mm / sp) ** 2) & (r2 <= (bg_outer_mm / sp) ** 2)
         mu_i = float(recon[roi].mean())
-        mu_b = float(recon[bg].mean())
-        sd_b = float(recon[bg].std())
+        mu_b, sd_b = _robust_bg(recon[bg])
         out.append({**ins, "mu": mu_i, "mu_bg": mu_b,
                     "delta_hu": 1000.0 * (mu_i - mu_b) / mu_b,
                     "hu_noise": 1000.0 * sd_b / mu_b})
