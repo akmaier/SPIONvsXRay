@@ -135,6 +135,32 @@
     <h2><span class="n">03</span>Materials &amp; attenuation</h2>
     <p class="lead">Iron is loaded into a soft-tissue matrix (not water) so a zero-iron tumor
       matches background. These plots verify the attenuation model before imaging.</p>
+
+    <div class="audit">
+      <h3>What the nanoparticles are, and how we count them</h3>
+      <p>The formulation we ground on is a real <b>polyacrylic-acid (PAA)-coated magnetite
+        (Fe<sub>3</sub>O<sub>4</sub>) SPION</b> suspension: iron-oxide cores of ~8 and ~12&nbsp;nm that
+        assemble into hydrodynamic clusters of ~70–250&nbsp;nm. The reference article characterizes
+        the suspension by its <b>iron concentration (mg Fe/ml)</b>, measured by ICP-MAES on
+        acid-digested particles over a working range of 1–10&nbsp;mg Fe/ml; the PAA coating never
+        enters that concentration bookkeeping.</p>
+      <p>For X-ray this is the right anchor. Contrast is driven by the <b>iron oxide</b>, and we model
+        the oxide (magnetite), whose iron mass fraction is <b>0.724</b> (3·55.85/231.5) — so the bound
+        oxygen is included (~+7% over pure Fe). The <b>PAA coating is low-Z (C/H/O),
+        essentially tissue/water-equivalent, and negligible</b> for attenuation at diagnostic
+        energies, so it is correctly left out of the μ model. (Its exact mass fraction sits in the
+        article's supplementary TGA and does not change the iron-anchored contrast model.)</p>
+      <h3>Particle concentration vs. iron concentration</h3>
+      <p>These two are easy to conflate, so we keep them separate. The independent variable is a
+        <b>particle</b> concentration (mg SPION/ml); via the delivered-mass model it maps to a tumor
+        <b>iron</b> concentration <code>c<sub>Fe</sub> = 0.0543 · c<sub>form</sub></code> (mg Fe/ml).
+        All contrast and detectability numbers on this page are reported as <b>mg Fe/ml in the
+        tumor</b>.</p>
+      <div class="note">The in-tumor iron concentrations here (~0.03–1.09&nbsp;mg Fe/ml) are about an
+        order of magnitude <b>below</b> the article's 1–10&nbsp;mg Fe/ml suspension range — by design.
+        We model the <b>diluted delivered dose in the tumor</b>, not the concentrated vial.</div>
+    </div>
+
     <div class="grid">
       <figure><img src="assets/mu_vs_energy.png" alt="mu vs energy" onerror="markPending(this)">
         <figcaption>Linear attenuation μ(E) for soft tissue, bone, and iron-loaded tumor.</figcaption></figure>

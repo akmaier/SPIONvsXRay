@@ -103,10 +103,26 @@ $c_{\mathrm{Fe}}=0$ case identical to background, so that any measured contrast 
 attributable to iron alone.
 
 \subsection{Nanoparticle and delivered-mass dose model}
-The particles are iron oxide, not pure iron. We model the magnetite core
-($\mathrm{Fe_3O_4}$), whose iron mass fraction is $72.4\%$; the bound oxygen is
-nearly tissue-equivalent and adds only a few percent to the attenuation per gram of
-iron. Rather than assume a fixed vial concentration, we spread a fixed particle
+The formulation we ground on is a real polyacrylic-acid (PAA)-coated magnetite
+($\mathrm{Fe_3O_4}$) SPION suspension\cite{Heinen2026}, with iron-oxide cores of
+$\sim\!8$ and $\sim\!12\,\mathrm{nm}$ that assemble into hydrodynamic clusters of
+$\sim\!70$--$250\,\mathrm{nm}$. It is worth being explicit about how the particles
+are quantified, because the particle-versus-iron distinction is easy to conflate.
+The reference article characterizes the suspension by its \emph{iron} concentration
+in $\mathrm{mg\,Fe/ml}$, measured by ICP-MAES on acid-digested particles, over a
+working range of $1$--$10\,\mathrm{mg\,Fe/ml}$; the PAA coating never enters that
+concentration bookkeeping. For X-ray contrast this is the right anchor: attenuation
+is driven by the iron oxide, whereas the PAA coating is low-$Z$ ($\mathrm{C/H/O}$),
+essentially tissue/water-equivalent, and negligible for attenuation at diagnostic
+energies -- so it is correctly left out of the $\mu$ model. (Its exact mass fraction
+sits in the article's supplementary TGA and does not affect the iron-anchored
+contrast model.)
+
+The particles are iron oxide, not pure iron. We model the magnetite core, whose
+iron mass fraction is $72.4\%$ ($3\times55.85/231.5$); the bound oxygen is
+nearly tissue-equivalent and adds only a few percent ($\sim\!+7\%$) to the
+attenuation per gram of iron. Rather than assume a fixed vial concentration, we
+spread a fixed particle
 mass through the tumor and ask how much iron that leaves per millilitre. Anchoring
 at $6\,\mathrm{mg}$ of SPIONs delivered for the $10\,\mathrm{mg/ml}$ formulation
 over an $8\,\mathrm{cm}^3$ tumor and scaling with concentration gives the linear
@@ -119,7 +135,13 @@ where $c_{\mathrm{form}}$ is the formulation concentration in $\mathrm{mg/ml}$.
 Table~\ref{tab:dose} lists the seven dose levels we study. The reference
 $6\,\mathrm{mg}$ dose corresponds to $c_{\mathrm{Fe}}=0.54\,\mathrm{mg\,Fe/ml}$;
 the top level doubles that. Iron is \emph{added} to the soft-tissue matrix by the
-mixture rule, so a zero-iron insert equals background exactly.
+mixture rule, so a zero-iron insert equals background exactly. Note that these
+in-tumor iron concentrations ($\sim\!0.03$--$1.09\,\mathrm{mg\,Fe/ml}$) are about
+an order of magnitude below the article's $1$--$10\,\mathrm{mg\,Fe/ml}$ suspension
+range. This is by design: we model the \emph{diluted delivered dose in the tumor},
+not the concentrated vial. All contrast and detectability numbers below are
+therefore reported as iron concentration ($\mathrm{mg\,Fe/ml}$) in the tumor, not
+as particle concentration ($\mathrm{mg\,SPION/ml}$).
 
 \begin{table}[ht]
 \caption{Delivered-mass dose model. A fixed SPION mass is spread through an
