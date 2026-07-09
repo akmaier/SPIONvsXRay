@@ -419,7 +419,23 @@ bone-streak bias is suppressed but not eliminated by the local-background and
 zero-iron subtraction. The homogeneous-uptake assumption is relaxed by the vascular
 model of Sec.~\ref{sec:results}, which shows that sub-resolution vessels do not
 change detectability at the same total dose; what remains is the absence of true
-anatomy and a full three-dimensional study.
+anatomy and a full three-dimensional study. As a bridge to that study, we have
+already reconstructed the acquisition geometry of a real post-mortem rabbit C-arm
+scan from the RabbitCT benchmark\cite{Rohkohl2009} -- a $745\,\mathrm{mm}$
+source-to-isocenter, $1196\,\mathrm{mm}$ source-to-detector short scan of $496$
+projections over $198^\circ$ -- and inserted a SPION tumor into the rabbit volume
+(Fig.~\ref{fig:rabbit}); a cone-beam forward projection and FDK reconstruction of
+that phantom is the immediate next step.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.92\linewidth]{rabbit_slices.png}
+\caption{Real rabbit anatomy for the planned three-dimensional study: orthogonal
+slices of the post-mortem RabbitCT reference volume, whose C-arm geometry
+($745/1196\,\mathrm{mm}$, $496$ views over $198^\circ$) we extracted from the
+benchmark dataset.}
+\label{fig:rabbit}
+\end{figure}
 
 \section{CONCLUSION}
 \label{sec:conclusion}
