@@ -512,24 +512,33 @@ $90\,\mathrm{kVp}$ baseline. The PCD uses the post-combination matched filter.}
 
 \subsection{Three-dimensional verification}
 \label{sec:res-3d}
-Finally we verify the result in real anatomy. Casting rays through the RabbitCT
-volume with the decoded C-arm geometry reproduces the skull and cervical spine, and
-they rotate correctly with view angle, validating the geometry end to end. Inserting
-an $8\,\mathrm{cm}^3$ SPION tumor makes it project as a localized signal that tracks
-the anatomy. \TODO{E5 3D results pending: report the poly-energetic FDK iron
-$\Delta$HU and CNR at the E2 optimum and at the $90\,\mathrm{kVp}$ baseline, and
-confirm consistency with the 2D detection limit.}
-Figure~\ref{fig:rabbit} shows the cone-beam projections; the reconstructed-tumor
-panel is pending.
+Finally we verify the result in real anatomy. We use the post-mortem RabbitCT
+volume. We segment it into soft tissue, adipose, and bone. We add an iron-loaded
+tumor in the neck. We forward-project each material in three-dimensional cone-beam
+geometry. We combine the energies at the E2 optimum ($70\,\mathrm{kVp}$, Al
+$5\,\mathrm{mm}$). We reconstruct with cone-beam FDK, once for the EID and once for
+the post-combination PCD. The iron signal is positive. It scales linearly with
+concentration, at about $6.6\,\mathrm{HU}$ per $\mathrm{mg\,Fe/ml}$. This matches the
+two-dimensional value. The PCD gives a larger signal and a higher CNR than the EID at
+every level. The CNR gain is about $1.14\times$. This is the direction and size that
+E2 predicts. For SPION~I fresh at a mid cell density
+($3\times10^{8}\,\mathrm{cells/cm^3}$, $c_{Fe}=2.47\,\mathrm{mg\,Fe/ml}$) the tumor
+reads $+16\,\mathrm{HU}$ (EID) and $+18\,\mathrm{HU}$ (PCD). At the highest load
+($1\times10^{9}$) it reads $+55$ and $+60\,\mathrm{HU}$. The three-dimensional result
+agrees with the two-dimensional detection limit. Figure~\ref{fig:rabbit} shows the
+reconstructed slice and the iron-only map.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.98\linewidth]{rabbit_drr_tumor.png}
-\caption{E5 three-dimensional verification. Top: ray-driven cone-beam projections of
-the post-mortem RabbitCT rabbit at three view angles, using the decoded C-arm
-geometry ($745/1196\,\mathrm{mm}$, $496$ views over $198^\circ$). Bottom: the
-projected signal of an inserted $8\,\mathrm{cm}^3$ SPION tumor, which tracks the
-anatomy. \TODO{add the poly-energetic FDK reconstruction with the iron ROI}}
+\includegraphics[width=0.98\linewidth]{fig_3d.png}
+\caption{E5 three-dimensional verification in real anatomy. A cervical slice of the
+post-mortem RabbitCT rabbit, reconstructed with cone-beam FDK at the E2 optimum
+($70\,\mathrm{kVp}$, Al $5\,\mathrm{mm}$), with an inserted SPION~I fresh tumor
+($c_{Fe}=2.47\,\mathrm{mg\,Fe/ml}$). Left: energy-integrating detector
+($+16\,\mathrm{HU}$). Middle: photon-counting detector, post-combination matched
+filter ($+18\,\mathrm{HU}$). Right: the PCD iron-only signal (reconstruction minus a
+no-iron reference), which localizes the tumor while the anatomy cancels. The PCD
+gives the larger contrast at every iron level.}
 \label{fig:rabbit}
 \end{figure}
 

@@ -104,9 +104,9 @@
       biological distribution shift that limit. This is a <b>detectability study</b> — we report
       contrast (ΔHU) and contrast-to-noise ratio (CNR) against the Rose criterion, not a full
       mathematical factorial. Every figure below is regenerated from <code>results/</code>.</p>
-    <div class="note">Status: <strong>live</strong> — spectrum + detector optimization (E2),
-      Study A (cellular uptake, E3), and Study B (vascular delivery, E4) complete. The 3D
-      verification (E5) is running now — see the placeholder section.
+    <div class="note">Status: <strong>live</strong> — all five experiments complete: spectrum + detector
+      optimization (E2), Study A (cellular uptake, E3), Study B (vascular delivery, E4), and the 3D
+      RabbitCT verification (E5).
       <b>Headline:</b> at realistic melanoma iron loads SPIONs sit right at the CT detection
       limit; visibility is dominated by tumor cell density; the photon-counting detector gives
       about <b>1.2×</b> CNR over energy-integrating; lower kVp helps.</div>
@@ -133,7 +133,7 @@
       <tr><td>E4</td><td>Study B — vascular (fresh injection)</td>
         <td>Freshly-injected SPIONs confined to tumor vessels; detectability of the vascular phase.</td></tr>
       <tr><td>E5</td><td>3D verification</td>
-        <td>Real RabbitCT C-arm geometry, full 3D FDK — confirms the 2D detectability limits. <span class="tag">results pending</span></td></tr>
+        <td>Real RabbitCT anatomy, 3D cone-beam FDK — confirms the 2D detectability limits (PCD ~1.14× EID).</td></tr>
     </table>
     <div class="audit">
       <h3>Detectability study — factor structure</h3>
@@ -301,13 +301,23 @@
 
   <section id="rabbit">
     <h2><span class="n">08</span>E5 — 3D verification</h2>
-    <p class="lead">A full 3D FDK detectability run on the real RabbitCT C-arm geometry, to confirm the
-      2D detectability limits carry over to a realistic cone-beam acquisition. It is run at both the E2
-      optimum and the 90&nbsp;kVp baseline, like E3 and E4.</p>
-    <div class="pending">⏳ PLACEHOLDER — E5 (3D verification) is running now; results pending.
-      The <code>.rctd</code> RabbitCT geometry is decoded (SID 745&nbsp;mm, SDD ≈ 1196&nbsp;mm, 496 views
-      over 198°) and the 8&nbsp;cm³ SPION tumor is inserted; this section will fill with the 3D FDK
-      detectability numbers once the run completes.</div>
+    <p class="lead">A 3D FDK detectability run on the real, post-mortem RabbitCT volume. It confirms the
+      2D detectability limits carry over to a cone-beam acquisition in real anatomy. Each material
+      (soft tissue, adipose, bone) is forward-projected in 3D. The energies are combined at the E2
+      optimum (70&nbsp;kVp / Al&nbsp;5&nbsp;mm) for the EID and the post-combination PCD. The volume is
+      reconstructed with cone-beam FDK.</p>
+    <figure>
+      <img src="assets/fig_3d.png" alt="E5 3D rabbit reconstruction: EID vs PCD vs iron-only map">
+      <figcaption>Cervical slice of the RabbitCT rabbit with an inserted SPION&nbsp;I fresh tumor
+        (c_Fe = 2.47&nbsp;mg&nbsp;Fe/ml). Left: EID (+16&nbsp;HU). Middle: PCD post-combination (+18&nbsp;HU).
+        Right: the PCD iron-only signal (reconstruction − no-iron reference), which localizes the tumor
+        while the anatomy cancels.</figcaption>
+    </figure>
+    <p class="lead">The iron signal is positive. It scales linearly with concentration, at about
+      6.6&nbsp;HU per mg&nbsp;Fe/ml — matching the 2D value. The PCD beats the EID in ΔHU and CNR at every
+      level, with a ~1.14× CNR gain (the direction and size the 2D optimization predicts). SPION&nbsp;I fresh
+      reads +16/+18&nbsp;HU (EID/PCD) at 3×10⁸ cells, and +55/+60&nbsp;HU at 1×10⁹. The 3D result agrees with
+      the 2D detection limit.</p>
   </section>
 
   <section id="paper">
