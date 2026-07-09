@@ -19,16 +19,22 @@ hydrodynamic clusters ~70–250 nm, used at ~1–10 mg Fe/ml.
 independent variable is the tumor **iron** concentration `c_Fe` (mg Fe/ml); from
 it we estimate the **whole-nanoparticle** concentration
 `c_NP = c_Fe / (0.724·(1−φ))`, where 0.724 is the Fe mass fraction of magnetite
-and **φ is the PAA coating mass fraction**. φ is an *estimate* — its exact value
-is the article's supplementary TGA (Fig A.1), not in this repo. Magnetometry
-(SPION I ≈ 91 emu/g vs bulk magnetite ≈ 92–98) implies coating ≈ 1–7 %; literature
-PAA-coated co-precipitated SPIONs run ≈ 10–30 %. We adopt a **central φ = 0.15
-(range 0.05–0.30)** ⇒ `c_NP = 1.625·c_Fe`. This φ sets **only** the reported
+and **φ is the PAA coating mass fraction**. **φ is now taken per formulation from
+the article's supplementary TGA** (Heinen et al., supplement Table A.1 / Fig A.1),
+not a single estimate. The TGA inorganic (iron-oxide) residual is **87.7 % for
+SPION I** (12 nm cores) and **66.4 % for SPION II** (8 nm cores); on heating the
+residual oxidizes magnetite → hematite (+3.4 % mass, article Eq A.1), so the
+original magnetite fraction is `R_m/1.034` = **84.8 % (SPION I)** and
+**64.2 % (SPION II)**. The complement is PAA: **φ ≈ 0.15 for SPION I** and
+**φ ≈ 0.36 for SPION II** — so SPION II carries roughly twice the coating. (The
+earlier single central estimate φ = 0.15 turned out ≈ exact for SPION I.) Each
+formulation therefore uses **its own coating fraction**; SPION I gives
+`c_NP ≈ 1.625·c_Fe` and SPION II `c_NP ≈ 2.16·c_Fe`. φ sets **only** the reported
 mg SPION/ml; the PAA is low-Z (C/H/O), tissue/water-equivalent, so it is
 **negligible for the X-ray μ** — adding it shifts the monochromatic iron ΔHU at
-the top dose by only ≈ 3.6 % (3.62 → 3.75 HU @ 60 keV). *Iron* (mg Fe/ml) and
-*particle* (mg SPION/ml) concentrations are kept distinct throughout; all contrast
-numbers are reported as **mg Fe/ml in the tumor**.
+the top dose by only ≈ 3.6 % at φ = 0.15 (3.62 → 3.75 HU @ 60 keV). *Iron*
+(mg Fe/ml) and *particle* (mg SPION/ml) concentrations are kept distinct
+throughout; all contrast numbers are reported as **mg Fe/ml in the tumor**.
 
 ---
 
@@ -51,18 +57,31 @@ Two phantoms, one comparable C-arm geometry:
 **6 mg SPIONs for the 10 mg/ml formulation**, spread over an 8 cm³ tumor, scaled
 with concentration. Magnetite (72.4 % Fe) ⇒ `c_Fe = 0.0543 × c_form`, so the top
 dose is only **~0.5 mg Fe/ml** (~10× below iodine CT enhancement). This tumor band
-is **grounded in the article's measured cellular loading**: SPION I ≈ 8.23 pg
-Fe/cell (fresh; 3.78 after 24 h), SPION II ≈ 3.86/3.60/2.51 pg Fe/cell in B16-F10
-melanoma cells; at a tumor cell density ~10⁸–10⁹ cells/cm³ this is ~0.25–8 mg Fe/ml
-(realistic ~1–2.5 mg Fe/ml for SPION I) — bracketing the sweep (Heinen et al.).
+is **grounded in the article's measured cellular loading** (Fig 5, B16-F10 melanoma,
+0 h / 24 h): SPION I-113 nm **8.23 / 3.78**, SPION II-115 **3.86 / 1.52**, II-98
+**3.60 / 1.37**, II-76 **2.51 / 0.85** pg Fe/cell; at a tumor cell density
+~10⁸–10⁹ cells/cm³ this is ~0.25–8 mg Fe/ml (realistic ~1–2.5 mg Fe/ml for SPION I)
+— bracketing the sweep (Heinen et al.).
 
 **Two experiments (one comparable design).** The delivered iron is imaged under
 two biological distributions, run as a single directly-comparable factor:
-- **Study A — homogeneous (cellular uptake).** SPIONs internalised by tumor cells
-  ⇒ ~uniform tumor iron distribution.
-- **Study B — vascular / fresh delivery.** Freshly delivered SPIONs still in the
-  blood/vasculature, not yet taken up ⇒ contrast confined to the 150 µm vessels
-  (~10 % of tumor volume, 10× local conc), heterogeneous.
+- **Study A — homogeneous (cellular uptake).** Iron internalised by tumor cells ⇒
+  ~uniform tumor iron distribution. Concentrations are sampled from the article's
+  **measured cellular loading** (Fig 5, all configurations incl. fresh): SPION I-113 nm
+  **8.23 / 3.78** pg Fe/cell (0 h / 24 h), SPION II-115 **3.86 / 1.52**, II-98
+  **3.60 / 1.37**, II-76 **2.51 / 0.85**. Each configuration converts to a tumor
+  mg Fe/ml via the tumor cell density and uses **its formulation's coating**
+  (SPION I φ ≈ 0.15, SPION II φ ≈ 0.36). *(Heinen et al.)*
+- **Study B — vascular / "fresh" delivery.** Freshly-injected SPIONs still in the
+  **blood carrier inside the vessels**, before cellular uptake ⇒ contrast confined
+  to the 150 µm vessels (~10 % of tumor volume, 10× local conc), heterogeneous, at
+  the injection concentration. Referenced to the Genç/Lyer flow-accumulation context
+  (suspension ~0.84 mg Fe/mL).
+
+> **Two open decisions (TODO — pending the user):**
+> (a) **Study A** tumor **cell density** used to convert pg Fe/cell → mg Fe/ml;
+> (b) **Study B** **injection concentration** (article suspension 1–10 mg Fe/ml, or
+> a specific injected dose). Both are placeholders until fixed.
 
 **Factorial** (per phantom): formulation conc. {0, 0.5, 1, 2, 5, 10, 20 mg/ml} ×
 detector {EID, multi-bin PCD} × beam-hardening {off, on} × 10 noise realizations

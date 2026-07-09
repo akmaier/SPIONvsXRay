@@ -31,6 +31,13 @@ contrast (Hounsfield Units / attenuation) and detectability.
   (ρ ≈ 5.17 g/cm³, Fe mass fraction 0.724) — maghemite γ-Fe₂O₃ (ρ ≈ 4.9, Fe 0.700) is
   the alternative polymorph. For the X-ray model, only the delivered **mg Fe/ml**
   drives contrast; the polymorph mainly affects particle-mass ↔ Fe-mass conversion.
+- **Coating fraction is per formulation, from the article's TGA** (supplement
+  Table A.1 / Fig A.1). The inorganic (iron-oxide) residual is **87.7 % (SPION I,
+  12 nm cores)** and **66.4 % (SPION II, 8 nm cores)**; on heating the residual
+  oxidizes magnetite → hematite (+3.4 % mass, article Eq A.1 uses 0.966·w_residual),
+  so the original magnetite fraction is `R_m/1.034` = **84.8 % (SPION I)** and
+  **64.2 % (SPION II)**. The complement is PAA: **φ ≈ 0.15 (SPION I)**, **φ ≈ 0.36
+  (SPION II)** — SPION II carries roughly twice the coating. See §5.2.
 - The nanoparticle-loaded tumor at iron concentration `c_Fe` [mg Fe/ml] is modeled as
   **ICRU soft tissue + magnetite (Fe₃O₄) core + PAA coating** added to the tissue
   matrix (NOT diluted in water — see §5.2), so a zero-iron tumor equals the
@@ -111,18 +118,22 @@ no organ heterogeneity.
 - **Full-nanoparticle model (core + PAA coating):** the whole particle is
   magnetite core + a **polyacrylic-acid (PAA, monomer (C₃H₄O₂)ₙ) coating**, so the
   tumor material per ml = soft-tissue matrix + magnetite (mass = c_Fe/0.724) + PAA
-  (mass = φ·c_NP). From the tumor iron concentration we estimate the
+  (mass = φ·c_NP). From the tumor iron concentration we compute the
   **whole-nanoparticle** concentration
   `c_NP = c_Fe / (0.724·(1 − φ))`, where **φ = PAA coating mass fraction**.
-  - **φ is an estimate** (documented, not measured here): the exact value is the
-    article's supplementary **TGA (Fig A.1)**, not in this repo. Magnetometry — SPION I
-    saturation magnetisation ≈ 91 emu/g vs bulk magnetite ≈ 92–98 — implies magnetite
-    ≈ 93–99 % ⇒ coating ≈ 1–7 %; literature PAA-coated co-precipitated SPIONs run
-    ≈ 10–30 %. We adopt a **central φ = 0.15 (range 0.05–0.30)** ⇒ `c_NP = 1.625·c_Fe`.
+  - **φ is per formulation, from the article's TGA** (supplement Table A.1 / Fig A.1),
+    replacing the earlier single estimate. The inorganic (iron-oxide) residual R_m is
+    **87.7 % (SPION I, 12 nm cores)** and **66.4 % (SPION II, 8 nm cores)**; the residual
+    oxidizes magnetite → hematite (+3.4 % mass; article Eq A.1 uses 0.966·w_residual),
+    so the original magnetite fraction = R_m/1.034 = **84.8 % (SPION I)** ⇒ coating
+    **φ ≈ 0.15**, and **64.2 % (SPION II)** ⇒ coating **φ ≈ 0.36**. SPION II carries
+    much more PAA than SPION I, so each formulation's full-particle model uses **its own
+    coating**: `c_NP ≈ 1.625·c_Fe` (SPION I), `c_NP ≈ 2.16·c_Fe` (SPION II). *(The
+    earlier central estimate φ = 0.15 turned out ≈ exact for SPION I.)*
   - **φ sets ONLY the reported mg SPION/ml** (particle basis). The PAA is low-Z
     (C/H/O), tissue/water-equivalent, so it is **negligible for μ**: registering it and
     adding its mass moves the monochromatic iron ΔHU at the top dose by only ≈ 3.6 %
-    (3.62 → 3.75 HU @ 60 keV). *Iron* (mg Fe/ml) and *particle* (mg SPION/ml)
+    at φ = 0.15 (3.62 → 3.75 HU @ 60 keV). *Iron* (mg Fe/ml) and *particle* (mg SPION/ml)
     concentrations are reported distinctly.
 - **Nanoparticle-loaded tumor:** the tumor host medium is the **same ICRU soft
   tissue** as the phantom background, with the **full particle** (magnetite + PAA)
@@ -144,7 +155,9 @@ c_Fe      = 0.724 × c_tumor               # tumor IRON concentration (drives X-
 ```
 
 Reported concentrations: **tumor Fe** (mg Fe/ml, drives μ) and the **whole-particle**
-`c_NP = 1.625·c_Fe` (mg SPION/ml, φ = 0.15) with its PAA-coating mass.
+`c_NP` (mg SPION/ml) with its PAA-coating mass, using the formulation's own coating
+— `c_NP = 1.625·c_Fe` for SPION I (φ ≈ 0.15), `c_NP = 2.16·c_Fe` for SPION II
+(φ ≈ 0.36). The delivered-mass table below is tabulated at φ = 0.15 (SPION I).
 
 | `c_form` (mg/ml) | delivered SPION (mg) | **tumor Fe (mg/ml)** | tumor c_NP (mg SPION/ml) | tumor PAA (mg/ml) |
 |---:|---:|---:|---:|---:|
@@ -161,12 +174,13 @@ order of magnitude below iodine CT enhancement (~2–15 mg/ml). Quantifying whet
 this is detectable is a central outcome of the study.
 
 **Concentration basis — cellular-loading anchor.** The tumor iron band is grounded
-in the article's **measured cellular loading** (Heinen et al., B16-F10 melanoma):
-SPION I ≈ **8.23 pg Fe/cell** (fresh; 3.78 after 24 h), SPION II ≈ 3.86/3.60/2.51
-pg Fe/cell. At a tumor cell density ~10⁸–10⁹ cells/cm³ this gives ~**0.25–8 mg Fe/ml**
-(realistic ~1–2.5 mg Fe/ml for SPION I), which brackets the swept tumor
-concentrations. This *justifies* the range; it does not change the delivered-mass
-sweep above.
+in the article's **measured cellular loading** (Heinen et al., Fig 5, B16-F10
+melanoma, all configurations incl. fresh; 0 h / 24 h): SPION I-113 nm
+**8.23 / 3.78**, SPION II-115 **3.86 / 1.52**, II-98 **3.60 / 1.37**, II-76
+**2.51 / 0.85** pg Fe/cell. At a tumor cell density ~10⁸–10⁹ cells/cm³ this gives
+~**0.25–8 mg Fe/ml** (realistic ~1–2.5 mg Fe/ml for SPION I), which brackets the
+swept tumor concentrations. This *justifies* the range; it does not change the
+delivered-mass sweep above.
 
 ### 5.3 Spectrum & dose
 
@@ -274,17 +288,29 @@ report EID vs PCD-unweighted vs PCD-optimal-weighted CNR.
 ### 5.9 Tumor distribution factor — two experiments (cellular vs vascular)
 
 The **tumor-distribution factor** (§5.6) encodes two biological phases of the same
-delivered iron mass, run as one directly-comparable factor:
+delivered iron, run as one directly-comparable factor:
 
-- **Study A — homogeneous (cellular uptake).** SPIONs internalised by the tumor
-  cells give a ~uniform tumor iron distribution (the uniform level). This is the
-  phase the article's per-cell loading (§5.2 cellular anchor) describes.
-- **Study B — vascular / fresh delivery.** Freshly delivered SPIONs still in the
-  **blood/vasculature, not yet taken up** — contrast confined to **150 µm vessels
-  occupying 10 % of the tumor volume** (the vessel level), heterogeneous.
+- **Study A — homogeneous (cellular uptake).** Iron internalised by the tumor cells
+  gives a ~uniform tumor iron distribution (the uniform level). Concentrations are
+  sampled from the article's **measured cellular loading** (Fig 5, all configurations
+  incl. fresh; 0 h / 24 h): SPION I-113 nm **8.23 / 3.78**, SPION II-115
+  **3.86 / 1.52**, II-98 **3.60 / 1.37**, II-76 **2.51 / 0.85** pg Fe/cell. Each
+  configuration converts to a tumor mg Fe/ml via the tumor **cell density** and uses
+  **its formulation's coating** (SPION I φ ≈ 0.15, SPION II φ ≈ 0.36; §5.2). Cite
+  Heinen et al.
+- **Study B — vascular / "fresh" delivery.** Freshly-injected SPIONs still in the
+  **blood carrier inside the vessels, before cellular uptake** — contrast confined to
+  **150 µm vessels occupying 10 % of the tumor volume** (the vessel level),
+  heterogeneous, at the **injection concentration**. Referenced to the Genç/Lyer
+  flow-accumulation context (suspension ~0.84 mg Fe/mL).
 
 For Study B the same delivered iron mass is confined to 10 % of the volume →
 **10× local vessel concentration**.
+
+> **Two open decisions (TODO — pending the user):**
+> (a) **Study A** tumor **cell density** used to convert pg Fe/cell → mg Fe/ml;
+> (b) **Study B** **injection concentration** (article suspension 1–10 mg Fe/ml, or a
+> specific injected dose). Both remain placeholders until the user fixes them.
 
 Key physics: the CT voxel (~390 µm) **cannot resolve** 150 µm vessels, so each
 tumor voxel partial-volume-averages vessel + tissue. With mass conserved the
