@@ -27,32 +27,34 @@ contrast (Hounsfield Units / attenuation) and detectability.
   Fe mass fraction 0.724) or **maghemite γ-Fe₂O₃** (ρ ≈ 4.9 g/cm³, Fe fraction
   0.700). For the X-ray model, only the delivered **mg Fe/ml** matters; core
   polymorph mainly affects how we convert particle mass ↔ Fe mass.
-- A suspension at concentration `c` [mg Fe/ml] is modeled as
-  **water + dissolved iron** at the corresponding mass fraction, following the
-  CONRAD custom-material "mixture" recipe (analogous to the Ultravist/iopromide
-  example in the tutorial).
+- The iron-loaded tumor at concentration `c` [mg Fe/ml] is modeled as **ICRU
+  soft tissue + magnetite (Fe₃O₄) oxide** added to the tissue matrix (NOT diluted in
+  water — see §5.2), so a zero-iron tumor equals the soft-tissue background (ΔHU = 0)
+  and all contrast is attributable to iron. Built with the CONRAD custom-material
+  "mixture" recipe.
 
 ## 3. Approach Overview
 
 ```
-Materials  →  Phantom  →  Polychromatic forward projection  →  FDK reco  →  ROI analysis
-(SPION @ c)   (vials)     (500 proj, C-arm, std spectrum)      (3D vol)    (HU vs c, CNR)
+Materials  →  Phantom  →  Polychromatic forward projection  →  Fan FBP  →  ROI analysis
+(SPION @ c)   (soft-     (500 views, C-arm short scan, 90 kVp) (2D slice)  (HU vs c, CNR)
+              tissue)
 ```
 
-1. **Custom materials** — one CONRAD material per iron concentration
-   (`water + Fe @ c mg/ml`) plus a pure-water reference.
-2. **Phantom** — a water cylinder ("sample holder") containing several rod/vial
-   inserts, each assigned a different SPION concentration (a multi-vial
-   contrast-detectability phantom, inspired by the CONRAD numerical phantoms).
-3. **Spectrum** — the CONRAD standard polychromatic X-ray spectrum
-   (`PolychromaticXRaySpectrum`), per the spectral-absorption tutorial.
-4. **Forward projection** — polychromatic line-integral absorption
-   (`PolychromaticAbsorptionModel`) rendered into **500 projections** in a
-   **standard C-arm cone-beam geometry** (CONRAD default trajectory).
-5. **Reconstruction** — cone-beam FDK (filtered back-projection).
-6. **Analysis** — mean attenuation / HU in each insert ROI, contrast vs.
-   concentration curve, contrast-to-noise ratio (CNR), and a detectability
-   threshold (Rose criterion, CNR ≳ 3–5).
+1. **Custom materials** — one CONRAD material per iron concentration (**magnetite
+   Fe₃O₄ in ICRU soft tissue**) plus the iron-free soft-tissue reference.
+2. **Phantom** — a soft-tissue cylinder with rod/vial inserts, each a different SPION
+   concentration, plus a cortical-bone rod (a multi-vial contrast-detectability
+   phantom).
+3. **Spectrum** — the CONRAD standard **90 kVp** polychromatic X-ray spectrum
+   (`PolychromaticXRaySpectrum`).
+4. **Forward projection** — per-material path lengths (anti-aliased grid, or exact
+   analytic `FanBeamAnalyticProjector2D`), combined polychromatically into EID + PCD
+   line integrals over **500 views** of a **C-arm fan short scan**.
+5. **Reconstruction** — CONRAD-native **fan FBP** (Parker → cosine → ramp →
+   distance-weighted backprojection), always with water precorrection (§5.5).
+6. **Analysis** — per-insert iron ΔHU (c0-corrected, local annulus), CNR over noise
+   realizations, and a Rose detection threshold (CNR ≳ 3–5).
 
 ## 4. Tools & Environment
 
@@ -135,11 +137,15 @@ this is detectable is a central outcome of the study.
 
 ### 5.3 Spectrum & dose
 
-- **Spectrum:** CONRAD **standard** polychromatic X-ray spectrum (nominal
-  ~120 kVp C-arm); exact min/max/delta energy + filtration to be read from the
-  installed default and recorded at M3.
-- **Dose:** **70 000 photons per detector pixel** (unattenuated I₀); Poisson
-  noise applied at the projection level.
+- **Spectrum:** CONRAD **standard** polychromatic X-ray spectrum, **90 kVp**
+  (`PolychromaticXRaySpectrum`, W anode, 10–150 keV @ 0.5 keV, mean ~55 keV), fixed
+  for the detectability study. *(An earlier draft said "~120 kVp" — that was wrong;
+  kVp/filtration are explored separately in §5.8.)*
+- **Dose:** a study **factor** — **low = 20 000 / high = 100 000** unattenuated
+  photons per detector pixel (I₀), bracketing a realistic stationary C-arm CBCT
+  low/high-dose span (~0.15–1.2 µGy/frame at the detector; the earlier fixed 70 000
+  sits mid/high). Poisson (PCD) / Gaussian-quantum (EID) noise applied at the
+  projection level.
 
 ### 5.4 Detectors (both simulated)
 
@@ -151,34 +157,49 @@ this is detectable is a central outcome of the study.
 
 ### 5.5 Geometry & reconstruction
 
-- **Geometry:** standard C-arm cone-beam (CONRAD default
-  `Configuration`/`Trajectory`), **500 projections**, **20 cm FOV**; SID/SDD,
-  detector pixel size/count and angular range taken from the default and recorded
-  at M4.
-- **Reconstruction:** cone-beam **FDK**, isotropic voxels sized to the FOV
-  (e.g. 512³ over 20 cm ≈ 0.39 mm), with **water beam-hardening correction
-  toggled off/on**.
+The detectability study reconstructs a **2D fan-beam** central slice (the fan is the
+mid-plane of the C-arm cone), using CONRAD's `tutorial.fan` classes end-to-end.
 
-### 5.6 Factorial design (the "effects study")
+- **Geometry:** SID = 750 mm (= CONRAD `focalLength`), SDD = 1200 mm, **500 views**
+  over a **short scan** (180°+2γ, Parker-weighted). CONRAD's virtual-detector
+  convention: detector at the isocenter, sampled at **deltaT = 1 mm** (kept at 1 mm
+  so the ramp kernels' `deltaS` scaling is exact — SheppLogan carried a 1/deltaS²
+  bug, fixed upstream this session), `maxT` = recon FOV. Recon **512×512 @ 0.5 mm**
+  (256 mm FOV).
+- **Reconstruction (CONRAD-native fan FBP):** forward projection — anti-aliased grid
+  `FanBeamProjector2D.projectRayDrivenCL` (default `aa`) or exact analytic
+  `FanBeamAnalyticProjector2D` (per-material, contributed upstream this session) →
+  `ParkerWeights` (short scan) → `CosineFilter` → `SheppLoganKernel` (ramp + roll-off)
+  → **distance-weighted** `FanBeamBackprojector2D` (the 1/U² weight was reinstated
+  upstream this session). **Water beam-hardening precorrection (`WaterPrecorrectionTool`)
+  is always applied.**
+- **3D cone-beam FDK** (`ConeBeamProjector`/`ConeBeamBackprojector`, verified this
+  session: DC scale-invariant across voxel/detector, only axial cone shading) is a
+  **separate track** (RabbitCT geometry), not the detectability reconstructor.
+
+### 5.6 Detectability study — factor structure
+
+A multi-factor effects study (NOT a mathematical factorial). Factors:
 
 | Factor | Levels | n |
 |--------|--------|---|
 | Formulation conc. `c_form` [mg SPION/ml] (→ tumor Fe, see §5.2) | 0, 0.5, 1, 2, 5, 10, 20 | 7 |
 | Detector | EID, PCD (multi-bin) | 2 |
-| Beam-hardening correction | off, on | 2 |
-| Noise realization @ 70 000 ph/px | repeats | R = 10 |
+| Bone (cortical-bone rod) | absent, present | 2 |
+| Dose (unattenuated I₀, ph/px) | low 20 000, high 100 000 | 2 |
+| Tumor distribution | uniform, vessel (§5.9) | 2 |
+| Noise realizations | repeats | R = 30 |
 
-**Run counts** (concentration lives in the phantom, so it is a per-scan factor;
-BH-correction and noise are post-projection steps):
+→ 2 det × 2 bone × 2 dose × 2 distribution × 6 iron levels (c0 = reference) =
+**96 cells × R**.
 
-- **Polychromatic forward projections (compute-heavy, 500 views each):**
-  `7 conc × 2 detectors = 14`.
-- **Noisy sinogram realizations:** `14 × 10 = 140`.
-- **Reconstructions (× BH off/on):** `140 × 2 = 280`.
-- **Noise-free reference volumes (contrast ceiling):** `14 × 2 = 28`.
-- **➡ ≈ 308 analyzed volumes from 14 forward simulations.**
-
-Total scales linearly with the concentration list and `R`.
+**Held fixed — no longer factors:**
+- **Water beam-hardening precorrection: ALWAYS on** (via CONRAD `WaterPrecorrectionTool`,
+  §5.5). On the homogeneous phantom it is ~inert against the local-annulus metric; it
+  matters once bone streaking / multi-material correction is in play (discussion point).
+- **Short scan: ALWAYS on** (Parker-weighted 180°+2γ).
+- **Spectrum: fixed** at the 90 kVp CONRAD standard; kVp/filtration is the separate
+  spectral-optimization analysis (§5.8), not a factor here.
 
 ### 5.7 Detectability metrics
 
@@ -186,8 +207,9 @@ Per tumor ROI vs. soft-tissue reference, for every factor cell:
 - **ΔHU** = mean(tumor) − mean(reference).
 - **CNR** = ΔHU / σ(reference), from the R noise realizations.
 - **Detection threshold:** lowest `c` with **CNR ≥ 3–5** (Rose) and a reported
-  minimum meaningful ΔHU — reported separately for EID vs each PCD bin, and for
-  BH-correction off vs on.
+  minimum meaningful ΔHU — reported per cell: detector (EID vs PCD), bone
+  (absent/present), dose (low/high), and distribution (uniform/vessel). Water
+  precorrection is always on, so it is not a reported split.
 
 ### 5.8 Spectral optimization (filters, kVp, PCD thresholds)
 
@@ -216,9 +238,10 @@ contrast is **photoelectric** and lives at low energy. Computed with
 Added study dimension: sweep `KVP_LEVELS` and `FILTER_CONFIGS` (config.py) and
 report EID vs PCD-unweighted vs PCD-optimal-weighted CNR.
 
-### 5.9 Study B — vascular (vessel) tumor phantom
+### 5.9 Tumor distribution factor — vascular (vessel) model
 
-Realistic alternative to the homogeneous tumor: the contrast agent resides in
+The **tumor-distribution factor** (§5.6) has a uniform level and a vessel level.
+Realistic alternative to the uniform tumor: the contrast agent resides in
 **tumor vasculature — 150 µm vessels occupying 10 % of the tumor volume** — not
 uniformly dissolved. Same delivered iron mass, now confined to 10 % of the
 volume → **10× local vessel concentration**.
@@ -238,9 +261,9 @@ homogeneous model misses:
 Modeling: build the tumor as a **sub-resolution voxelized two-compartment
 texture** (10 % vessel voxels at 10× conc, 90 % iron-free tissue), forward-
 project at fine resolution, reconstruct at the CT grid, then apply the **same
-detectability analysis**. Study B runs the **full factorial** (7 conc × 2 det ×
-2 BH × 10 noise) **× all filters/kVp**, mirroring Study A, so the two phantoms
-are directly comparable. (Requires the M4–M6 projector/FDK pipeline.)
+detectability analysis**. Uniform vs vessel is a **factor of the single study**
+(§5.6) — not a separate run — so the two distributions are directly comparable
+within one design at every detector / bone / dose / concentration cell.
 
 ## 6. Deliverables
 
@@ -280,11 +303,15 @@ are directly comparable. (Requires the M4–M6 projector/FDK pipeline.)
 
 ## 8. Status of Open Questions
 
-**Resolved** (user, 2026-07-08): dose = 70 000 ph/px; tumor = 8 cm³; phantom =
-rabbit-scale soft-tissue **+ bone** insert; FOV = 20 cm; detectors = **both**
-EID and multi-bin PCD; beam-hardening correction = **both** off/on;
-detectability = **both** CNR and ΔHU; concentrations = 0/0.5/1/2/5/10/20
-mg Fe/ml. → **Sufficient to implement.**
+**Resolved** (user, 2026-07-08, updated 2026-07-09): tumor = 8 cm³; phantom =
+rabbit-scale **ICRU soft-tissue** body + cortical-**bone** insert; FOV = 20 cm;
+detectors = **both** EID and multi-bin PCD; detectability = **both** CNR and ΔHU;
+concentrations = 0/0.5/1/2/5/10/20 mg Fe/ml.
+**Design updates (2026-07-09):** water beam-hardening precorrection = **always on**
+(was off/on); **short scan = always on**; **dose** = low 20 000 / high 100 000 ph/px
+**factor** (was fixed 70 000); tumor **distribution** = uniform / vessel **factor**;
+**bone** = absent / present **factor**; spectrum fixed at **90 kVp** (kVp/filtration
+is the separate §5.8 optimization). → **Sufficient to implement.**
 
 **Defaults recorded at implementation time** (non-blocking, will be read from the
 installed CONRAD and logged): standard-spectrum kVp/filtration & energy sampling
