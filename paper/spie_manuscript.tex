@@ -571,7 +571,10 @@ ideal-energy detectors and no scatter or patient motion. The 2D phantom is a rou
 geometric, rabbit-scale cylinder rather than full rabbit anatomy, so beam hardening
 and scatter are idealized. Streaks from the bone rod are suppressed but not
 eliminated by the local-background and zero-iron subtraction. Soft tissue is a
-water-equivalent proxy. The homogeneous-uptake assumption is relaxed by Study~B,
+water-equivalent proxy. With the bone rod present, these streaks raise the local
+noise, so the detection thresholds worsen slightly; they stay in the same
+$0.4$--$1.5\,\mathrm{mg\,Fe/ml}$ regime, so iron detectability is not qualitatively
+changed. The homogeneous-uptake assumption is relaxed by Study~B,
 which shows that sub-resolution vessels do not change detectability at the same total
 dose. The E5 cone-beam verification brings in real anatomy, but a full 3D
 detectability sweep is still future work. The open decisions are the tumor cell

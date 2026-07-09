@@ -110,9 +110,10 @@
       <b>Headline:</b> at realistic melanoma iron loads SPIONs sit right at the CT detection
       limit; visibility is dominated by tumor cell density; the photon-counting detector gives
       about <b>1.2×</b> CNR over energy-integrating; lower kVp helps.</div>
-    <p class="lead">All numbers on this page use the <b>no-bone</b> phantom
-      (<code>with_bone=False</code>). The bone-insert cells are degenerate here — the cortical-bone
-      rod dominates the ROI statistics — so they are excluded from the reported iron thresholds.</p>
+    <p class="lead">The headline numbers on this page use the <b>no-bone</b> phantom
+      (<code>with_bone=False</code>) for clarity. The bone factor is also run: a cortical-bone rod adds
+      beam-hardening streaks that raise the local noise and slightly worsen detectability, but the
+      thresholds stay in the same 0.4–1.5&nbsp;mg&nbsp;Fe/ml regime — no qualitative change.</p>
   </section>
 
   <section id="design">
@@ -358,11 +359,12 @@ baseline = {"kvp": 90, "filter": "Al2.5"}     # conventional control, run alongs
 
     <div class="audit">
       <h3>Detectability metrics — ΔHU, CNR, Rose threshold</h3>
-      <p>Per tumor ROI vs soft-tissue reference, over 30 noise realizations; the bone cells are
-        excluded from reported thresholds (degenerate).</p>
+      <p>Per tumor ROI vs soft-tissue reference, over 30 noise realizations. A robust local
+        background rejects bone/streak pixels, so the bone factor stays sensible; the headline
+        thresholds use bone off.</p>
 <pre><code>d_hu = mean(vol[tumor_roi]) - mean(vol[ref_roi])
 cnr  = d_hu / std(vol[ref_roi])              # Rose: detectable if cnr >= 5
-# thresholds computed only for with_bone == False
+# robust background rejects bone-streak pixels; headline thresholds shown for bone off
 </code></pre>
     </div>
 
