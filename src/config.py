@@ -71,6 +71,29 @@ def cfe_from_loading(pg_fe_per_cell: float, density: float = CELL_DENSITY_PER_CM
     return pg_fe_per_cell * density * 1e-9
 
 
+def study_b_inserts():
+    """Study B insert specs: one insert per vessel-LOCAL concentration level.
+
+    Fresh-injection / vascular delivery -- iron confined to 150 um vessels at
+    VESSEL_VOLUME_FRACTION (10%). The 0.5 mm CT voxel cannot resolve the vessels, so
+    each insert is HOMOGENIZED to its tumor-MEAN iron
+
+        c_fe = vessel_level * VESSEL_VOLUME_FRACTION      (0.5 .. 1.5 mg Fe/ml)
+
+    which is what the reconstruction actually sees to first order (mass conserved).
+    The particle is a fresh SPION I injection (phi = PAA_MASS_FRAC = 0.15). Each dict
+    carries the vessel_level (independent variable), the mean c_fe, phi, and the
+    tumor_model tag; the vessel second-order model (BH nonlinearity + structural
+    noise) is applied downstream from the per-insert mean.
+    """
+    out = []
+    for lvl in STUDY_B_VESSEL_LEVELS:
+        out.append(dict(name=f"VES_{lvl:g}", tumor_model="vessel",
+                        vessel_level=float(lvl), phi=PAA_MASS_FRAC,
+                        c_fe=lvl * VESSEL_VOLUME_FRACTION))
+    return out
+
+
 def study_a_inserts(density: float = CELL_DENSITY_PER_CM3):
     """Study A insert specs: each cellular-loading configuration x timepoint.
 
@@ -221,17 +244,20 @@ class Detectors:
 
 
 # --------------------------------------------------------------------------
-# Spectral optimization sweep (filters + tube voltage) — see src/spectral.py.
-# Iron contrast is photoelectric -> favors LOW energy. Hardening filters
-# (Cu/Sn) HURT iron contrast; lower kVp and optimal PCD weighting help most.
+# Spectral optimization sweep (tube voltage + Al filtration) — see src/spectral.py
+# and src/run_spectral_sweep.py (E2). Iron contrast is photoelectric -> favors LOW
+# energy. The C-arm sweeps its feasible tube-voltage range (70-120 kVp) against a
+# single physical inherent filter (aluminium, varying thickness): thicker Al hardens
+# the beam (removes soft photons -> less iron contrast but less dose/noise), so the
+# CNR-optimal (kVp, Al) is an experiment output, not an assumption. Hardening metals
+# (Cu/Sn) are dropped -- they only HURT iron contrast (see spectral.report()).
 # --------------------------------------------------------------------------
-KVP_LEVELS = [60.0, 80.0, 100.0, 120.0]
+KVP_LEVELS = [70.0, 80.0, 90.0, 100.0, 110.0, 120.0]   # feasible C-arm range
 FILTER_CONFIGS = {
-    "Al2.5_baseline": [("aluminium", 2.5)],
-    "Al0.5_soft":     [("aluminium", 0.5)],
-    "Cu0.3_hard":     [("aluminium", 2.5), ("copper", 0.3)],
-    "Sn0.5_hard":     [("aluminium", 2.5), ("tin", 0.5)],
-    "Er0.1_quasimono":[("aluminium", 1.0), ("erbium", 0.1)],
+    "Al1.0": [("aluminium", 1.0)],
+    "Al2.5": [("aluminium", 2.5)],
+    "Al5.0": [("aluminium", 5.0)],
+    "Al8.0": [("aluminium", 8.0)],
 }
 
 
@@ -258,6 +284,14 @@ TUMOR_MODELS = ["homogeneous", "vessel"]
 VESSEL_DIAMETER_UM = 150.0
 VESSEL_VOLUME_FRACTION = 0.10        # vessels occupy 10% of tumor volume
 # mass-conserved: local vessel iron concentration = tumor mean / volume fraction (10x)
+# Study B independent variable: the vessel-LOCAL (injection / blood-carrier)
+# concentration [mg Fe/ml] in a fresh injection -- iron still confined to the
+# 150 um vessels at VESSEL_VOLUME_FRACTION, not yet taken up by cells. Because the
+# 0.5 mm CT voxel cannot resolve the vessels, each insert is HOMOGENIZED to its
+# tumor-MEAN iron c_fe = vessel_level * VESSEL_VOLUME_FRACTION (=> 0.5 .. 1.5 mg
+# Fe/ml over these levels); the vessel second-order model (BH nonlinearity +
+# structural noise) then reintroduces the heterogeneity effects.
+STUDY_B_VESSEL_LEVELS = [5.0, 7.0, 9.0, 11.0, 13.0, 15.0]   # mg Fe/ml, vessel-local
 
 # Reconstruction voxel size (isotropic). The fixed CL fan backprojector
 # (conrad_ext) honors this via setSpacing; 512 px * 0.5 mm = 256 mm recon FOV.

@@ -24,7 +24,8 @@ import conrad_backend
 from config import (C_FORM_LEVELS, tumor_iron_conc, tumor_paa_conc,
                     nanoparticle_conc_from_fe, PAA_MASS_FRAC, BODY_MATERIAL,
                     coating_frac, DEFAULT_FORMULATION,
-                    study_a_inserts, CELL_DENSITY_PER_CM3)
+                    study_a_inserts, study_b_inserts, CELL_DENSITY_PER_CM3,
+                    VESSEL_VOLUME_FRACTION)
 
 CG = conrad_backend.class_getter
 
@@ -170,6 +171,36 @@ def register_loading_materials(specs):
     _registered_formulation = None    # invalidate the sweep cache (materials replaced)
 
 
+def register_vessel_materials(specs):
+    """Register a full-particle material per Study B vessel insert (HOMOGENIZED).
+
+    Same material machinery as register_loading_materials (each insert its OWN mean
+    iron c_fe + coating phi, water body + soft-tissue matrix + magnetite + PAA), but
+    keyed on the Study B insert names (VES_<level>). The iron is the tumor-MEAN
+    (= vessel_level * VESSEL_VOLUME_FRACTION), since the 0.5 mm voxel cannot resolve
+    the 150 um vessels; the vessel heterogeneity re-enters as a second-order model
+    downstream, not in the material. Always (re)registers the zero-iron SPION_c0 body
+    material too.
+    """
+    global _registered_formulation
+    conrad_backend.setup()
+    matpkg = CG("edu.stanford.rsl.conrad.physics.materials")
+    DB = CG("edu.stanford.rsl.conrad.physics.materials.database").MaterialsDB
+    allspecs = [dict(name=spion_name(0.0), c_fe=0.0, phi=PAA_MASS_FRAC)] + list(specs)
+    for s in allspecs:
+        c_fe, phi = s["c_fe"], s["phi"]
+        grams_magnetite = (1e-3 * c_fe) / FE_FRACTION           # g magnetite / g matrix
+        c_np = nanoparticle_conc_from_fe(c_fe, phi) if c_fe > 0 else 0.0
+        grams_paa = 1e-3 * phi * c_np                           # PAA coating mass = phi*c_NP
+        wac = _spion_wac(grams_magnetite, grams_paa)
+        m = matpkg.Mixture()
+        m.setDensity(1.0 + grams_magnetite + grams_paa)
+        m.setName(s["name"])
+        m.setWeightedAtomicComposition(wac)
+        DB.put(m)
+    _registered_formulation = None    # invalidate the sweep cache (materials replaced)
+
+
 def _new_scene():
     try:
         return CG("edu.stanford.rsl.conrad.rendering").PrioritizableScene()
@@ -189,22 +220,38 @@ def _cyl(radius, cx, cy):
     return cyl
 
 
-def build_phantom(with_bone=True, formulation=None, loading=False, density=None):
+def build_phantom(with_bone=True, formulation=None, loading=False, density=None,
+                  study_b=False):
     """Return (scene, inserts) where inserts = list of dicts with layout + material.
 
     with_bone=False omits the cortical-bone rod (used only for clean display
     galleries; the quantitative study always keeps the bone beam-hardening source).
 
-    Two concentration models:
-      loading=False (default): the concentration SWEEP (C_FORM_LEVELS) of one
-        `formulation` (phi from config: SPION_I=0.15, SPION_II=0.36).
+    Three concentration models (loading and study_b are mutually exclusive):
+      loading=False, study_b=False (default): the concentration SWEEP (C_FORM_LEVELS)
+        of one `formulation` (phi from config: SPION_I=0.15, SPION_II=0.36).
       loading=True: STUDY A -- the measured cellular loading (config.study_a_inserts):
         one insert per (formulation, timepoint) configuration, iron = pg Fe/cell x
         `density` (config.CELL_DENSITY_PER_CM3), each with its formulation's phi. The
         zero-iron SPION_c0 is the body + a reference insert.
+      study_b=True: STUDY B -- fresh vascular injection (config.study_b_inserts): one
+        insert per vessel-LOCAL level, HOMOGENIZED to its tumor-mean iron
+        (c_fe = vessel_level * VESSEL_VOLUME_FRACTION, ~0.5..1.5 mg Fe/ml). Fresh
+        SPION I injection (phi=0.15). Each insert is tagged tumor_model="vessel",
+        vessel_level, c_fe. Includes the zero-iron SPION_c0 insert; bone stays a factor.
     """
+    if loading and study_b:
+        raise ValueError("loading and study_b are mutually exclusive")
     conrad_backend.setup()
-    if loading:
+    if study_b:
+        specs = study_b_inserts()
+        register_vessel_materials(specs)
+        insert_specs = [dict(name=spion_name(0.0), c_form=0.0, c_fe=0.0,
+                             tumor_model="vessel", vessel_level=0.0, phi=PAA_MASS_FRAC)]
+        insert_specs += [dict(name=s["name"], c_form=None, c_fe=s["c_fe"],
+                              tumor_model="vessel", vessel_level=s["vessel_level"],
+                              phi=s["phi"]) for s in specs]
+    elif loading:
         if density is None:
             density = CELL_DENSITY_PER_CM3
         specs = study_a_inserts(density)
