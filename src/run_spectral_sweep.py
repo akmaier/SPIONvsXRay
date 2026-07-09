@@ -16,7 +16,7 @@ import conrad_backend
 import conrad_ct
 import conrad_phantom
 import conrad_project as cp
-import run_factorial as rf
+import run_detectability as rf
 from config import DETECTORS, EVAL, KVP_LEVELS, FILTER_CONFIGS
 
 

@@ -1,6 +1,6 @@
 """Generate publication figures for the SPIE manuscript from the persisted results.
 
-Reads results/factorial/factorial.json (+ results/spectral_sweep/sweep.json if
+Reads results/detectability/detectability.json (+ results/spectral_sweep/sweep.json if
 present) and writes vector PDFs into paper/figures/. Kept separate from the
 simulation so figures can be regenerated without re-running CONRAD.
 """
@@ -42,7 +42,7 @@ def _load(path):
 
 
 def fig_dhu(fac):
-    rows = [r for r in fac["rows"] if not r["bh"]]
+    rows = fac["rows"]
     fig, ax = plt.subplots(figsize=(4.6, 3.4))
     for det, c, mk in (("EID", EID_C, "o"), ("PCD", PCD_C, "s")):
         rr = sorted([r for r in rows if r["detector"] == det], key=lambda r: r["c_fe"])
@@ -53,22 +53,18 @@ def fig_dhu(fac):
             fontsize=8, va="top")
     ax.set_xlabel("tumor iron concentration $c_{\\mathrm{Fe}}$ [mg/ml]")
     ax.set_ylabel("iron contrast $\\Delta$HU")
-    ax.set_title("Iron contrast vs. dose (beam-hardening off)")
+    ax.set_title("Iron contrast vs. dose")
     ax.legend(frameon=False)
     _save(fig, "fig_dhu_vs_conc")
 
 
 def fig_cnr(fac):
     fig, ax = plt.subplots(figsize=(4.6, 3.4))
-    styles = {("EID", False): (EID_C, "o", "-", "EID, BH off"),
-              ("EID", True): (EID_C, "o", "--", "EID, BH on"),
-              ("PCD", False): (PCD_C, "s", "-", "PCD, BH off"),
-              ("PCD", True): (PCD_C, "s", "--", "PCD, BH on")}
-    for (det, bh), (c, mk, ls, lab) in styles.items():
-        rr = sorted([r for r in fac["rows"] if r["detector"] == det and r["bh"] == bh],
+    for det, c, mk in (("EID", EID_C, "o"), ("PCD", PCD_C, "s")):
+        rr = sorted([r for r in fac["rows"] if r["detector"] == det],
                     key=lambda r: r["c_fe"])
-        ax.plot([r["c_fe"] for r in rr], [r["cnr"] for r in rr], mk + ls,
-                color=c, label=lab, ms=4, lw=1.3)
+        ax.plot([r["c_fe"] for r in rr], [r["cnr"] for r in rr], mk + "-",
+                color=c, label=det, ms=4, lw=1.3)
     ax.axhline(5, color="#27ae60", lw=1); ax.text(ax.get_xlim()[1], 5, " Rose 5",
                                                   color="#27ae60", fontsize=8, va="bottom", ha="right")
     ax.axhline(3, color="#27ae60", lw=1, ls=":"); ax.text(ax.get_xlim()[1], 3, " Rose 3",
@@ -107,7 +103,7 @@ def fig_sweep(sw):
 
 
 def main():
-    fac = _load(str(REPO / "results" / "factorial" / "factorial.json"))
+    fac = _load(str(REPO / "results" / "detectability" / "detectability.json"))
     fig_dhu(fac); fig_cnr(fac)
     print("[figs] fig_dhu_vs_conc.pdf, fig_cnr_vs_conc.pdf")
     sw_path = REPO / "results" / "spectral_sweep" / "sweep.json"

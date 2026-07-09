@@ -13,7 +13,7 @@ import conrad_backend
 import conrad_ct
 import conrad_phantom
 import conrad_project as cp
-import run_factorial as rf
+import run_detectability as rf
 
 
 def noise_free_sino(acc, det):

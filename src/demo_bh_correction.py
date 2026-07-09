@@ -21,7 +21,7 @@ import conrad_ct
 import conrad_phantom
 import conrad_project as cp
 import materials
-import run_factorial as rf
+import run_detectability as rf
 
 
 def _bin_poly(E, s, mu_w, lo, hi):
