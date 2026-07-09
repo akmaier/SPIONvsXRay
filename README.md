@@ -72,8 +72,45 @@ See [`SPEC.md`](SPEC.md) for full parameters.
 | `src/spectral.py` | spectral optimization (optimal energy weighting, PCD thresholds) |
 | `src/conrad_phantom.py` | CONRAD `AnalyticPhantom` (ED phantom + registered SPION materials) |
 | `src/conrad_project.py` | `PriorityRayTracer` base-material sinograms + polychromatic EID/PCD + noise |
-| `src/conrad_ct.py` | CONRAD fan-beam projection + FBP (GPU when available) |
+| `src/conrad_ct.py` | CONRAD fan-beam projection + FBP (GPU when available) + calibrated water precorrection |
 | `src/run_factorial.py` | the full factorial: per-insert ΔHU + CNR + detection thresholds |
+
+## Spectral processing (EID vs. PCD)
+
+Both detectors start from the same polychromatic forward model. For each energy
+`E`, the detected photons through the object are `N(E) = N0·s(E)·exp(−τ)` with `s`
+the normalized 90 kVp spectrum and `τ = Σ_material μ_material(E)·L_material` (analytic
+base-material path lengths × CONRAD's energy-dependent `μ(E)`). The detectors differ
+in how they collapse `N(E)` to a line integral and how beam hardening is corrected.
+
+**Energy-integrating detector (EID).** Signal is the energy-weighted sum
+`S = Σ_E N(E)·E`. Quantum noise is Poisson per energy, so `S` has variance
+`Σ_E N(E)·E²` (the exact second moment of the energy-weighted Poisson sum — *not*
+`Poisson(S)`; we add Gaussian noise with that variance). Line integral `p = −log(S/S_air)`.
+Beam hardening: a **single** water precorrection polynomial calibrated for the `s·E`
+spectrum (`conrad_ct.water_precorrection_poly`) linearizes the water response so a
+water cylinder reconstructs flat.
+
+**Photon-counting detector (PCD).** Photons are sorted into 3 energy bins
+(thresholds 37.5 / 50 keV). Per bin `b`: Poisson counts `C_b = Σ_{E∈bin} N(E)`. Bins
+are combined with **matched-filter weights** `w_b ∝ S_b/V_b`
+(`S_b = Σ_bin N_t·c`, `V_b = Σ_bin N_t`; `N_t` = transmitted background photons,
+`c` = per-energy iron contrast) — the CNR-optimal weighting that reaches the
+`Σ S_b²/V_b` detectability ceiling (`src/spectral.py`). Combination is in the
+**count domain** — `M = Σ_b w_b·C_b`, then a single `−log(M/M_air)` — which is robust
+to the photon-starved low-energy bin (a per-bin `−log` diverges when its counts hit
+zero). Beam hardening is **energy-dependent / per-bin**: each bin is corrected on
+*its own* spectrum with a bin-specific water precorrection polynomial, applied as a
+**corrected count** `C_b_corr = C_air_b·exp(−poly_b(p_b))` before the count-domain
+combination. This linearizes each narrower bin's hardening on its own spectrum while
+keeping the count-domain noise robustness (a pure per-bin *log-domain* combination is
+equivalent for water cupping but noisier, so it is not used in the noisy factorial).
+
+The uncorrected water precorrection (a fixed `p + 0.10·p²`) is deprecated — it was
+~7× too strong and over-corrected cupping into capping; the calibrated polynomial
+flattens a monochromatic-equivalent water disk to ~0.1%. The Poisson/energy noise
+model is verified against CONRAD's `StatisticsUtil` RNG and `PolychromaticAbsorptionModel`,
+and GPU versions (Philox RNG + OpenCL EID/PCD spectral detectors) are upstreamed to CONRAD.
 
 ## Getting started
 

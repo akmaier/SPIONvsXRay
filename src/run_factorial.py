@@ -85,40 +85,56 @@ def _pcd_weights(acc):
     return w / (w.sum() + 1e-12)
 
 
-def line_integral(acc, detector, seed):
-    """One noisy line-integral sinogram for a detector model."""
+def line_integral(acc, detector, seed, bh_polys=None):
+    """One noisy line-integral sinogram for a detector model.
+
+    Spectral processing (see README "Spectral processing"):
+      EID: energy-integrated signal S = sum_E N(E)*E, Gaussian quantum noise with
+           variance sum_E N(E)*E^2, single log; optional water precorrection via a
+           single polynomial `bh_polys` calibrated for the EID spectrum.
+      PCD: per energy bin b, Poisson counts C_b; each bin is beam-hardening-corrected
+           on ITS OWN spectrum (per-bin polynomial `bh_polys[b]`, applied as a
+           corrected count), then combined in the count domain M = sum_b w_b*C_b_corr
+           (matched-filter weights) and a single log -> one FBP.
+    """
     rng = np.random.default_rng(seed)
     eps = 1e-6
     if detector == "EID":
         S = acc["S_det"] + rng.normal(0.0, np.sqrt(np.maximum(acc["S_det_E2"], 1e-30)))
-        return -np.log(np.clip(S, eps, None) / acc["S_air"])
-    # PCD: optimal-weighted COUNT combination -> a SINGLE log. Summing counts (not
-    # per-bin logs) keeps the photon-starved low-energy bin finite: a per-bin
-    # -log(count) diverges when the bin's counts hit 0 through the body, smearing
-    # image-wide streaks; a weighted count sum is dominated by the populated bins.
+        p = -np.log(np.clip(S, eps, None) / acc["S_air"])
+        return np.polyval(bh_polys, p) if bh_polys is not None else p
+    # PCD: matched-filter COUNT-domain combination (robust to the photon-starved low
+    # bin), with per-bin water precorrection applied as CORRECTED COUNTS
+    # C_b_corr = C_air_b*exp(-poly_b(p_b)). Correcting each bin on its own spectrum is
+    # the energy-dependent (per-bin) BH approach; recombining in the count domain
+    # keeps the noise robustness. With bh_polys=None this is exactly the count-domain
+    # combination M = sum_b w_b*C_b (poly_b = identity for the uncorrected case).
     w = _pcd_weights(acc)
     M = np.zeros_like(acc["S_det"]); M_air = 0.0
     for b, (cd, ca) in enumerate(zip(acc["C_det"], acc["C_air"])):
         cm = rng.poisson(np.maximum(cd, 0.0))
+        if bh_polys is not None:
+            p_b = -np.log(np.maximum(cm, 1.0) / max(ca, eps))
+            cm = ca * np.exp(-np.polyval(bh_polys[b], p_b))     # per-bin corrected count
         M += w[b] * cm
         M_air += w[b] * ca
     return -np.log(np.clip(M, eps, None) / max(M_air, eps))
 
 
 def bh_poly_for(acc, detector):
-    """Calibrated water precorrection polynomial for a detector's effective spectrum
-    (EID weights energy by E; PCD by the per-bin matched-filter weight)."""
+    """Calibrated water precorrection for a detector, applied in `line_integral`.
+
+    EID: a single polynomial for the energy-weighted (s*E) spectrum.
+    PCD: a LIST of per-bin polynomials, each calibrated for that bin's own spectrum
+         -- the energy-dependent (per-bin) correction, applied to each bin's line
+         integral before the weighted combination.
+    """
     E, s, edges = acc["E"], acc["s"], acc["edges"]
     mu_w = materials.linear_attenuation("water", E)     # 1/cm
     if detector == "EID":
-        w_eff = s * E
-    else:
-        w = _pcd_weights(acc)
-        w_eff = np.zeros_like(s)
-        for b in range(len(edges) - 1):
-            m = (E >= edges[b]) & (E < edges[b + 1])
-            w_eff[m] = w[b] * s[m]
-    return conrad_ct.water_precorrection_poly(E, w_eff, mu_w)
+        return conrad_ct.water_precorrection_poly(E, s * E, mu_w)
+    return [conrad_ct.water_precorrection_poly(E, np.where((E >= edges[b]) & (E < edges[b + 1]), s, 0.0), mu_w)
+            for b in range(len(edges) - 1)]
 
 
 def run():
@@ -130,12 +146,12 @@ def run():
 
     rows = []
     for detector in DETECTORS.types:                    # EID, PCD
-        bh_poly = bh_poly_for(acc, detector)            # calibrated per detector
+        bh_polys = bh_poly_for(acc, detector)           # per detector (list for PCD)
         for bh in (False, True):
             signal = {i["name"]: [] for i in inserts}
             for seed in range(EVAL.noise_realizations):
-                sino = line_integral(acc, detector, seed)
-                recon = conrad_ct.fbp(sino, geo, bh_correction=bh, bh_poly=bh_poly)
+                sino = line_integral(acc, detector, seed, bh_polys if bh else None)
+                recon = conrad_ct.fbp(sino, geo)        # correction now in line_integral
                 meas = cp.measure_inserts(recon, geo, inserts)
                 for m in meas:
                     signal[m["name"]].append((m["iron_delta_hu"], m["delta_hu"]))
