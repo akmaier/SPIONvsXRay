@@ -91,6 +91,7 @@
   <a href="#detect">Detectability</a>
   <a href="#spectral">Spectral</a>
   <a href="#studyb">Study B</a>
+  <a href="#rabbit">3D rabbit</a>
   <a href="#paper">Manuscript</a>
   <a href="#audit">Code audit</a>
   <a href="#repro">Reproducibility</a>
@@ -105,9 +106,9 @@
       beam-hardening correction shift that limit. This page updates as the pipeline runs —
       every figure below is regenerated from <code>results/</code> by
       <code>src/build_dashboard.py</code>.</p>
-    <div class="note">Status: <strong>live</strong> — full factorial + spectral sweep + Study B complete;
-      an 8–9 pp. SPIE draft is compiled. Headline: SPIONs are borderline-visible at realistic dose
-      (threshold ≈ 0.54 mg Fe/ml).</div>
+    <div class="note">Status: <strong>live</strong> — factorial + spectral sweep + Study B complete,
+      real RabbitCT geometry decoded for the 3D case, and a 10 pp. SPIE draft compiled.
+      Headline: SPIONs are borderline-visible at realistic dose (threshold ≈ 0.54 mg Fe/ml).</div>
     <table>
       <tr><th>Factor</th><th>Levels</th></tr>
       <tr><td>Formulation conc. (delivered mass model)</td><td>0, 0.5, 1, 2, 5, 10, 20 mg SPION/ml</td></tr>
@@ -230,10 +231,27 @@
     </div>
   </section>
 
+  <section id="rabbit">
+    <h2><span class="n">10</span>3D — real rabbit geometry</h2>
+    <p class="lead">The <code>.rctd</code> RabbitCT format was reverse-engineered
+      (<code>src/rabbitct.py</code>) and its 496 projection matrices decoded into a real Siemens
+      C-arm short scan: SID 745 mm, SDD ≈ 1196 mm, 1248×960 detector, 496 views over 198°.
+      Ray-driven cone-beam DRRs of the post-mortem rabbit rotate correctly with view angle
+      (validating the geometry), and an inserted 8 cm³ SPION tumor projects as a localized
+      signal — the phantom for the planned full 3D FDK detectability study.</p>
+    <div class="grid">
+      <figure><img src="assets/rabbit_slices.png" alt="rabbit anatomy" onerror="markPending(this)">
+        <figcaption>Reference RabbitCT rabbit (256³): axial / coronal / sagittal.</figcaption></figure>
+      <figure><img src="assets/rabbit_drr_tumor.png" alt="rabbit DRR + tumor" onerror="markPending(this)">
+        <figcaption>Cone-beam DRRs (real geometry) + projected SPION-tumor signal at three views.</figcaption></figure>
+    </div>
+  </section>
+
   <section id="paper">
-    <h2><span class="n">10</span>Manuscript</h2>
-    <p class="lead">A full SPIE Medical Imaging draft (9 pp.) assembles these results —
-      dose model, phantom, factorial detectability, spectral shaping, and Study B — in the
+    <h2><span class="n">11</span>Manuscript</h2>
+    <p class="lead">A full SPIE Medical Imaging draft (10 pp.) assembles these results —
+      dose model, phantom, factorial detectability, spectral shaping, Study B, and the 3D
+      rabbit geometry — in the
       <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/paper/spie_manuscript.pdf">compiled PDF</a>
       (source <a href="https://github.com/akmaier/SPIONvsXRay/blob/main/paper/spie_manuscript.tex">spie_manuscript.tex</a>).
       The GPU spectral-detector and noise-generator machinery used here is upstreamed to
@@ -241,7 +259,7 @@
   </section>
 
   <section id="audit">
-    <h2><span class="n">11</span>Code audit</h2>
+    <h2><span class="n">12</span>Code audit</h2>
     <p class="lead">Annotated snippets of the key pipeline steps so a reviewer can audit the
       methodology without reading the whole codebase. <span class="tag">illustrative — replaced
       by permalinked source after implementation (M0–M7)</span></p>
@@ -294,7 +312,7 @@ cnr   = d_hu / std(vol[ref_roi])                   # Rose: detectable if cnr >= 
   </section>
 
   <section id="repro">
-    <h2><span class="n">12</span>Reproducibility</h2>
+    <h2><span class="n">13</span>Reproducibility</h2>
     <p class="lead">Every artifact on this page is regenerable from source.</p>
     <ul class="tight">
       <li>Environment: Java 8 + a pyconrad-compatible Python (3.9/3.10 venv).</li>
