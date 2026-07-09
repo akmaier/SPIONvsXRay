@@ -18,10 +18,17 @@ import jpype
 import conrad_backend
 
 # --- geometry (fan-beam 2D analogue of the C-arm cone beam) ---
-SDD_MM = 1200.0        # source-detector distance (focal length)
-SID_MM = 750.0         # source-isocenter distance
+SDD_MM = 1200.0        # source-detector distance
+SID_MM = 750.0         # source-isocenter distance = CONRAD focalLength
 N_VIEWS = 500
 FOV_MM = 200.0
+# Virtual-detector bin size at the isocenter [mm]. CONRAD's tutorial.fan chain
+# (FanBeamProjector/CosineFilter/RamLak-SheppLogan/Backprojector) is a self-consistent
+# unit system calibrated for 1 grid-unit = 1 mm; the ramp kernels' deltaS scaling is
+# only exact at deltaT=1 (SheppLoganKernel carries a 1/deltaS^2, RamLakKernel a
+# 1/deltaS). Keeping deltaT=1 mm -- decoupled from the recon voxel -- makes the whole
+# chain exact (a uniform water cylinder reconstructs flat to 0.1%). See DEVLOG.
+DETECTOR_DT_MM = 1.0
 
 
 def _cls(pkg, name):
@@ -38,22 +45,6 @@ def np_to_grid2d(a: np.ndarray):
     return G(jbuf, int(w), int(h))
 
 
-def ramp_filter_sino(sino, deltaT):
-    """Ram-Lak ramp filter (Hann-windowed) along the detector axis, per view."""
-    n_ang, n_det = sino.shape
-    n = 1
-    while n < 2 * n_det:
-        n *= 2
-    freqs = np.fft.fftfreq(n, d=deltaT)
-    ramp = 2.0 * np.abs(freqs) * deltaT
-    ramp *= 0.5 * (1 + np.cos(np.pi * freqs / np.abs(freqs).max()))   # Hann
-    out = np.empty_like(sino)
-    for i in range(n_ang):
-        f = np.fft.fft(sino[i], n=n)
-        out[i] = np.real(np.fft.ifft(f * ramp))[:n_det]
-    return out
-
-
 def grid2d_to_np(g) -> np.ndarray:
     w, h = int(g.getWidth()), int(g.getHeight())
     buf = np.array(g.getBuffer()[:], dtype=np.float32)
@@ -61,50 +52,39 @@ def grid2d_to_np(g) -> np.ndarray:
 
 
 def fan_geometry(fov_mm=FOV_MM, n_pix=None, voxel_mm=None, short_scan=False):
-    """Fan-beam geometry. Recon = n_pix x n_pix at `voxel_mm` (fixed CL backprojector).
+    """Fan-beam geometry in CONRAD's convention (matches FanBeamReconstructionExample).
 
-    voxel_mm defaults to config.RECON_VOXEL_MM (0.5 mm); recon FOV = n_pix*voxel_mm.
-    short_scan=True uses a 180 deg + full-fan angular range (the realistic C-arm
-    protocol, matching the RabbitCT scan) and requires Parker redundancy weighting
-    in fbp; the default is a full 360 deg scan.
+    CONRAD's tutorial.fan uses a *virtual detector at the isocenter*: the source
+    sits at radius `focal` = source->isocenter distance (SID), and the detector
+    line passes through the isocenter spanning +-maxT/2 [mm], sampled at deltaT
+    [mm/bin] (n_det = maxT/deltaT). There is NO magnification or padding factor --
+    the fan half-angle follows from the geometry alone,
+        gamma = atan((maxT/2 - deltaT/2) / focal).
+
+    Recon grid = n_pix x n_pix at `voxel_mm` (config.RECON_VOXEL_MM, 0.5 mm). The
+    virtual detector is sized to the recon FOV (maxT = n_pix*voxel_mm) and sampled at
+    deltaT = DETECTOR_DT_MM = 1 mm -- kept at 1 mm (NOT voxel) so CONRAD's ramp kernels
+    stay exact (their deltaS scaling is only self-consistent at deltaT=1). The recon
+    still uses `voxel_mm` spacing via the backprojector; a centered object up to the
+    FOV reconstructs without truncation and a uniform water cylinder stays flat to 0.1%.
+    short_scan=True uses the MINIMAL short scan (180 deg + 2*gamma) with Parker
+    redundancy weighting in fbp (>= minimal is required for Parker to normalize
+    correctly -- see the CONRAD weighting-comparison study); default is 360 deg.
     """
     from config import RECON_VOXEL_MM
     if n_pix is None:
         n_pix = 512
     if voxel_mm is None:
         voxel_mm = RECON_VOXEL_MM
-    # detector must cover the physical FOV magnified to the detector plane
-    mag = SDD_MM / SID_MM
-    maxT = fov_mm * mag * 1.15
-    deltaT = maxT / (n_pix * 2)
-    gamma_max = float(np.arctan((maxT / 2.0) / SDD_MM))     # half fan angle
+    focal = SID_MM                                   # CONRAD focalLength = source->isocenter
+    deltaT = DETECTOR_DT_MM                           # virtual-detector bin size at isocenter (1 mm)
+    maxT = n_pix * voxel_mm                          # detector length = recon FOV [mm]
+    gamma_max = float(np.arctan((maxT / 2.0 - 0.5 * deltaT) / focal))   # half fan angle
     maxBeta = (np.pi + 2.0 * gamma_max) if short_scan else 2.0 * np.pi
     deltaBeta = maxBeta / N_VIEWS
-    return dict(focal=SDD_MM, maxBeta=maxBeta, deltaBeta=deltaBeta,
+    return dict(focal=focal, maxBeta=maxBeta, deltaBeta=deltaBeta,
                maxT=maxT, deltaT=deltaT, imgN=n_pix, spacing=voxel_mm,
                voxel_mm=voxel_mm, gamma_max=gamma_max, short_scan=short_scan)
-
-
-def parker_weights(geo):
-    """Parker short-scan redundancy weights [n_views, n_det] for a flat detector.
-
-    Over beta in [0, pi + 2*gamma_max], rays in the [180 deg, 180+2*gamma] overlap
-    are measured twice; Parker weighting smoothly tapers the redundant data so each
-    ray contributes unit total weight, removing the short-scan shading/streaks.
-    """
-    n_views = int(round(geo["maxBeta"] / geo["deltaBeta"]))
-    n_det = int(round(geo["maxT"] / geo["deltaT"]))
-    t = (np.arange(n_det) - (n_det - 1) / 2.0) * geo["deltaT"]
-    gamma = np.arctan(t / geo["focal"])                     # fan angle per column
-    gmax = geo["gamma_max"]
-    beta = np.arange(n_views) * geo["deltaBeta"]
-    B, G = np.meshgrid(beta, gamma, indexing="ij")
-    w = np.ones((n_views, n_det))
-    r1 = B < 2.0 * (gmax - G)                                # start feather
-    w[r1] = np.sin(np.pi / 4.0 * B[r1] / np.maximum(gmax - G[r1], 1e-6)) ** 2
-    r3 = B > (np.pi - 2.0 * G)                               # end feather
-    w[r3] = np.sin(np.pi / 4.0 * (np.pi + 2.0 * gmax - B[r3]) / np.maximum(gmax + G[r3], 1e-6)) ** 2
-    return np.clip(w, 0.0, 1.0).astype(np.float32)
 
 
 def use_cl():
@@ -147,8 +127,13 @@ def water_precorrection_poly(E, w_eff, mu_water_percm, Lmax_cm=30.0, deg=4):
 
 
 def fbp(sino_np, geo, bh_correction=False, bh_poly=None, bh_c2=0.10):
-    """Fan-beam FBP: (optional water beam-hardening precorrection ->) cosine ->
-    ramp filter -> CONRAD distance-weighted backprojection.
+    """Fan-beam FBP using the CONRAD API end-to-end (project-side; see README policy).
+
+    Pipeline (identical order to CONRAD's FanBeamReconstructionExample):
+      (optional water beam-hardening precorrection) -> ParkerWeights (short scan)
+      -> CosineFilter -> SheppLoganKernel (ramp with roll-off) -> distance-weighted
+      FanBeamBackprojector2D. Redundancy weighting, cosine, ramp and backprojection
+      are all CONRAD classes; only the spectral water precorrection is numpy.
 
     Water precorrection: pass a calibrated `bh_poly` (from water_precorrection_poly);
     the legacy fixed `bh_c2` quadratic is only a fallback and is NOT spectrum-matched.
@@ -158,22 +143,37 @@ def fbp(sino_np, geo, bh_correction=False, bh_poly=None, bh_c2=0.10):
             sino_np = np.polyval(bh_poly, sino_np)    # calibrated water precorrection
         else:
             sino_np = sino_np + bh_c2 * sino_np ** 2   # legacy fallback (uncalibrated)
+    focal, maxT, deltaT = float(geo["focal"]), float(geo["maxT"]), float(geo["deltaT"])
+    maxBeta, deltaBeta = float(geo["maxBeta"]), float(geo["deltaBeta"])
+
+    sino = np_to_grid2d(sino_np)                      # Grid2D(width=n_det, height=n_views)
+    sino.setSpacing(deltaT, deltaBeta)
+    NPO = _cls("edu.stanford.rsl.conrad.data.numeric", "NumericPointwiseOperators")
+
+    # short-scan redundancy weighting (CONRAD ParkerWeights) BEFORE filtering. Do
+    # NOT re-derive Parker from the 1982 paper -- its equations contain a known typo.
     if geo.get("short_scan"):
-        sino_np = sino_np * parker_weights(geo)       # short-scan redundancy weighting
-    n_ang, n_det = sino_np.shape
-    t = (np.arange(n_det) - (n_det - 1) / 2.0) * geo["deltaT"]
-    cos_w = geo["focal"] / np.sqrt(geo["focal"] ** 2 + t ** 2)   # fan cosine weight
-    sino_w = sino_np * cos_w[None, :]
-    sino_f = ramp_filter_sino(sino_w, geo["deltaT"])
-    sino = np_to_grid2d(sino_f)
-    sino.setSpacing(geo["deltaT"], geo["deltaBeta"])
-    # Patched FanBeamBackprojector2D (conrad_ext, shadows the jar): its CL kernel
-    # now receives the reconstruction pixel spacing that upstream omitted
-    # ("// TODO: Spacing"), so setSpacing(vox) gives configurable voxel size and
-    # backprojectPixelDrivenCL is correct + ~850x faster. Falls back to CPU.
+        PW = _cls("edu.stanford.rsl.tutorial.fan.redundancy", "ParkerWeights")
+        NPO.multiplyBy(sino, PW(focal, maxT, deltaT, maxBeta, deltaBeta))
+
+    # fan cosine weight + ramp with roll-off (Shepp-Logan), applied per view
+    Cos = _cls("edu.stanford.rsl.tutorial.fan", "CosineFilter")
+    SL = _cls("edu.stanford.rsl.tutorial.filters", "SheppLoganKernel")
+    cos = Cos(focal, maxT, deltaT)
+    ram = SL(int(round(maxT / deltaT)), deltaT)
+    n_views = int(sino.getSize()[1])
+    for th in range(n_views):
+        cos.applyToGrid(sino.getSubGrid(th))
+    for th in range(n_views):
+        ram.applyToGrid(sino.getSubGrid(th))
+
+    # Distance-weighted backprojection. Patched FanBeamBackprojector2D (conrad_ext,
+    # shadows the jar): the 1/U^2 fan distance weighting is reinstated (CPU + CL),
+    # and setSpacing(vox) feeds the CL kernel the recon pixel spacing that upstream
+    # omitted -> configurable voxel size and backprojectPixelDrivenCL ~850x faster.
     vox = geo.get("voxel_mm", 1.0)
     BP = _cls("edu.stanford.rsl.tutorial.fan", "FanBeamBackprojector2D")
-    bp = BP(geo["focal"], geo["deltaT"], geo["deltaBeta"], geo["imgN"], geo["imgN"])
+    bp = BP(focal, deltaT, deltaBeta, int(geo["imgN"]), int(geo["imgN"]))
     if use_cl():
         try:
             bp.setSpacing(float(vox))

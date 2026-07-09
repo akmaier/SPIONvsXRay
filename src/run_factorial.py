@@ -137,9 +137,9 @@ def bh_poly_for(acc, detector):
             for b in range(len(edges) - 1)]
 
 
-def run():
+def run(short_scan=False):
     scene, inserts = conrad_phantom.build_phantom()
-    geo = conrad_ct.fan_geometry(n_pix=512)
+    geo = conrad_ct.fan_geometry(n_pix=512, short_scan=short_scan)
     base, geo = cp.project_base_materials(scene, geo)
     acc = polychromatic_accumulators(base)              # once (90 kVp standard)
     spions = [i for i in inserts if i["c_form"] is not None and i["name"] != "SPION_c0"]

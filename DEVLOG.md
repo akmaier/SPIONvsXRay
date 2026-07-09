@@ -4,6 +4,44 @@ Reverse-chronological log of progress. Newest entries on top.
 
 ---
 
+## 2026-07-09 — Recon made CONRAD-native + correct (geometry, filters, deltaT)
+
+Studied CONRAD's two fan short-scan examples (`FanBeamReconstructionExample`,
+`redundancy/FanBeamWeightingComparison`) and verified their accuracy headless:
+Parker at >= minimal range reconstructs a uniform disk flat (mean 1.000, no
+cupping); at a sub-minimal 159° range **Silver mis-normalizes by 12%** while
+Compensation recovers the correct level — so short scans must use >= 180°+2γ
+with Parker.
+
+Rewrote `conrad_ct.py` to the CONRAD convention end-to-end (policy: no
+hand-rolled recon):
+- **Geometry** — `focalLength = SID` (source→isocenter), virtual detector at the
+  isocenter sized to the recon FOV (`maxT = n_pix*voxel`), `gamma = atan((maxT/2 −
+  deltaT/2)/focal)`. Dropped the invented magnification / 1.15 / deltaT×2 factors.
+- **Filters** — replaced the hand-rolled Hann ramp + manual cosine with CONRAD's
+  `CosineFilter` + `SheppLoganKernel` (ramp w/ roll-off), applied per view.
+- **Parker** — CONRAD `ParkerWeights` via `NumericPointwiseOperators.multiplyBy`
+  BEFORE filtering; minimal short scan = 180°+2γ.
+- **Distance weighting** — the 1/U² fan weight (reinstated upstream in
+  `FanBeamBackprojector2D`, CPU+CL) removes the residual cupping.
+
+Root-caused a scale/cupping bug when deltaT≠1: CONRAD's ramp kernels are only
+deltaS-exact at **deltaT=1** (`SheppLoganKernel` carries 1/deltaS², `RamLakKernel`
+1/deltaS) and the tutorial grid projector assumes 1 mm pixels. Fix: keep the
+**virtual-detector sampling at deltaT = 1 mm (`DETECTOR_DT_MM`), decoupled from the
+0.5 mm recon voxel**. A pure water cylinder then reconstructs flat to 0.1% (ratio
+1.001) at both voxels; the ray-cast `project_base_materials` is physical-mm so it
+is voxel-independent. (The apparent 0.82 body "cupping" was bone-rod streak, which
+the local-annulus background in `measure_inserts` cancels by design.)
+
+**Result** — noise-free iron ΔHU is now clean/monotonic (≈6.4·c_Fe). The factorial
+differentiates detectors again: at Rose-3 **PCD detects 0.543 vs EID 1.086 mg
+Fe/ml** (2×; CNR 3.5 vs 2.0 at 0.54), where the previous build had collapsed to a
+degenerate all-0.543. Upstream distance-weighting fix pushed to akmaier/CONRAD
+(731d345).
+
+---
+
 ## 2026-07-09 — RabbitCT .rctd format cracked; real 3D geometry extracted
 
 - Reverse-engineered the undocumented RabbitCT `.rctd` binary (`src/rabbitct.py`):
