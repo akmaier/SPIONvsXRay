@@ -69,8 +69,8 @@ uptake and vascular delivery, and verify in three dimensions on rabbit anatomy. 
 optimum is a soft $70\,\mathrm{kVp}$ beam with $5\,\mathrm{mm}$ aluminium, giving an
 iron CNR of $16.9$ at $1\,\mathrm{mg\,Fe/ml}$, about $1.2\times$ the EID. The lowest
 detectable iron at the Rose criterion is about $0.4\,\mathrm{mg\,Fe/ml}$ for the PCD
-at the optimum. The finding is that SPIONs sit near the CT detection limit at
-realistic load, and that tumor cell density is the dominant factor for visibility.
+at the optimum. SPIONs sit near the CT detection limit at
+realistic load, and tumor cell density is the dominant factor for visibility.
 \end{abstract}
 
 \keywords{SPION, iron oxide nanoparticles, computed tomography, photon counting,
@@ -91,7 +91,8 @@ concentrations of about $1$--$10\,\mathrm{mg\,Fe/ml}$.
 A clinical question follows. Once these particles reach a target, can we simply see
 them in a routine CT scan? The answer matters for dose planning, for reading
 incidental findings, and most of all for image-guided delivery, where one wants to
-confirm that particles reached the target without a second imaging modality.
+confirm that particles reached the target without a second imaging
+modality\cite{Maier2019}.
 
 At first sight iron looks promising. It is denser and higher in atomic number than
 soft tissue. But the amount is the problem. At realistic loading the delivered iron
@@ -107,7 +108,8 @@ and fades quickly as energy rises. This shapes every result: a soft spectrum hel
 a hard spectrum hurts, and photon-counting can only help where low-energy photons
 survive the body.
 
-Despite a large SPION literature and a surge of interest in photon-counting CT,
+Despite a large SPION literature and a surge of interest in photon-counting
+CT\cite{Willemink2018,Faby2015,DeMan2007,Goldmann2026},
 there is little quantitative simulation of SPION CT detectability across modern
 detectors. We address this gap. Our contributions are: (i) a delivered-mass dose
 model tied to a real magnetite SPION formulation, with a whole-particle material
@@ -233,8 +235,8 @@ fan-beam short-scan pipeline.}
 
 \subsection{CONRAD-native fan-beam pipeline}
 \label{sec:pipeline}
-Every reconstruction step is a CONRAD class, in CONRAD's geometry convention; we do
-not hand-roll ramp filters, Parker weights, or geometry. The fan-beam geometry uses
+Every reconstruction step is a CONRAD class\cite{Maier2013}, in CONRAD's geometry
+convention; we do not hand-roll ramp filters, Parker weights, or geometry. The fan-beam geometry uses
 a source-to-isocentre distance of $750\,\mathrm{mm}$ and a virtual detector at the
 isocentre sampled at $\Delta_T = 1\,\mathrm{mm}$, with $500$ views over a minimal
 short scan ($180^\circ$ plus fan). The chain is forward projection, Parker weighting,
@@ -247,13 +249,16 @@ The GPU backprojector required a fix to the CONRAD OpenCL kernel, which never
 received the reconstruction pixel spacing; the corrected kernel matches the CPU
 reference to about $10^{-5}$ and is roughly $850\times$ faster. It is contributed
 upstream with the analytic fan projector, the reinstated distance weighting, and
-the water precorrection tool.
+the water precorrection tool, preserving image quality for downstream quantitative
+and iterative use\cite{Manhart2013}.
 
 \subsection{Detectors: EID and PCD}
 \label{sec:detectors}
 Both detectors start from the same polychromatic forward model. For each energy $E$
 the transmitted photons are $N(E)=N_0\,s(E)\,e^{-\tau(E)}$, with $s$ the normalized
-spectrum and $\tau$ the material path integral. Quantum noise is Poisson per energy.
+spectrum and $\tau$ the material path integral. Quantum noise is Poisson per energy, drawn on the GPU with a counter-based Philox
+random-number generator\cite{Salmon2011} and transformed-rejection Poisson
+sampling\cite{Hormann1993}.
 
 The energy-integrating detector (EID) weights photons by energy:
 $S=\sum_E N(E)\,E$. Its variance is the exact second moment $\sum_E N(E)\,E^2$, not
@@ -325,8 +330,9 @@ We score detectability with three quantities. The iron contrast $\Delta$HU is th
 mean insert value minus a local annular background, corrected by subtracting the
 zero-iron insert so only iron remains. The CNR is that contrast divided by the
 background noise over noise realizations. An insert is detectable when its CNR clears
-the Rose criterion; we report both $\mathrm{CNR}\ge3$ and $\ge5$, from $30$ noise
-realizations per cell.
+the Rose criterion\cite{Rose,Tapiovaara1985}; we report both $\mathrm{CNR}\ge3$ and
+$\ge5$, from $30$ noise realizations per cell. The CNR is a simple surrogate for
+formal model-observer detectability on the reconstructed image\cite{Wunderlich2008}.
 
 \begin{table}[ht]
 \caption{Shared simulation parameters. The E2 optimum and a $90\,\mathrm{kVp}$
@@ -480,8 +486,8 @@ $150\,\mu\mathrm{m}$ vessel, so each voxel partial-volume-averages many vessels.
 mass conserved, the volume-averaged iron per voxel is unchanged, and the tumor-ROI
 contrast matches the homogeneous case. The second-order effects are small: the
 beam-hardening nonlinearity is well below $10^{-3}\,\mathrm{HU}$, and the binomial
-per-voxel vessel count adds texture that averages out over the ROI. The ROI-mean
-detectability therefore tracks the total delivered iron, as in Study~A. At high dose
+per-voxel vessel count adds texture that averages out over the ROI, so the ROI-mean
+detectability tracks the total delivered iron, as in Study~A. At high dose
 the ROI-mean CNR crosses the Rose $5$ line at a vessel-local level of
 $5\,\mathrm{mg\,Fe/ml}$ (EID) and $7\,\mathrm{mg\,Fe/ml}$ (PCD); at low dose at
 $13$ (EID) and $11\,\mathrm{mg\,Fe/ml}$ (PCD). Figure~\ref{fig:studyb} shows that
@@ -550,8 +556,7 @@ Finally we verify the result in real anatomy. We segment the post-mortem RabbitC
 volume into soft tissue, adipose, and bone, add an iron-loaded neck tumor,
 forward-project each material in 3D cone-beam geometry at the E2 optimum, and
 reconstruct with cone-beam FDK for both detectors. The iron signal is positive and
-scales linearly at about $6.6\,\mathrm{HU}$ per $\mathrm{mg\,Fe/ml}$, matching the
-2D value. The PCD gives a higher CNR at every level, a gain of about $1.14\times$, as
+scales linearly at about $6.6\,\mathrm{HU}$ per $\mathrm{mg\,Fe/ml}$, matching 2D. The PCD gives a higher CNR at every level, a gain of about $1.14\times$, as
 E2 predicts. For SPION~I fresh at a mid cell density ($3\times10^{8}$,
 $c_{Fe}=2.47$) the tumor reads $+16/+18\,\mathrm{HU}$ (EID/PCD); at the highest load
 ($10^{9}$) $+55/+60\,\mathrm{HU}$. The 3D result agrees with the 2D detection limit
@@ -578,11 +583,11 @@ is a genuine material signal, not a cupping artifact.
 
 The limitations are candid. The study is a simulation with idealized, ideal-energy
 detectors and no scatter or patient motion. The 2D phantom is a round, rabbit-scale
-cylinder rather than full anatomy, and soft tissue is a water-equivalent proxy (bone
-off versus on is in the Results). Study~B shows sub-resolution vessels do not change
-detectability at the same total dose, and E5 brings in real anatomy, but a full 3D
-detectability sweep is future work. The open decisions -- tumor cell density
-(Study~A) and injection concentration (Study~B) -- are reported as bands.
+cylinder rather than full anatomy, and soft tissue is a water-equivalent proxy.
+Study~B shows sub-resolution vessels do not change detectability at the same total
+dose, and E5 brings in real anatomy, but a full 3D detectability sweep is future
+work. The open decisions -- tumor cell density (Study~A) and injection concentration
+(Study~B) -- are reported as bands.
 
 % =====================================================================
 \section{CONCLUSION}
@@ -607,7 +612,7 @@ The complete pipeline, intermediate results, and figure sources are public
 generator, analytic fan projector, water precorrection tool, and back-projector
 fixes are upstreamed to CONRAD.
 
-\vspace{-2pt}
+\vspace{-4pt}
 
 \acknowledgments
 This work builds on the CONRAD framework of the Pattern Recognition Lab, FAU
@@ -617,32 +622,42 @@ the SEON group.
 % =====================================================================
 \begin{thebibliography}{9}
 \footnotesize
-\setlength{\itemsep}{-0.4ex}
-\setlength{\parskip}{-0.6ex}
+\setlength{\itemsep}{-1.0ex}
+\setlength{\parskip}{-1.1ex}
 \bibitem{Maier2013} A.~Maier et al., ``CONRAD -- a software framework for cone-beam
 imaging in radiology,'' \emph{Medical Physics} \textbf{40}(11), 111914 (2013).
-\bibitem{Heinen2026} L.~Heinen et al., ``PAA-coated magnetite SPION clusters for
-magnetic drug targeting,'' \emph{Ultrasonics Sonochemistry} \textbf{130}, 107876
-(2026).
+\href{https://doi.org/10.1118/1.4824926}{doi:10.1118/1.4824926}
+\bibitem{Heinen2026} L.~Heinen et al., ``Ultrasound-assisted size tuning of
+polyacrylic acid coated magnetic nanoparticle clusters for biomedical
+applications,'' \emph{Ultrasonics Sonochemistry} \textbf{130}, 107876 (2026).
+\href{https://doi.org/10.1016/j.ultsonch.2026.107876}{doi:10.1016/j.ultsonch.2026.107876}
 \bibitem{Rose} A.~Rose, \emph{Vision: Human and Electronic}, Plenum Press, New York
-(1973).
+(1973). ISBN 978-0-306-30732-2
 \bibitem{Willemink2018} M.~J.~Willemink et al., ``Photon-counting CT: technical
 principles and clinical prospects,'' \emph{Radiology} \textbf{289}(2), 293--312
-(2018).
+(2018). \href{https://doi.org/10.1148/radiol.2018172656}{doi:10.1148/radiol.2018172656}
 \bibitem{Rohkohl2009} C.~Rohkohl, B.~Keck, H.~G.~Hofmann, and J.~Hornegger,
 ``Technical Note: RabbitCT -- an open platform for benchmarking 3D cone-beam
 reconstruction algorithms,'' \emph{Medical Physics} \textbf{36}(9), 3940--3944
-(2009).
+(2009). \href{https://doi.org/10.1118/1.3180956}{doi:10.1118/1.3180956}
 \bibitem{Tapiovaara1985} M.~J.~Tapiovaara and R.~F.~Wagner, ``SNR and DQE analysis
 of broad spectrum X-ray imaging,'' \emph{Phys. Med. Biol.} \textbf{30}(6), 519--529
-(1985).
+(1985). \href{https://doi.org/10.1088/0031-9155/30/6/002}{doi:10.1088/0031-9155/30/6/002}
 \bibitem{Salmon2011} J.~K.~Salmon et al., ``Parallel random numbers: as easy as
 1,2,3,'' in \emph{Proc. SC'11}, ACM (2011).
+\href{https://doi.org/10.1145/2063384.2063405}{doi:10.1145/2063384.2063405}
 \bibitem{Hormann1993} W.~H\"ormann, ``The transformed rejection method for
 generating Poisson random variables,'' \emph{Insurance: Mathematics and Economics}
 \textbf{12}(1), 39--45 (1993).
+\href{https://doi.org/10.1016/0167-6687(93)90997-4}{doi:10.1016/0167-6687(93)90997-4}
 \bibitem{Maier2019} A.~Maier et al., ``A gentle introduction to deep learning in
 medical image processing,'' \emph{Z. Med. Phys.} \textbf{29}(2), 86--101 (2019).
+\href{https://doi.org/10.1016/j.zemedi.2018.12.003}{doi:10.1016/j.zemedi.2018.12.003}
+\bibitem{Goldmann2026} F.~Goldmann et al., ``Challenging Hounsfield Unit cutoffs: spectral thresholding for synthetic coronary plaque phantoms on photon-counting CT,'' \emph{J. Med. Imaging} \textbf{13}(2), 024003 (2026). \href{https://doi.org/10.1117/1.JMI.13.2.024003}{doi:10.1117/1.JMI.13.2.024003}
+\bibitem{Manhart2013} M.~T.~Manhart et al., ``Dynamic Iterative Reconstruction for Interventional 4-D C-Arm CT Perfusion Imaging,'' \emph{IEEE Trans. Med. Imaging} \textbf{32}(7), 1336--1348 (2013). \href{https://doi.org/10.1109/TMI.2013.2257178}{doi:10.1109/TMI.2013.2257178}
+\bibitem{Faby2015} S.~Faby, S.~Kuchenbecker, S.~Sawall, D.~Simons, H.-P.~Schlemmer, M.~Lell, and M.~Kachelrie\ss, ``Performance of today's dual energy CT and future multi energy CT in virtual non-contrast imaging and in iodine quantification: A simulation study,'' \emph{Med. Phys.} \textbf{42}(7), 4349--4366 (2015). \href{https://doi.org/10.1118/1.4922654}{doi:10.1118/1.4922654}
+\bibitem{DeMan2007} B.~De~Man et al., ``CatSim: a new computer assisted tomography simulation environment,'' \emph{Proc. SPIE} \textbf{6510}, 65102G (2007). \href{https://doi.org/10.1117/12.710713}{doi:10.1117/12.710713}
+\bibitem{Wunderlich2008} A.~Wunderlich and F.~Noo, ``Image covariance and lesion detectability in direct fan-beam x-ray computed tomography,'' \emph{Phys. Med. Biol.} \textbf{53}(10), 2471--2493 (2008). \href{https://doi.org/10.1088/0031-9155/53/10/002}{doi:10.1088/0031-9155/53/10/002}
 \end{thebibliography}
 
 \end{document}
