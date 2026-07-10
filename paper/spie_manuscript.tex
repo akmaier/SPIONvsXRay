@@ -570,8 +570,7 @@ The picture is coherent. At realistic load, SPIONs deposit little iron, which
 produces only a few Hounsfield units of contrast, and the CNR lands near the Rose
 criterion, not comfortably above it. So the reference dose is borderline-visible:
 detectable in principle at low noise and a soft spectrum, but not a robust everyday
-finding. The top iron concentration we study is still about an order of magnitude
-below iodinated-contrast enhancement, so marginal detectability is expected.
+finding.
 
 Which factor helps most? Cell density: the same cellular loading maps to a wide range
 of tumor iron concentrations depending on how densely the tumor is packed, so
@@ -595,14 +594,12 @@ work. The open decisions -- tumor cell density (Study~A) and injection concentra
 
 Can superparamagnetic iron-oxide nanoparticles be seen in CT? At realistic load, only
 barely. Our CONRAD-native simulation places the detection limit near the reference
-SPION dose, with an iron contrast of a few Hounsfield units and a CNR on the Rose
-boundary. Visibility is dominated by tumor cell density; photon counting adds about
-$1.2\times$; a soft spectrum is the most effective lever; beam-hardening correction
-does not move the limit. For image-guided nanoparticle therapy, routine CT
-confirmation of SPION delivery is feasible only at the upper end of realistic loading
-and with a spectrum tuned for iron. The path forward is a full 3D anatomical
-detectability study and experimental validation against phantom and \emph{ex vivo}
-measurements, supported by the open machinery released here.
+SPION dose, at a few Hounsfield units and a CNR on the Rose boundary. Tumor cell
+density is the dominant factor; photon counting adds about $1.2\times$ and a soft
+spectrum is the most effective lever. Routine CT confirmation of SPION delivery is
+therefore feasible only at the upper end of realistic loading, with a spectrum tuned
+for iron. Full 3D anatomical detectability and experimental validation are the next
+steps.
 
 % =====================================================================
 \section*{Code and data availability}
@@ -621,8 +618,9 @@ the SEON group.
 
 % =====================================================================
 \begin{thebibliography}{9}
-\footnotesize
-\setlength{\itemsep}{-1.0ex}
+\scriptsize
+\setlength{\itemsep}{2pt}
+\setlength{\parsep}{0pt}
 \setlength{\parskip}{-1.1ex}
 \bibitem{Maier2013} A.~Maier et al., ``CONRAD -- a software framework for cone-beam
 imaging in radiology,'' \emph{Medical Physics} \textbf{40}(11), 111914 (2013).
