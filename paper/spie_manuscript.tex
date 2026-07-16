@@ -50,27 +50,28 @@ Otorhinolaryngology, Universit\"atsklinikum Erlangen / FAU, Germany}
 % =====================================================================
 \begin{abstract}
 Superparamagnetic iron-oxide nanoparticles (SPIONs) are used for magnetic drug
-targeting, hyperthermia, and cell tracking. A simple question is often left open:
+targeting, hyperthermia, and cell tracking, but a simple question is often left open:
 can the deposited iron be seen in a computed tomography (CT) scan? We answer this by
-simulation. We start from a real magnetite SPION formulation and build a
-delivered-mass dose model: a fixed particle mass spread through an $8\,\mathrm{cm}^3$
-tumor. At realistic loading this leaves only a fraction of a milligram of iron per
-millilitre, about ten times below iodine CT enhancement. Iron has no usable K-edge
-in the diagnostic range; its contrast is photoelectric and lives at low energy. We
-simulate the whole particle -- a magnetite core plus a polyacrylic-acid coating,
-with the coating fraction taken per formulation from the article's thermogravimetry.
-The imaging chain is CONRAD-native: a fan-beam short scan with Parker weighting,
-cosine and Shepp-Logan filtering, a distance-weighted backprojector, and an always-on
-water beam-hardening precorrection. We compare an energy-integrating detector (EID)
-with a photon-counting detector (PCD), optimizing the tube voltage, aluminium
-filtration, and PCD energy bins for iron. We score detectability by iron $\Delta$HU,
-contrast-to-noise ratio (CNR), and the Rose criterion. We study homogeneous cellular
-uptake and vascular delivery, and verify in three dimensions on rabbit anatomy. The
-optimum is a soft $70\,\mathrm{kVp}$ beam with $5\,\mathrm{mm}$ aluminium, giving an
-iron CNR of $16.9$ at $1\,\mathrm{mg\,Fe/ml}$, about $1.2\times$ the EID. The lowest
-detectable iron at the Rose criterion is about $0.4\,\mathrm{mg\,Fe/ml}$ for the PCD
-at the optimum. SPIONs sit near the CT detection limit at
-realistic load, and tumor cell density is the dominant factor for visibility.
+simulation, starting from a real magnetite SPION formulation and building a
+delivered-mass dose model in which a fixed particle mass is spread through an
+$8\,\mathrm{cm}^3$ tumor. At realistic loading this leaves only a fraction of a
+milligram of iron per millilitre, about ten times below iodine CT enhancement, and
+because iron has no usable K-edge in the diagnostic range its contrast is purely
+photoelectric and lives at low energy. We simulate the whole particle -- a magnetite
+core plus a polyacrylic-acid coating -- with the coating fraction taken per
+formulation from the article's thermogravimetry. The imaging chain is CONRAD-native,
+using a fan-beam short scan with Parker weighting, cosine and Shepp-Logan filtering, a
+distance-weighted backprojector, and an always-on water beam-hardening precorrection.
+We compare an energy-integrating detector (EID) with a photon-counting detector (PCD),
+optimizing the tube voltage, aluminium filtration, and PCD energy bins for iron, and
+we score detectability by iron $\Delta$HU, contrast-to-noise ratio (CNR), and the Rose
+criterion. We study homogeneous cellular uptake and vascular delivery, and verify in
+three dimensions on rabbit anatomy. The optimum is a soft $70\,\mathrm{kVp}$ beam with
+$5\,\mathrm{mm}$ aluminium, which gives an iron CNR of $16.9$ at
+$1\,\mathrm{mg\,Fe/ml}$, about $1.2\times$ the EID, while the lowest detectable iron at
+the Rose criterion is about $0.4\,\mathrm{mg\,Fe/ml}$ for the PCD at the optimum.
+Overall, SPIONs sit near the CT detection limit at realistic load, and tumor cell
+density is the dominant factor for visibility.
 \end{abstract}
 
 \keywords{SPION, iron oxide nanoparticles, computed tomography, photon counting,
@@ -81,37 +82,37 @@ detectability, contrast-to-noise ratio, spectral optimization, simulation, CONRA
 \label{sec:intro}
 
 Superparamagnetic iron-oxide nanoparticles (SPIONs) are a workhorse of
-nanomedicine. Magnetic fields steer them for local drug delivery, they can be heated
+nanomedicine: magnetic fields steer them for local drug delivery, they can be heated
 for hyperthermia, and they can label cells for tracking. The particles we study are
-those of Heinen et al.\cite{Heinen2026}: polyacrylic-acid (PAA)-coated magnetite
-($\mathrm{Fe_3O_4}$) clusters. The cores are about $8$ and $12\,\mathrm{nm}$; they
-assemble into hydrodynamic clusters of about $70$--$250\,\mathrm{nm}$, used at iron
-concentrations of about $1$--$10\,\mathrm{mg\,Fe/ml}$.
+those of Heinen et al.\cite{Heinen2026}, polyacrylic-acid (PAA)-coated magnetite
+($\mathrm{Fe_3O_4}$) clusters. The cores are about $8$ and $12\,\mathrm{nm}$, and they
+assemble into hydrodynamic clusters of about $70$--$250\,\mathrm{nm}$ that are used at
+iron concentrations of about $1$--$10\,\mathrm{mg\,Fe/ml}$.
 
-A clinical question follows. Once these particles reach a target, can we simply see
+A clinical question follows: once these particles reach a target, can we simply see
 them in a routine CT scan? The answer matters for dose planning, for reading
 incidental findings, and most of all for image-guided delivery, where one wants to
 confirm that particles reached the target without a second imaging
 modality\cite{Maier2019}.
 
-At first sight iron looks promising. It is denser and higher in atomic number than
-soft tissue. But the amount is the problem. At realistic loading the delivered iron
-mass is small. A few milligrams of particles spread through a cubic-centimetre tumor
-leave only tenths of a milligram of iron per millilitre. That is roughly ten times
+At first sight iron looks promising, because it is denser and higher in atomic number
+than soft tissue. The problem is the amount, since at realistic loading the delivered
+iron mass is small: a few milligrams of particles spread through a cubic-centimetre
+tumor leave only tenths of a milligram of iron per millilitre, roughly ten times
 below the iodine concentrations that give comfortable CT enhancement. Whether this
-little iron rises above image noise is not obvious.
+little iron rises above image noise is therefore not obvious.
 
 The physics is also unhelpful. Iron has a K-edge at $7.1\,\mathrm{keV}$, far below
-the diagnostic window. So there is no K-edge jump to exploit, unlike iodine or
-gadolinium. The iron contrast is purely photoelectric. It is strongest at low energy
-and fades quickly as energy rises. This shapes every result: a soft spectrum helps,
-a hard spectrum hurts, and photon-counting can only help where low-energy photons
-survive the body.
+the diagnostic window, so there is no K-edge jump to exploit as there is for iodine or
+gadolinium. The iron contrast is purely photoelectric, which means it is strongest at
+low energy and fades quickly as energy rises. This shapes every result: a soft
+spectrum helps, a hard spectrum hurts, and photon counting can only help where
+low-energy photons survive the body.
 
 Despite a large SPION literature and a surge of interest in photon-counting
 CT\cite{Willemink2018,Faby2015,DeMan2007,Goldmann2026},
-there is little quantitative simulation of SPION CT detectability across modern
-detectors. We address this gap. Our contributions are: (i) a delivered-mass dose
+there is still little quantitative simulation of SPION CT detectability across modern
+detectors, and we address this gap. Our contributions are: (i) a delivered-mass dose
 model tied to a real magnetite SPION formulation, with a whole-particle material
 model and a per-formulation coating fraction from thermogravimetry; (ii) a
 CONRAD-native fan-beam pipeline in which every reconstruction step is a CONRAD class;
@@ -134,17 +135,16 @@ measured contrast is attributable to iron alone.
 \label{sec:dose}
 We model the whole particle, not iron alone: a magnetite ($\mathrm{Fe_3O_4}$) core
 plus a PAA coating (monomer $\mathrm{C_3H_4O_2}$). The iron mass fraction of
-magnetite is $0.724$ ($3\times55.85/231.5$). The bound oxygen is nearly
-tissue-equivalent and adds only a few percent to the attenuation per gram of iron.
+magnetite is $0.724$ ($3\times55.85/231.5$), and the bound oxygen is nearly
+tissue-equivalent, so it adds only a few percent to the attenuation per gram of iron.
 The PAA coating is low-$Z$ ($\mathrm{C/H/O}$) and essentially water-equivalent, so
 it is negligible for the X-ray attenuation; we still include its mass so the
 reported particle concentration is honest.
 
 We keep two concentrations distinct throughout. The iron concentration
-$c_{\mathrm{Fe}}$ (mg~Fe/ml) drives the attenuation. The whole-particle
-concentration $c_{\mathrm{NP}}$ (mg~SPION/ml) is derived from it. The link is the
-coating fraction. From an iron concentration we recover the whole-particle
-concentration by
+$c_{\mathrm{Fe}}$ (mg~Fe/ml) drives the attenuation, while the whole-particle
+concentration $c_{\mathrm{NP}}$ (mg~SPION/ml) is derived from it through the coating
+fraction. From an iron concentration we recover the whole-particle concentration by
 \begin{equation}
 c_{\mathrm{NP}} = \frac{c_{\mathrm{Fe}}}{0.724\,(1-\varphi)},
 \label{eq:cnp}
@@ -155,11 +155,13 @@ as mg~Fe/ml in the tumor.
 The coating fraction is taken per formulation from the article's supplementary
 thermogravimetry (TGA)\cite{Heinen2026}. The inorganic residual is $87.7\%$ for
 SPION~I ($12\,\mathrm{nm}$ cores) and $66.4\%$ for SPION~II ($8\,\mathrm{nm}$ cores).
-On heating the residual oxidizes magnetite to hematite, adding $3.4\%$ mass;
-correcting for this, the magnetite fraction is $84.8\%$ (SPION~I) and $64.2\%$
-(SPION~II), the complement being PAA. So $\varphi\approx0.15$ for SPION~I and
-$\varphi\approx0.36$ for SPION~II. Each formulation is simulated with its own
-coating: $c_{\mathrm{NP}}\approx1.63\,c_{\mathrm{Fe}}$ (SPION~I) and
+On heating, the magnetite in the residual oxidizes to $\mathrm{Fe_2O_3}$, a mass gain
+of about $3.4\%$, and this gain is the same for the maghemite ($\gamma$-$\mathrm{Fe_2O_3}$)
+and hematite polymorphs, so the coating-fraction estimate is unaffected. Correcting for
+it, the magnetite fraction is $84.8\%$ (SPION~I) and $64.2\%$ (SPION~II), with the
+complement being PAA, so $\varphi\approx0.15$ for SPION~I and $\varphi\approx0.36$ for
+SPION~II. Each formulation is simulated with its own coating, which gives
+$c_{\mathrm{NP}}\approx1.63\,c_{\mathrm{Fe}}$ (SPION~I) and
 $c_{\mathrm{NP}}\approx2.16\,c_{\mathrm{Fe}}$ (SPION~II). Adding the coating mass
 moves the monochromatic iron $\Delta$HU by only about $3.6\%$ at $\varphi=0.15$, so
 the attenuation stays iron-dominated. Table~\ref{tab:comp} lists the composition.
@@ -214,14 +216,15 @@ spectrum and low-energy PCD bins.}
 \label{sec:phantom}
 We use a rabbit-scale, electron-density-style calibration phantom: a
 $110\,\mathrm{mm}$ soft-tissue cylinder. It holds the iron-concentration inserts on
-a common ring, so beam-hardening cupping is common-mode across inserts, plus a
-cortical-bone rod as a deliberate beam-hardening source that makes the bone factor
-meaningful. Each insert is a disk of iron-loaded soft tissue. Iron is added to the
-tissue matrix by the mixture rule, so a zero-iron insert equals background exactly.
-Soft tissue is a water-equivalent CONRAD body material, which keeps the zero-iron
-baseline clean. The tumor is an $8\,\mathrm{cm}^3$ sphere ($r=12.4\,\mathrm{mm}$);
-the reconstruction field of view is $20\,\mathrm{cm}$. Figure~\ref{fig:phantom}
-shows an axial slice and an example EID/PCD reconstruction.
+a common ring, so that beam-hardening cupping is common-mode across inserts, together
+with a cortical-bone rod that acts as a deliberate beam-hardening source and makes the
+bone factor meaningful. Each insert is a disk of iron-loaded soft tissue, with iron
+added to the tissue matrix by the mixture rule, so a zero-iron insert equals
+background exactly. Because the soft tissue is a water-equivalent CONRAD body
+material, the zero-iron baseline stays clean. The tumor is an $8\,\mathrm{cm}^3$
+sphere ($r=12.4\,\mathrm{mm}$), and the reconstruction field of view is
+$20\,\mathrm{cm}$. Figure~\ref{fig:phantom} shows an axial slice and an example
+EID/PCD reconstruction.
 
 \begin{figure}[ht]
 \centering
@@ -260,10 +263,11 @@ spectrum and $\tau$ the material path integral. Quantum noise is Poisson per ene
 random-number generator\cite{Salmon2011} and transformed-rejection Poisson
 sampling\cite{Hormann1993}.
 
-The energy-integrating detector (EID) weights photons by energy:
-$S=\sum_E N(E)\,E$. Its variance is the exact second moment $\sum_E N(E)\,E^2$, not
-a single Poisson draw on the summed signal. The line integral is
-$p=-\log(S/S_{\mathrm{air}})$. A single water precorrection linearizes the response.
+The energy-integrating detector (EID) weights photons by energy,
+$S=\sum_E N(E)\,E$, and its variance is the exact second moment $\sum_E N(E)\,E^2$,
+not a single Poisson draw on the summed signal. The line integral is
+$p=-\log(S/S_{\mathrm{air}})$, and a single water precorrection linearizes the
+response.
 
 The photon-counting detector (PCD) sorts photons into three energy bins, combined
 with a \emph{post-combination matched filter}: a matched-filter weighted sum of the
@@ -272,9 +276,9 @@ spectrum. The weights $w_b \propto S_b/V_b$ are the CNR-optimal weighting that
 reaches the ideal-observer ceiling. Combining in the count domain before the
 logarithm is robust to the photon-starved low-energy bin, whose per-bin logarithm
 would diverge when its counts reach zero. This scheme gives about $1.2\times$ the
-EID CNR. A per-bin pre-sum correction, where each bin is corrected on its own
-spectrum before the sum, is noisier and gives only about $1.0\times$, so we do not
-use it.
+EID CNR, whereas a per-bin pre-sum correction, in which each bin is corrected on its
+own spectrum before the sum, is noisier and gives only about $1.0\times$, so we do
+not use it.
 
 \subsection{Experiments}
 \label{sec:experiments}
@@ -307,11 +311,11 @@ dose factors. Table~\ref{tab:grid} lists the loading-by-density grid.
 
 \textbf{E4 -- Study~B, vascular / fresh injection.} Freshly injected SPIONs are still
 in the blood carrier inside the vessels, before cellular uptake. The contrast is
-confined to $150\,\mu\mathrm{m}$ vessels occupying about $10\%$ of the tumor volume,
-at a tenfold local concentration. The vessel-local level is the independent variable
-($5$--$15\,\mathrm{mg\,Fe/ml}$). The $0.5\,\mathrm{mm}$ voxel cannot resolve the
-vessels, so each insert is homogenized to its tumor-mean iron. We then add the
-second-order effects the homogeneous model omits: the beam-hardening nonlinearity
+confined to $150\,\mu\mathrm{m}$ vessels that occupy about $10\%$ of the tumor volume
+at a tenfold local concentration, and the vessel-local level is the independent
+variable ($5$--$15\,\mathrm{mg\,Fe/ml}$). Because the $0.5\,\mathrm{mm}$ voxel cannot
+resolve the vessels, each insert is homogenized to its tumor-mean iron. We then add
+the second-order effects the homogeneous model omits: the beam-hardening nonlinearity
 from concentrating iron, and the structural noise from the binomial per-voxel vessel
 count.
 
@@ -372,13 +376,14 @@ Noise realizations & $30$ per cell \\
 Because iron contrast is photoelectric, it should favour a soft spectrum, and the E2
 sweep confirms this: CNR falls as tube voltage rises and as aluminium hardens the
 beam. The CNR-optimal spectrum is a soft $70\,\mathrm{kVp}$ beam with
-$5\,\mathrm{mm}$ aluminium. At this optimum, at the representative
+$5\,\mathrm{mm}$ aluminium, and at this optimum, at the representative
 $1\,\mathrm{mg\,Fe/ml}$, the EID reaches a CNR of $9.6$ and the PCD $16.9$
-($1.20\times$); the matched-filter PCD reaches $98\%$ of the ideal-observer ceiling.
-The PCD bins re-optimize to edges of $10.0/37.5/47.5/70.0\,\mathrm{keV}$. The
-optimum lifts the EID CNR by about $24\%$ over the $90\,\mathrm{kVp}$ baseline
-($7.8\rightarrow9.6$). Figure~\ref{fig:e2} shows the CNR surface with the optimum
-marked; Table~\ref{tab:pcdcnr} reports the EID versus PCD CNR.
+($1.20\times$), with the matched-filter PCD reaching $98\%$ of the ideal-observer
+ceiling. For this spectrum the PCD bins re-optimize to edges of
+$10.0/37.5/47.5/70.0\,\mathrm{keV}$, and the optimum lifts the EID CNR by about
+$24\%$ over the $90\,\mathrm{kVp}$ baseline ($7.8\rightarrow9.6$).
+Figure~\ref{fig:e2} shows the CNR surface with the optimum marked, and
+Table~\ref{tab:pcdcnr} reports the EID versus PCD CNR.
 
 \begin{figure}[ht]
 \centering
@@ -399,16 +404,16 @@ band. The band comes from the three cell-density levels: the same cellular loadi
 maps to different tumor iron concentrations as density changes, so visibility is
 dominated by how densely the tumor is packed. The fresh SPION~I loading
 ($8.23\,\mathrm{pg\,Fe/cell}$) gives tumor concentrations of
-$0.82/2.47/8.23\,\mathrm{mg\,Fe/ml}$ at the three densities. At high dose it clears
-the Rose $\mathrm{CNR}=5$ criterion already at $10^{8}\,\mathrm{cells/cm}^3$, and at
-low dose only from $3\times10^{8}$ upward, so detection is dose-limited rather than
-detector-limited. The lowest detectable iron at Rose $\ge5$ is
-$0.41\,\mathrm{mg\,Fe/ml}$ for the PCD at the optimum ($3\times10^{8}$, high dose)
+$0.82/2.47/8.23\,\mathrm{mg\,Fe/ml}$ at the three densities, and at high dose it
+clears the Rose $\mathrm{CNR}=5$ criterion already at $10^{8}\,\mathrm{cells/cm}^3$,
+while at low dose it clears it only from $3\times10^{8}$ upward, so detection is
+dose-limited rather than detector-limited. The lowest detectable iron at Rose $\ge5$
+is $0.41\,\mathrm{mg\,Fe/ml}$ for the PCD at the optimum ($3\times10^{8}$, high dose)
 against $0.75\,\mathrm{mg\,Fe/ml}$ for the EID. At the reference load
-($0.54\,\mathrm{mg\,Fe/ml}$) the CNR sits on the Rose boundary; at the top of the
-band the PCD CNR peaks near $96$. Figure~\ref{fig:density} shows a reconstruction
-montage across the density levels; Table~\ref{tab:grid} lists the loading-by-density
-grid and Table~\ref{tab:thresh} the detection thresholds.
+($0.54\,\mathrm{mg\,Fe/ml}$) the CNR sits on the Rose boundary, while at the top of
+the band the PCD CNR peaks near $96$. Figure~\ref{fig:density} shows a reconstruction
+montage across the density levels, and Table~\ref{tab:grid} lists the
+loading-by-density grid and Table~\ref{tab:thresh} the detection thresholds.
 
 \begin{figure}[ht]
 \centering
@@ -452,11 +457,11 @@ and spectrum. A dash means the criterion is not reached within the swept range.}
 
 \subsection{Bone off versus bone on}
 \label{sec:res-bone}
-The cortical-bone rod is a deliberate beam-hardening source. We repeat Study~A and
+The cortical-bone rod is a deliberate beam-hardening source, and we repeat Study~A and
 Study~B with the rod present. Bone raises the iron $\Delta$HU a little, because the
-hardened beam shifts the local response. But it raises the local noise more, through
+hardened beam shifts the local response, but it raises the local noise more, through
 residual streaks that the local-background and zero-iron subtraction suppress but do
-not remove. So the net effect is a modest CNR drop. In Study~A at the optimum, high
+not remove, so the net effect is a modest CNR drop. In Study~A at the optimum, high
 dose, SPION~I fresh, the EID CNR falls from $27.2$ to $18.4$ at
 $3{\times}10^{8}\,\mathrm{cells/cm}^3$ ($c_{\mathrm{Fe}}=2.47$) and from $88.2$ to
 $54.9$ at $10^{9}$ ($c_{\mathrm{Fe}}=8.23$); the PCD falls from $31.8$ to $21.5$ and
@@ -507,14 +512,14 @@ $0.5\,\mathrm{mm}$ CT voxel the vessels are unresolved.}
 \subsection{EID versus PCD}
 \label{sec:res-pcd}
 Photon counting helps, but only partly. The post-combination matched-filter PCD
-gives about $1.2\times$ the EID CNR when the low-energy bin carries enough counts. At
-realistic dose that bin is photon-starved through the body, so the gain shrinks.
+gives about $1.2\times$ the EID CNR when the low-energy bin carries enough counts, but
+at realistic dose that bin is photon-starved through the body, so the gain shrinks.
 Averaged over the Study~A grid (bone off), the PCD CNR is about $1.15\times$ the EID
-at the optimum and $1.28\times$ at the baseline (mean $\approx1.2\times$); the softer
-optimum lifts the EID more, narrowing the relative gap. The per-bin pre-sum variant
-gives essentially no gain ($\sim1.0\times$) and is noisier, so it is not used.
+at the optimum and $1.28\times$ at the baseline (mean $\approx1.2\times$), because the
+softer optimum lifts the EID more and narrows the relative gap. The per-bin pre-sum
+variant gives essentially no gain ($\sim1.0\times$) and is noisier, so it is not used.
 Figure~\ref{fig:pcd} shows where the iron contrast lives in energy and the
-re-optimized bin thresholds; the gain sits in a band that receives few transmitted
+re-optimized bin thresholds, and the gain sits in a band that receives few transmitted
 photons.
 
 \begin{figure}[!t]
@@ -568,17 +573,17 @@ $c_{Fe}=2.47$) the tumor reads $+16/+18\,\mathrm{HU}$ (EID/PCD); at the highest 
 
 The picture is coherent. At realistic load, SPIONs deposit little iron, which
 produces only a few Hounsfield units of contrast, and the CNR lands near the Rose
-criterion, not comfortably above it. So the reference dose is borderline-visible:
-detectable in principle at low noise and a soft spectrum, but not a robust everyday
-finding.
+criterion, not comfortably above it. The reference dose is therefore
+borderline-visible: detectable in principle at low noise and a soft spectrum, but not
+a robust everyday finding.
 
 Which factor helps most? Cell density: the same cellular loading maps to a wide range
 of tumor iron concentrations depending on how densely the tumor is packed, so
 visibility is dominated by cell density, not the formulation alone. The next lever is
-the spectrum: a soft beam raises the photoelectric iron contrast. Photon counting
-gives a modest $1.2\times$ gain, and only when the low-energy bin survives the body.
-Beam-hardening correction does not change iron detectability, because iron contrast
-is a genuine material signal, not a cupping artifact.
+the spectrum, because a soft beam raises the photoelectric iron contrast, while photon
+counting gives only a modest $1.2\times$ gain, and only when the low-energy bin
+survives the body. Beam-hardening correction does not change iron detectability,
+because iron contrast is a genuine material signal, not a cupping artifact.
 
 The limitations are candid. The study is a simulation with idealized, ideal-energy
 detectors and no scatter or patient motion. The 2D phantom is a round, rabbit-scale
@@ -593,13 +598,13 @@ work. The open decisions -- tumor cell density (Study~A) and injection concentra
 \label{sec:conclusion}
 
 Can superparamagnetic iron-oxide nanoparticles be seen in CT? At realistic load, only
-barely. Our CONRAD-native simulation places the detection limit near the reference
+barely: our CONRAD-native simulation places the detection limit near the reference
 SPION dose, at a few Hounsfield units and a CNR on the Rose boundary. Tumor cell
-density is the dominant factor; photon counting adds about $1.2\times$ and a soft
-spectrum is the most effective lever. Routine CT confirmation of SPION delivery is
-therefore feasible only at the upper end of realistic loading, with a spectrum tuned
-for iron. Full 3D anatomical detectability and experimental validation are the next
-steps.
+density is the dominant factor, while photon counting adds about $1.2\times$ and a
+soft spectrum is the most effective lever. Routine CT confirmation of SPION delivery
+is therefore feasible only at the upper end of realistic loading, with a spectrum
+tuned for iron, and full 3D anatomical detectability and experimental validation are
+the next steps.
 
 % =====================================================================
 \section*{Code and data availability}
