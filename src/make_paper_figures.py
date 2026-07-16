@@ -104,8 +104,8 @@ def fig_physics():
     f70n = f70 / f70.max()
     f90n = f90 / f90.max()
 
-    fig = plt.figure(figsize=(9.2, 3.7))
-    gs = gridspec.GridSpec(1, 2, width_ratios=[1.25, 1.0], wspace=0.32)
+    fig = plt.figure(figsize=(10.4, 3.7))
+    gs = gridspec.GridSpec(1, 2, width_ratios=[1.25, 1.0], wspace=0.52)
 
     # (a) attenuation + spectra
     ax = fig.add_subplot(gs[0])
@@ -372,6 +372,10 @@ def fig_spectral():
 
     fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.8), sharey=True)
     cmap = plt.cm.viridis(np.linspace(0.15, 0.85, len(filters)))
+    # common y-limit so EID and PCD panels are directly comparable
+    all_cnr = [r["cnr"] for r in sw if r["name"] == top_name
+               and r["filter"] in filters and r["detector"] in ("EID", "PCD")]
+    ymax = max(all_cnr) * 1.12
     for ax, det in zip(axes, ("EID", "PCD")):
         for fl, col in zip(filters, cmap):
             pts = sorted([r for r in sw if r["detector"] == det and r["filter"] == fl
@@ -381,6 +385,7 @@ def fig_spectral():
         ax.set_xlabel("tube voltage [kVp]")
         ax.set_title(det, fontsize=11)
         ax.set_xticks(kvps)
+        ax.set_ylim(0, ymax)
     axes[0].set_ylabel(r"CNR at $c_{\mathrm{Fe}}\approx$1.09 mg/ml")
     axes[0].legend(title="Al filter", fontsize=8, title_fontsize=8)
 
@@ -391,8 +396,11 @@ def fig_spectral():
         cval = optpt[0]["cnr"]
         axes[1].scatter([70.0], [cval], s=140, facecolors="none",
                         edgecolors=OPT_C, linewidths=2.2, zorder=5)
+        # place the label in the open upper-right area, clear of the curve
+        # (raised ~1 cm vs. the previous crowded position, below the panel title)
         axes[1].annotate("optimum\n70 kVp / Al 5.0", xy=(70.0, cval),
-                         xytext=(85, cval * 0.72), fontsize=8, color=OPT_C,
+                         xytext=(103, cval + 0.02 * ymax), fontsize=8, color=OPT_C,
+                         ha="center", va="center",
                          arrowprops=dict(arrowstyle="->", color=OPT_C, lw=1.2))
     fig.suptitle("Spectral shaping sweep: tube voltage x Al filtration", fontsize=10, y=1.0)
     fig.tight_layout()
