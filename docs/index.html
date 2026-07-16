@@ -165,13 +165,12 @@
         <tr><td>Filter</td><td>Al 5.0 mm</td><td>Al 2.5 mm</td></tr>
         <tr><td>Detector</td><td>PCD, 3-bin</td><td>(EID / PCD both run)</td></tr>
         <tr><td>PCD bin edges</td><td>10 / 37.5 / 47.5 / 70 keV</td><td>—</td></tr>
-        <tr><td>Iron CNR @ 1 mg Fe/ml</td><td class="num">16.9</td><td class="num">—</td></tr>
-        <tr><td>PCD gain vs EID</td><td class="num">~1.20×</td><td class="num">—</td></tr>
+        <tr><td>PCD gain vs EID (matched filter)</td><td class="num">~1.20×</td><td class="num">—</td></tr>
       </table>
-      <p>At the representative 1&nbsp;mg&nbsp;Fe/ml insert the optimum PCD reaches <b>CNR&nbsp;16.9</b>
-        (100&nbsp;000 photons/px), about <b>1.20×</b> the matched EID CNR and 98&nbsp;% of the ideal
-        energy-weighting ceiling. Lower kVp raises contrast; heavy hardening filters (Cu, Sn) hurt it,
-        so the win is keeping the beam soft, not adding a K-edge filter.</p>
+      <p>At the optimum the matched-filter PCD reaches about <b>1.2×</b> the EID iron CNR, which is
+        98&nbsp;% of the ideal energy-weighting (ideal-observer) limit. Lower kVp raises contrast; heavy
+        hardening filters (Cu, Sn) hurt it, so the win is keeping the beam soft, not adding a K-edge
+        filter.</p>
     </div>
     <div class="grid">
       <figure><img src="assets/fig_spectral.png" alt="spectral optimization" onerror="markPending(this)">
@@ -353,7 +352,7 @@ c_fe = pg_fe_per_cell * cell_density_per_cm3 * 1e-9   # -> mg Fe/ml
 <pre><code>optimum  = {"kvp": 70.0, "filter": "Al5.0",
             "detector": "PCD", "pcd_bin_edges_kev": [10, 37.5, 47.5, 70]}
 baseline = {"kvp": 90, "filter": "Al2.5"}     # conventional control, run alongside
-# iron CNR 16.9 @ 1 mg Fe/ml ; PCD gain 1.20x EID (98% of ideal weighting)
+# PCD gain ~1.20x EID (98% of ideal energy weighting), matched-filter analysis
 </code></pre>
     </div>
 
