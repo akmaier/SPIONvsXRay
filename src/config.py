@@ -22,7 +22,7 @@ TUMOR_VOLUME_CM3 = 8.0       # cm^3
 # PAA_MASS_FRAC (phi) is the coating's fraction of the whole-particle mass. The
 # article's supplementary TGA (mmc1.pdf, Table A.1 / Fig A.1 -- now in the repo root)
 # fixes it PER FORMULATION: the iron-oxide residual is 87.7% (SPION I) / 66.4%
-# (SPION II); on heating, magnetite -> hematite (+3.4%, article Eq A.1), so magnetite
+# (SPION II); on heating, magnetite -> Fe2O3 (+3.4% mass, same for maghemite/hematite; article Eq A.1), so magnetite
 # = R_m/1.034 and the PAA complement is phi ~= 0.15 (SPION I, 12 nm cores) and ~= 0.36
 # (SPION II, 8 nm cores). TODO: this module still uses a SINGLE central phi = 0.15
 # (exact for SPION I); per-formulation phi enters with the Study A per-configuration

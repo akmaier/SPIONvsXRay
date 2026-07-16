@@ -23,7 +23,7 @@ and **φ is the PAA coating mass fraction**. **φ is now taken per formulation f
 the article's supplementary TGA** (Heinen et al., supplement Table A.1 / Fig A.1),
 not a single estimate. The TGA inorganic (iron-oxide) residual is **87.7 % for
 SPION I** (12 nm cores) and **66.4 % for SPION II** (8 nm cores); on heating the
-residual oxidizes magnetite → hematite (+3.4 % mass, article Eq A.1), so the
+residual oxidizes magnetite → Fe₂O₃ (+3.4 % mass — identical for the maghemite and hematite polymorphs, article Eq A.1), so the
 original magnetite fraction is `R_m/1.034` = **84.8 % (SPION I)** and
 **64.2 % (SPION II)**. The complement is PAA: **φ ≈ 0.15 for SPION I** and
 **φ ≈ 0.36 for SPION II** — so SPION II carries roughly twice the coating. (The

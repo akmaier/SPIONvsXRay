@@ -34,7 +34,7 @@ contrast (Hounsfield Units / attenuation) and detectability.
 - **Coating fraction is per formulation, from the article's TGA** (supplement
   Table A.1 / Fig A.1). The inorganic (iron-oxide) residual is **87.7 % (SPION I,
   12 nm cores)** and **66.4 % (SPION II, 8 nm cores)**; on heating the residual
-  oxidizes magnetite → hematite (+3.4 % mass, article Eq A.1 uses 0.966·w_residual),
+  oxidizes magnetite → Fe₂O₃ (maghemite/hematite; +3.4 % mass, article Eq A.1 uses 0.966·w_residual),
   so the original magnetite fraction is `R_m/1.034` = **84.8 % (SPION I)** and
   **64.2 % (SPION II)**. The complement is PAA: **φ ≈ 0.15 (SPION I)**, **φ ≈ 0.36
   (SPION II)** — SPION II carries roughly twice the coating. See §5.2.
@@ -124,7 +124,7 @@ no organ heterogeneity.
   - **φ is per formulation, from the article's TGA** (supplement Table A.1 / Fig A.1),
     replacing the earlier single estimate. The inorganic (iron-oxide) residual R_m is
     **87.7 % (SPION I, 12 nm cores)** and **66.4 % (SPION II, 8 nm cores)**; the residual
-    oxidizes magnetite → hematite (+3.4 % mass; article Eq A.1 uses 0.966·w_residual),
+    oxidizes magnetite → Fe₂O₃ (maghemite/hematite; +3.4 % mass; article Eq A.1 uses 0.966·w_residual),
     so the original magnetite fraction = R_m/1.034 = **84.8 % (SPION I)** ⇒ coating
     **φ ≈ 0.15**, and **64.2 % (SPION II)** ⇒ coating **φ ≈ 0.36**. SPION II carries
     much more PAA than SPION I, so each formulation's full-particle model uses **its own
