@@ -28,8 +28,7 @@
 \newcommand{\TODO}[1]{\textbf{[TODO: #1]}}
 \newcommand{\NUM}{\textbf{[--]}}
 
-\title{Can superparamagnetic iron-oxide nanoparticles be seen in CT?
-A CONRAD-native simulation study}
+\title{Can superparamagnetic iron-oxide nanoparticles be seen in CT?}
 
 \author[a]{Andreas Maier}
 \author[b]{Stefan Lyer}
@@ -59,23 +58,23 @@ milligram of iron per millilitre, about ten times below iodine CT enhancement, a
 because iron has no usable K-edge in the diagnostic range its contrast is purely
 photoelectric and lives at low energy. We simulate the whole particle -- a magnetite
 core plus a polyacrylic-acid coating -- with the coating fraction taken per
-formulation from the article's thermogravimetry. The imaging chain is CONRAD-native,
-using a fan-beam short scan with Parker weighting, cosine and Shepp-Logan filtering, a
-distance-weighted backprojector, and an always-on water beam-hardening precorrection.
+formulation from the article's thermogravimetry. We simulate a C-arm angiography
+system with a fan-beam short scan, Parker weighting, cosine and Shepp-Logan filtering,
+a distance-weighted backprojector, and an always-on water beam-hardening precorrection.
 We compare an energy-integrating detector (EID) with a photon-counting detector (PCD),
 optimizing the tube voltage, aluminium filtration, and PCD energy bins for iron, and
 we score detectability by iron $\Delta$HU, contrast-to-noise ratio (CNR), and the Rose
 criterion. We study homogeneous cellular uptake and vascular delivery, and verify in
 three dimensions on rabbit anatomy. The optimum is a soft $70\,\mathrm{kVp}$ beam with
 $5\,\mathrm{mm}$ aluminium, which gives an iron CNR of $16.9$ at
-$1\,\mathrm{mg\,Fe/ml}$, about $1.2\times$ the EID, while the lowest detectable iron at
-the Rose criterion is about $0.4\,\mathrm{mg\,Fe/ml}$ for the PCD at the optimum.
+$1\,\mathrm{mg\,Fe/ml}$ for the photon-counting detector, while the lowest detectable
+iron at the Rose criterion is about $0.4\,\mathrm{mg\,Fe/ml}$ at the optimum.
 Overall, SPIONs sit near the CT detection limit at realistic load, and tumor cell
 density is the dominant factor for visibility.
 \end{abstract}
 
 \keywords{SPION, iron oxide nanoparticles, computed tomography, photon counting,
-detectability, contrast-to-noise ratio, spectral optimization, simulation, CONRAD}
+detectability, contrast-to-noise ratio, spectral optimization, simulation}
 
 % =====================================================================
 \section{INTRODUCTION}
@@ -115,19 +114,19 @@ there is still little quantitative simulation of SPION CT detectability across m
 detectors, and we address this gap. Our contributions are: (i) a delivered-mass dose
 model tied to a real magnetite SPION formulation, with a whole-particle material
 model and a per-formulation coating fraction from thermogravimetry; (ii) a
-CONRAD-native fan-beam pipeline in which every reconstruction step is a CONRAD class;
-(iii) a spectrum-and-detector optimization of tube voltage, aluminium filter, and PCD
-energy bins for iron; (iv) two biological uptake models -- homogeneous cellular uptake
-and vascular fresh injection -- grounded in the article's measured cellular loading;
-and (v) a 3D cone-beam verification on real rabbit anatomy. The pipeline is open and
-every intermediate result is public for audit.
+spectrum-and-detector optimization of tube voltage, aluminium filter, and PCD energy
+bins for iron; (iii) two biological uptake models -- homogeneous cellular uptake and
+vascular fresh injection -- grounded in the article's measured cellular loading; and
+(iv) a 3D cone-beam verification on real rabbit anatomy. The full pipeline is open
+source at \url{https://github.com/akmaier/SPIONvsXRay} (built on the CONRAD
+framework), and every intermediate result is public for audit.
 
 % =====================================================================
 \section{MATERIALS AND METHODS}
 \label{sec:methods}
 
 We fix the parts in order: the nanoparticle and dose model, the phantom, the
-CONRAD-native imaging chain, the two detectors, and the experiments and metrics.
+imaging chain, the two detectors, and the experiments and metrics.
 Each choice keeps the $c_{\mathrm{Fe}}=0$ case identical to background, so any
 measured contrast is attributable to iron alone.
 
@@ -220,8 +219,8 @@ a common ring, so that beam-hardening cupping is common-mode across inserts, tog
 with a cortical-bone rod that acts as a deliberate beam-hardening source and makes the
 bone factor meaningful. Each insert is a disk of iron-loaded soft tissue, with iron
 added to the tissue matrix by the mixture rule, so a zero-iron insert equals
-background exactly. Because the soft tissue is a water-equivalent CONRAD body
-material, the zero-iron baseline stays clean. The tumor is an $8\,\mathrm{cm}^3$
+background exactly. Because the soft tissue is a water-equivalent body material,
+the zero-iron baseline stays clean. The tumor is an $8\,\mathrm{cm}^3$
 sphere ($r=12.4\,\mathrm{mm}$), and the reconstruction field of view is
 $20\,\mathrm{cm}$. Figure~\ref{fig:phantom} shows an axial slice and an example
 EID/PCD reconstruction.
@@ -229,17 +228,17 @@ EID/PCD reconstruction.
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.5\linewidth]{fig_phantom_recon.pdf}
-\caption{Digital phantom and CONRAD-native reconstruction. Left: axial slice of the
+\caption{Digital phantom and reconstruction. Left: axial slice of the
 rabbit-scale phantom (soft-tissue cylinder, iron-concentration inserts on a ring,
 cortical-bone rod). Center/right: example EID and PCD reconstructions through the
 fan-beam short-scan pipeline.}
 \label{fig:phantom}
 \end{figure}
 
-\subsection{CONRAD-native fan-beam pipeline}
+\subsection{Fan-beam imaging pipeline}
 \label{sec:pipeline}
-Every reconstruction step is a CONRAD class\cite{Maier2013}, in CONRAD's geometry
-convention; we do not hand-roll ramp filters, Parker weights, or geometry. The fan-beam geometry uses
+The reconstruction uses established implementations from the CONRAD
+framework\cite{Maier2013,Manhart2013}, in its geometry convention. The fan-beam geometry uses
 a source-to-isocentre distance of $750\,\mathrm{mm}$ and a virtual detector at the
 isocentre sampled at $\Delta_T = 1\,\mathrm{mm}$, with $500$ views over a minimal
 short scan ($180^\circ$ plus fan). The chain is forward projection, Parker weighting,
@@ -248,12 +247,8 @@ backprojector, on a $0.5\,\mathrm{mm}$ isotropic grid. A water beam-hardening
 precorrection is \emph{always on}, calibrated so a water cylinder reconstructs flat
 to about $0.1\%$; it is not a factor of the study.
 
-The GPU backprojector required a fix to the CONRAD OpenCL kernel, which never
-received the reconstruction pixel spacing; the corrected kernel matches the CPU
-reference to about $10^{-5}$ and is roughly $850\times$ faster. It is contributed
-upstream with the analytic fan projector, the reinstated distance weighting, and
-the water precorrection tool, preserving image quality for downstream quantitative
-and iterative use\cite{Manhart2013}.
+Reconstruction runs on the GPU through OpenCL, here on an Apple M1 laptop, about
+$850\times$ faster than the CPU path.
 
 \subsection{Detectors: EID and PCD}
 \label{sec:detectors}
@@ -273,7 +268,9 @@ The photon-counting detector (PCD) sorts photons into three energy bins, combine
 with a \emph{post-combination matched filter}: a matched-filter weighted sum of the
 bin counts, then a single logarithm, then one water precorrection on the combined
 spectrum. The weights $w_b \propto S_b/V_b$ are the CNR-optimal weighting that
-reaches the ideal-observer ceiling. Combining in the count domain before the
+reaches the ideal-observer ceiling. Because this correction uses the combined
+spectrum rather than each bin separately, a small residual beam hardening remains,
+which is visible in the noise-free reconstructions. Combining in the count domain before the
 logarithm is robust to the photon-starved low-energy bin, whose per-bin logarithm
 would diverge when its counts reach zero. This scheme gives about $1.2\times$ the
 EID CNR, whereas a per-bin pre-sum correction, in which each bin is corrected on its
@@ -585,7 +582,7 @@ counting gives only a modest $1.2\times$ gain, and only when the low-energy bin
 survives the body. Beam-hardening correction does not change iron detectability,
 because iron contrast is a genuine material signal, not a cupping artifact.
 
-The limitations are candid. The study is a simulation with idealized, ideal-energy
+The study has clear limitations. It is a simulation with idealized, ideal-energy
 detectors and no scatter or patient motion. The 2D phantom is a round, rabbit-scale
 cylinder rather than full anatomy, and soft tissue is a water-equivalent proxy.
 Study~B shows sub-resolution vessels do not change detectability at the same total
@@ -598,7 +595,7 @@ work. The open decisions -- tumor cell density (Study~A) and injection concentra
 \label{sec:conclusion}
 
 Can superparamagnetic iron-oxide nanoparticles be seen in CT? At realistic load, only
-barely: our CONRAD-native simulation places the detection limit near the reference
+barely: our simulation places the detection limit near the reference
 SPION dose, at a few Hounsfield units and a CNR on the Rose boundary. Tumor cell
 density is the dominant factor, while photon counting adds about $1.2\times$ and a
 soft spectrum is the most effective lever. Routine CT confirmation of SPION delivery
@@ -612,14 +609,8 @@ The complete pipeline, intermediate results, and figure sources are public
 (MIT-licensed), with an audit dashboard at
 \url{https://akmaier.github.io/SPIONvsXRay/}. The GPU OpenCL detector, noise
 generator, analytic fan projector, water precorrection tool, and back-projector
-fixes are upstreamed to CONRAD.
+are available in CONRAD.
 
-\vspace{-4pt}
-
-\acknowledgments
-This work builds on the CONRAD framework of the Pattern Recognition Lab, FAU
-Erlangen-N\"urnberg. The nanoparticle formulation and dose grounding are provided by
-the SEON group.
 
 % =====================================================================
 \begin{thebibliography}{9}
