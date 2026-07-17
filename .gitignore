@@ -60,3 +60,7 @@ paper/*.synctex.gz
 # ...but DO track the paper's own figures and compiled draft (not the copyrighted article)
 !paper/figures/*.pdf
 !paper/spie_manuscript.pdf
+
+# Reviewer comment files (Stefan/Lukas V2 review) -- not tracked
+Allgemeine Anmerkungen zur V2_SL.docx
+spie_manuscript_V2_SL.pdf
