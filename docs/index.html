@@ -134,7 +134,7 @@
       <tr><td>E4</td><td>Study B — vascular (fresh injection)</td>
         <td>Freshly-injected SPIONs confined to tumor vessels; detectability of the vascular phase.</td></tr>
       <tr><td>E5</td><td>3D verification</td>
-        <td>Real RabbitCT anatomy, 3D cone-beam FDK — confirms the 2D detectability limits (PCD ~1.14× EID).</td></tr>
+        <td>Real RabbitCT anatomy, 3D cone-beam FDK — confirms the 2D detectability limits (PCD ~1.16× EID).</td></tr>
     </table>
     <div class="audit">
       <h3>Detectability study — factor structure</h3>
@@ -143,7 +143,7 @@
         dose {low 20&nbsp;000, high 100&nbsp;000 photons/px}, and the biological concentration axis;
         each cell repeats over <b>30 noise realizations</b>. Every study is run at both spectra:</p>
       <ul class="tight">
-        <li><b>E2 optimum</b> — 70&nbsp;kVp / Al&nbsp;5&nbsp;mm, PCD bins 10 / 37.5 / 47.5 / 70&nbsp;keV.</li>
+        <li><b>E2 optimum</b> — 70&nbsp;kVp / Al&nbsp;1&nbsp;mm, PCD bins 10 / 37.5 / 47.5 / 70&nbsp;keV.</li>
         <li><b>90&nbsp;kVp baseline</b> — 90&nbsp;kVp / Al&nbsp;2.5&nbsp;mm (conventional C-arm setting).</li>
       </ul>
       <p>Held fixed (not factors): water beam-hardening precorrection is always on; the Parker-weighted
@@ -162,10 +162,10 @@
       <table>
         <tr><th>Setting</th><th>Optimum (E2)</th><th>Baseline</th></tr>
         <tr><td>Tube voltage</td><td>70 kVp</td><td>90 kVp</td></tr>
-        <tr><td>Filter</td><td>Al 5.0 mm</td><td>Al 2.5 mm</td></tr>
+        <tr><td>Filter (added)</td><td>Al 1.0 mm</td><td>Al 2.5 mm</td></tr>
         <tr><td>Detector</td><td>PCD, 3-bin</td><td>(EID / PCD both run)</td></tr>
         <tr><td>PCD bin edges</td><td>10 / 37.5 / 47.5 / 70 keV</td><td>—</td></tr>
-        <tr><td>PCD gain vs EID (matched filter)</td><td class="num">~1.20×</td><td class="num">—</td></tr>
+        <tr><td>PCD gain vs EID (ideal observer)</td><td class="num">~1.24×</td><td class="num">—</td></tr>
       </table>
       <p>At the optimum the matched-filter PCD reaches about <b>1.2×</b> the EID iron CNR, which is
         98&nbsp;% of the ideal energy-weighting (ideal-observer) limit. Lower kVp raises contrast; heavy
@@ -174,7 +174,7 @@
     </div>
     <div class="grid">
       <figure><img src="assets/fig_spectral.png" alt="spectral optimization" onerror="markPending(this)">
-        <figcaption>Iron CNR across tube voltages and filters (EID vs PCD); the 70&nbsp;kVp / Al&nbsp;5&nbsp;mm
+        <figcaption>Iron CNR across tube voltages and filters (EID vs PCD); the 70&nbsp;kVp / Al&nbsp;1&nbsp;mm
           PCD point is the optimum, and the near-optimal 3-bin thresholds where iron contrast lives in energy.</figcaption></figure>
     </div>
   </section>
@@ -234,14 +234,14 @@
         density: <b>0.82 / 2.47 / 8.23&nbsp;mg&nbsp;Fe/ml</b> at 1e8 / 3e8 / 1e9 cells/cm³.</p>
       <table>
         <tr><th>Cell density</th><th>SPION I fresh c<sub>Fe</sub></th><th class="num">CNR (EID, high dose)</th></tr>
-        <tr><td>1×10⁸ cells/cm³</td><td>0.82 mg Fe/ml</td><td class="num">9.2</td></tr>
-        <tr><td>3×10⁸ cells/cm³</td><td>2.47 mg Fe/ml</td><td class="num">27.2</td></tr>
-        <tr><td>1×10⁹ cells/cm³</td><td>8.23 mg Fe/ml</td><td class="num">88.2</td></tr>
+        <tr><td>1×10⁸ cells/cm³</td><td>0.82 mg Fe/ml</td><td class="num">9.3</td></tr>
+        <tr><td>3×10⁸ cells/cm³</td><td>2.47 mg Fe/ml</td><td class="num">27.4</td></tr>
+        <tr><td>1×10⁹ cells/cm³</td><td>8.23 mg Fe/ml</td><td class="num">88.7</td></tr>
       </table>
       <p>Detectability crosses the <b>Rose CNR = 5</b> criterion at <b>1×10⁸ cells/cm³ at high dose</b>
         and at <b>3×10⁸ cells/cm³ at low dose</b> — so at realistic loads the study is
         <b>dose-limited</b>, not contrast-limited. The best (lowest) detection threshold is
-        <b>0.41&nbsp;mg&nbsp;Fe/ml with PCD</b> vs <b>0.75&nbsp;mg&nbsp;Fe/ml with EID</b> (high dose,
+        <b>0.46&nbsp;mg&nbsp;Fe/ml with PCD</b> vs <b>0.75&nbsp;mg&nbsp;Fe/ml with EID</b> (high dose,
         3e8). SPIONs at realistic melanoma cellularity sit right at the CT detection limit.</p>
     </div>
     <div class="grid">
@@ -304,19 +304,19 @@
     <p class="lead">A 3D FDK detectability run on the real, post-mortem RabbitCT volume. It confirms the
       2D detectability limits carry over to a cone-beam acquisition in real anatomy. Each material
       (soft tissue, adipose, bone) is forward-projected in 3D. The energies are combined at the E2
-      optimum (70&nbsp;kVp / Al&nbsp;5&nbsp;mm) for the EID and the post-combination PCD. The volume is
+      optimum (70&nbsp;kVp / Al&nbsp;1&nbsp;mm) for the EID and the post-combination PCD. The volume is
       reconstructed with cone-beam FDK.</p>
     <figure>
       <img src="assets/fig_3d.png" alt="E5 3D rabbit reconstruction: EID vs PCD vs iron-only map">
       <figcaption>Cervical slice of the RabbitCT rabbit with an inserted SPION&nbsp;I fresh tumor
-        (c_Fe = 2.47&nbsp;mg&nbsp;Fe/ml). Left: EID (+16&nbsp;HU). Middle: PCD post-combination (+18&nbsp;HU).
+        (c_Fe = 2.47&nbsp;mg&nbsp;Fe/ml). Left: EID (+17&nbsp;HU). Middle: PCD post-combination (+19&nbsp;HU).
         Right: the PCD iron-only signal (reconstruction − no-iron reference), which localizes the tumor
         while the anatomy cancels.</figcaption>
     </figure>
     <p class="lead">The iron signal is positive. It scales linearly with concentration, at about
-      6.6&nbsp;HU per mg&nbsp;Fe/ml — matching the 2D value. The PCD beats the EID in ΔHU and CNR at every
-      level, with a ~1.14× CNR gain (the direction and size the 2D optimization predicts). SPION&nbsp;I fresh
-      reads +16/+18&nbsp;HU (EID/PCD) at 3×10⁸ cells, and +55/+60&nbsp;HU at 1×10⁹. The 3D result agrees with
+      6.8&nbsp;HU per mg&nbsp;Fe/ml — matching the 2D value. The PCD beats the EID in ΔHU and CNR at every
+      level, with a ~1.16× CNR gain (the direction and size the 2D optimization predicts). SPION&nbsp;I fresh
+      reads +17/+19&nbsp;HU (EID/PCD) at 3×10⁸ cells, and +56/+62&nbsp;HU at 1×10⁹. The 3D result agrees with
       the 2D detection limit.</p>
   </section>
 
@@ -349,10 +349,10 @@ c_fe = pg_fe_per_cell * cell_density_per_cm3 * 1e-9   # -> mg Fe/ml
     <div class="audit">
       <h3>E2 optimum spectrum + PCD bins (fed to E3/E4/E5)</h3>
       <p>The optimized acquisition read from <code>results/spectral/optimum.json</code>.</p>
-<pre><code>optimum  = {"kvp": 70.0, "filter": "Al5.0",
+<pre><code>optimum  = {"kvp": 70.0, "filter": "Al1.0",   # softest feasible beam (least added Al)
             "detector": "PCD", "pcd_bin_edges_kev": [10, 37.5, 47.5, 70]}
 baseline = {"kvp": 90, "filter": "Al2.5"}     # conventional control, run alongside
-# PCD gain ~1.20x EID (98% of ideal energy weighting), matched-filter analysis
+# PCD gain: ~1.24x EID by the ideal observer (98%); ~1.15x realized at the soft optimum
 </code></pre>
     </div>
 
