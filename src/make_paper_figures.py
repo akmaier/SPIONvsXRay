@@ -8,7 +8,8 @@ Reads the COMPLETED results on disk and regenerates every paper figure and table
     fig_studyA_cnr       CNR vs tumor c_Fe, EID vs PCD (optimum), density range, Rose 5
     fig_density_montage  loading x density {1e8,3e8,1e9} recon montage, EID + PCD
     fig_studyB           CNR vs vessel level, EID vs PCD, optimum vs baseline, high dose
-    fig_spectral         CNR vs kVp per Al filter, EID vs PCD, 70 kVp/Al5 optimum marked
+    fig_spectral         analytic ideal-observer iron CNR vs kVp per Al filter, EID vs
+                         PCD (shared y), optimum marked on PCD (read from optimum.json)
     fig_eid_vs_pcd       PCD/EID CNR ratio across configs, optimum vs baseline
 
   Tables  (paper/tables/*.tex, booktabs)
@@ -86,6 +87,13 @@ def _bone_off(rows):
     return [r for r in rows if not r["with_bone"]]
 
 
+def _spec_label(kvp, filters):
+    """Human-readable spectrum label, e.g. '70 kVp / Al 1.0'."""
+    mat, mm = filters[0]
+    sym = {"aluminium": "Al", "aluminum": "Al", "copper": "Cu"}.get(mat, mat)
+    return f"{float(kvp):.0f} kVp / {sym} {float(mm):.1f}"
+
+
 # ============================================================================
 # FIGURE 1 -- physics: mu(E) + spectra, and mono dHU vs c_Fe
 # ============================================================================
@@ -100,10 +108,17 @@ def fig_physics():
     mu_tumor1 = mu_soft + 1e-3 * ox
     mu_tumor10 = mu_soft + 10e-3 * ox
 
-    E70, f70 = spec.conrad_spectrum(70.0)
-    f70 = spec.apply_filters(E70, f70, [("aluminium", 5.0)])   # optimum: 70 kVp Al5
-    E90, f90 = spec.conrad_spectrum(90.0)
-    f90 = spec.apply_filters(E90, f90, [("aluminium", 2.5)])   # baseline: 90 kVp Al2.5
+    opt = _load(str(REPO / "results" / "spectral" / "optimum.json"))
+    opt_kvp = float(opt["kvp"]); opt_filters = [tuple(x) for x in opt["filters"]]
+    bas = opt["baseline"]
+    bas_kvp = float(bas["kvp"]); bas_filters = [tuple(x) for x in bas["filters"]]
+    opt_lab = _spec_label(opt_kvp, opt_filters) + " (optimum)"
+    bas_lab = _spec_label(bas_kvp, bas_filters) + " (baseline)"
+
+    E70, f70 = spec.conrad_spectrum(opt_kvp)
+    f70 = spec.apply_filters(E70, f70, opt_filters)            # current optimum
+    E90, f90 = spec.conrad_spectrum(bas_kvp)
+    f90 = spec.apply_filters(E90, f90, bas_filters)            # baseline
     f70n = f70 / f70.max()
     f90n = f90 / f90.max()
 
@@ -125,8 +140,8 @@ def fig_physics():
     axr = ax.twinx()
     axr.grid(False)
     axr.fill_between(E70, 0, f70n, color=OPT_C, alpha=0.18)
-    axr.plot(E70, f70n, color=OPT_C, lw=1.2, label="70 kVp / Al 5.0 (optimum)")
-    axr.plot(E90, f90n, color=BASE_C, lw=1.2, ls="-", label="90 kVp / Al 2.5 (baseline)")
+    axr.plot(E70, f70n, color=OPT_C, lw=1.2, label=opt_lab)
+    axr.plot(E90, f90n, color=BASE_C, lw=1.2, ls="-", label=bas_lab)
     axr.set_ylabel("normalized photon flux", fontsize=12)
     axr.set_ylim(0, 1.05)
     axr.spines["top"].set_visible(False)
@@ -226,7 +241,7 @@ def fig_phantom_recon():
     cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02, shrink=0.85)
     cbar.set_label("HU (iron window)", fontsize=12)
     fig.suptitle("Study A phantom (cellular loading, density $10^9$/cm$^3$, high dose)\n"
-                 f"70 kVp / Al 5.0 optimum  ·  window [$-${WIN}, {WIN}] HU  ·  bone omitted for display",
+                 f"{_spec_label(kvp, filters)} optimum  ·  window [$-${WIN}, {WIN}] HU  ·  bone omitted for display",
                  fontsize=13, y=0.99)
     _save(fig, "fig_phantom_recon")
 
@@ -237,6 +252,7 @@ def fig_phantom_recon():
 def fig_studyA_cnr():
     a = _load(f"{DET}/study_a_optimum.json")
     rows = _bone_off(a["rows"])
+    sp = a["spectrum"]; opt_lab = _spec_label(sp["kvp"], sp["filters"])
     fig, ax = plt.subplots(figsize=(5.4, 3.9))
 
     for det, col, mk in (("EID", EID_C, "o"), ("PCD", PCD_C, "s")):
@@ -265,7 +281,7 @@ def fig_studyA_cnr():
 
     ax.set_xlabel(r"tumor iron $c_{\mathrm{Fe}}$ [mg/ml]")
     ax.set_ylabel("CNR")
-    ax.set_title("Study A - cellular loading (70 kVp / Al 5.0 optimum)", fontsize=13)
+    ax.set_title(f"Study A - cellular loading ({opt_lab} optimum)", fontsize=13)
     ax.legend(fontsize=10, loc="upper left")
     ax.set_ylim(bottom=0)
     _save(fig, "fig_studyA_cnr")
@@ -324,7 +340,7 @@ def fig_density_montage():
                               fontweight="bold")
     cbar = fig.colorbar(im, ax=ax, fraction=0.022, pad=0.02, shrink=0.8)
     cbar.set_label("HU (iron window)", fontsize=12)
-    fig.suptitle("Study A recon vs. tumor cell density (noise-free, 70 kVp / Al 5.0)\n"
+    fig.suptitle(f"Study A recon vs. tumor cell density (noise-free, {_spec_label(kvp, filters)})\n"
                  f"iron scales with density  ·  window [$-${WIN}, {WIN}] HU  ·  bone omitted for display",
                  fontsize=13, y=0.99)
     _save(fig, "fig_density_montage")
@@ -367,48 +383,52 @@ def fig_studyB():
 # FIGURE 6 -- spectral sweep: CNR vs kVp per Al filter, EID vs PCD
 # ============================================================================
 def fig_spectral():
-    sw = _load(str(REPO / "results" / "spectral_sweep" / "sweep.json"))["rows"]
-    # use the highest representative iron insert (SPION_c20 ~ 1.09 mg Fe/ml)
-    top_name = "SPION_c20"
-    filters = ["Al1.0", "Al2.5", "Al5.0", "Al8.0"]
-    kvps = sorted({r["kvp"] for r in sw})
+    """Analytic ideal-observer iron CNR, EID vs PCD, per added-Al filter vs kVp.
 
-    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.8), sharey=True)
+    Reads the corrected ideal-observer CNR table (optimum.json / sweep.csv), NOT
+    the old recon-measured CNR. Two panels share a y-axis so the ~1.2x PCD gain
+    at the 70 kVp / Al 1.0 optimum is read directly off the plot.
+    """
+    opt = _load(str(REPO / "results" / "spectral" / "optimum.json"))
+    table = opt["cnr_table"]
+    opt_kvp = float(opt["kvp"]); opt_filter = opt["filter"]      # e.g. 70, "Al1.0"
+    opt_lab = _spec_label(opt_kvp, opt["filters"])              # "70 kVp / Al 1.0"
+
+    filters = ["Al1.0", "Al2.5", "Al5.0", "Al8.0"]
+    kvps = sorted(float(k) for k in table[filters[0]].keys())
+
+    def cnr(fl, kvp, det):
+        return table[fl][str(int(kvp))][det]
+
+    fig, axes = plt.subplots(1, 2, figsize=(9.6, 3.9), sharey=True)
     cmap = plt.cm.viridis(np.linspace(0.15, 0.85, len(filters)))
-    # common y-limit so EID and PCD panels are directly comparable
-    all_cnr = [r["cnr"] for r in sw if r["name"] == top_name
-               and r["filter"] in filters and r["detector"] in ("EID", "PCD")]
-    ymax = max(all_cnr) * 1.12
+    allv = [cnr(fl, k, det) for fl in filters for k in kvps for det in ("EID", "PCD")]
+    ymax = max(allv) * 1.15
     for ax, det in zip(axes, ("EID", "PCD")):
         for fl, col in zip(filters, cmap):
-            pts = sorted([r for r in sw if r["detector"] == det and r["filter"] == fl
-                          and r["name"] == top_name], key=lambda r: r["kvp"])
-            ax.plot([p["kvp"] for p in pts], [p["cnr"] for p in pts], "o-",
-                    color=col, ms=4, lw=1.5, label=fl.replace("Al", "Al "))
+            ax.plot(kvps, [cnr(fl, k, det) for k in kvps], "o-",
+                    color=col, ms=5, lw=1.6, label=fl.replace("Al", "Al "))
         ax.set_xlabel("tube voltage [kVp]")
-        ax.set_title(det, fontsize=14)
+        ax.set_title(f"{det} - iron CNR vs tube voltage", fontsize=14)
         ax.set_xticks(kvps)
         ax.set_ylim(0, ymax)
-    axes[0].set_ylabel(r"CNR at $c_{\mathrm{Fe}}\approx$1.09 mg/ml")
-    axes[0].legend(title="Al filter", fontsize=11, title_fontsize=11)
+    axes[0].set_ylabel("iron CNR (ideal observer)")
+    axes[0].legend(title="added Al filter", fontsize=11, title_fontsize=11,
+                   loc="upper right")
 
-    # mark the 70 kVp / Al5 optimum on the PCD panel
-    optpt = [r for r in sw if r["detector"] == "PCD" and r["filter"] == "Al5.0"
-             and r["kvp"] == 70.0 and r["name"] == top_name]
-    if optpt:
-        cval = optpt[0]["cnr"]
-        axes[1].scatter([70.0], [cval], s=140, facecolors="none",
-                        edgecolors=OPT_C, linewidths=2.2, zorder=5)
-        # place the label in the open upper-right area, clear of the curve
-        # (raised ~1 cm vs. the previous crowded position, below the panel title)
-        axes[1].annotate("optimum\n70 kVp / Al 5.0", xy=(70.0, cval),
-                         xytext=(103, cval + 0.02 * ymax), fontsize=11, color=OPT_C,
-                         ha="center", va="center",
-                         arrowprops=dict(arrowstyle="->", color=OPT_C, lw=1.2))
-    fig.suptitle("Spectral shaping sweep: tube voltage x Al filtration", fontsize=13, y=1.0)
+    # mark the current optimum (70 kVp / Al 1.0) on the PCD panel
+    cval = cnr(opt_filter, opt_kvp, "PCD")
+    axes[1].scatter([opt_kvp], [cval], s=150, facecolors="none",
+                    edgecolors=OPT_C, linewidths=2.2, zorder=5)
+    axes[1].annotate(f"optimum\n{opt_lab}", xy=(opt_kvp, cval),
+                     xytext=(108, cval - 0.02 * ymax), fontsize=11, color=OPT_C,
+                     ha="center", va="center",
+                     arrowprops=dict(arrowstyle="->", color=OPT_C, lw=1.2))
+    fig.suptitle("Spectral shaping sweep: tube voltage x Al filtration (ideal observer)",
+                 fontsize=13, y=1.0)
     fig.tight_layout()
     _save(fig, "fig_spectral")
-    return cval if optpt else None
+    return cval
 
 
 # ============================================================================
@@ -436,6 +456,8 @@ def fig_eid_vs_pcd():
     abas = _load(f"{DET}/study_a_baseline.json")
     bopt = _load(f"{DET}/study_b_optimum.json")
     bbas = _load(f"{DET}/study_b_baseline.json")
+    opt_lab = _spec_label(aopt["spectrum"]["kvp"], aopt["spectrum"]["filters"])
+    bas_lab = _spec_label(abas["spectrum"]["kvp"], abas["spectrum"]["filters"])
 
     ra_o = _ratio_by_config(aopt, "config")
     ra_b = _ratio_by_config(abas, "config")
@@ -449,8 +471,8 @@ def fig_eid_vs_pcd():
 
     fig, ax = plt.subplots(figsize=(8.4, 3.9))
     wd = 0.4
-    ax.bar(x - wd / 2, opt_vals, wd, color=OPT_C, label="optimum (70 kVp / Al 5)")
-    ax.bar(x + wd / 2, bas_vals, wd, color=BASE_C, label="baseline (90 kVp / Al 2.5)")
+    ax.bar(x - wd / 2, opt_vals, wd, color=OPT_C, label=f"optimum ({opt_lab})")
+    ax.bar(x + wd / 2, bas_vals, wd, color=BASE_C, label=f"baseline ({bas_lab})")
     ax.axhline(1.0, color="#333", lw=1.0, ls="--")
     ax.text(len(cfgs) - 0.5, 1.0, " PCD = EID", fontsize=11, va="bottom", ha="right",
             color="#333")
@@ -539,8 +561,12 @@ def _thr_fmt(v):
 
 
 def tab_thresholds():
-    aopt = _load(f"{DET}/study_a_optimum.json")["thresholds_rose5"]
-    abas = _load(f"{DET}/study_a_baseline.json")["thresholds_rose5"]
+    aopt_j = _load(f"{DET}/study_a_optimum.json")
+    abas_j = _load(f"{DET}/study_a_baseline.json")
+    aopt = aopt_j["thresholds_rose5"]
+    abas = abas_j["thresholds_rose5"]
+    opt_lab = _spec_label(aopt_j["spectrum"]["kvp"], aopt_j["spectrum"]["filters"]).replace(" ", "")
+    bas_lab = _spec_label(abas_j["spectrum"]["kvp"], abas_j["spectrum"]["filters"]).replace(" ", "")
     dens = [("1e8", r"$10^{8}$"), ("3e8", r"$3{\times}10^{8}$"), ("1e9", r"$10^{9}$")]
     lines = []
     for det in ("EID", "PCD"):
@@ -555,7 +581,7 @@ def tab_thresholds():
             lines.append(r"\midrule")
     body = r"""\begin{tabular}{@{}llcccc@{}}
 \toprule
- & & \multicolumn{2}{c}{Optimum (70 kVp/Al5)} & \multicolumn{2}{c}{Baseline (90 kVp/Al2.5)} \\
+ & & \multicolumn{2}{c}{Optimum (""" + opt_lab + r""")} & \multicolumn{2}{c}{Baseline (""" + bas_lab + r""")} \\
 \cmidrule(lr){3-4}\cmidrule(l){5-6}
 Detector & Cell density & low dose & high dose & low dose & high dose \\
 \midrule
@@ -567,8 +593,12 @@ Detector & Cell density & low dose & high dose & low dose & high dose \\
 
 
 def tab_cnr():
-    aopt = _bone_off(_load(f"{DET}/study_a_optimum.json")["rows"])
-    abas = _bone_off(_load(f"{DET}/study_a_baseline.json")["rows"])
+    aopt_j = _load(f"{DET}/study_a_optimum.json")
+    abas_j = _load(f"{DET}/study_a_baseline.json")
+    aopt = _bone_off(aopt_j["rows"])
+    abas = _bone_off(abas_j["rows"])
+    opt_lab = _spec_label(aopt_j["spectrum"]["kvp"], aopt_j["spectrum"]["filters"]).replace(" ", "")
+    bas_lab = _spec_label(abas_j["spectrum"]["kvp"], abas_j["spectrum"]["filters"]).replace(" ", "")
 
     def cnr_for(rows, cfg, det):
         vals = [r["cnr"] for r in rows if r["config"] == cfg and r["detector"] == det
@@ -589,7 +619,7 @@ def tab_cnr():
                      rf"{eb:.1f} & {pb:.1f} \\")
     body = r"""\begin{tabular}{@{}lccccc@{}}
 \toprule
- & \multicolumn{3}{c}{Optimum (70 kVp/Al5)} & \multicolumn{2}{c}{Baseline (90 kVp/Al2.5)} \\
+ & \multicolumn{3}{c}{Optimum (""" + opt_lab + r""")} & \multicolumn{2}{c}{Baseline (""" + bas_lab + r""")} \\
 \cmidrule(lr){2-4}\cmidrule(l){5-6}
 Configuration & EID & PCD & PCD/EID & EID & PCD \\
 \midrule
@@ -625,7 +655,7 @@ def main():
     if h1: print(f"  fig_physics:    1 mg Fe/ml -> {h1:.1f} dHU @ 60 keV mono")
     print(f"  fig_studyA_cnr: peak PCD CNR (high dose) = {h3:.1f}")
     print(f"  fig_studyB:     peak PCD CNR (optimum, high dose) = {h5:.1f}")
-    if h6: print(f"  fig_spectral:   optimum 70 kVp/Al5 PCD CNR = {h6:.1f}")
+    if h6: print(f"  fig_spectral:   optimum PCD ideal-observer CNR = {h6:.3f}")
     print(f"  fig_eid_vs_pcd: mean PCD/EID ratio (optimum) = {h7:.2f}x")
 
 
