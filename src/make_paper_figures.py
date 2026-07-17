@@ -52,7 +52,10 @@ for d in (FIGDIR, DASHDIR, TABDIR):
 # Global style: clean, legible, colorblind-safe (Okabe-Ito derived).
 # ----------------------------------------------------------------------------
 plt.rcParams.update({
-    "font.size": 10, "font.family": "sans-serif",
+    # Base sizes raised ~35% for in-figure legibility (reviewer request).
+    "font.size": 13, "font.family": "sans-serif",
+    "axes.labelsize": 14, "axes.titlesize": 14,
+    "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12,
     "axes.grid": True, "grid.alpha": 0.3, "grid.linewidth": 0.6,
     "axes.spines.top": False, "axes.spines.right": False,
     "figure.dpi": 150, "savefig.bbox": "tight", "savefig.dpi": 150,
@@ -116,18 +119,18 @@ def fig_physics():
     ax.set_ylabel(r"linear attenuation $\mu$ [cm$^{-1}$]")
     ax.set_yscale("log")
     ax.set_xlim(20, 120)
-    ax.legend(loc="upper right", fontsize=8)
-    ax.set_title("(a) Iron-oxide contrast vs. spectra", fontsize=10, loc="left")
+    ax.legend(loc="upper right", fontsize=11)
+    ax.set_title("(a) Iron-oxide contrast vs. spectra", fontsize=13, loc="left")
 
     axr = ax.twinx()
     axr.grid(False)
     axr.fill_between(E70, 0, f70n, color=OPT_C, alpha=0.18)
     axr.plot(E70, f70n, color=OPT_C, lw=1.2, label="70 kVp / Al 5.0 (optimum)")
     axr.plot(E90, f90n, color=BASE_C, lw=1.2, ls="-", label="90 kVp / Al 2.5 (baseline)")
-    axr.set_ylabel("normalized photon flux", fontsize=9)
+    axr.set_ylabel("normalized photon flux", fontsize=12)
     axr.set_ylim(0, 1.05)
     axr.spines["top"].set_visible(False)
-    axr.legend(loc="center right", fontsize=7.5, bbox_to_anchor=(1.0, 0.62))
+    axr.legend(loc="center right", fontsize=10, bbox_to_anchor=(1.0, 0.62))
 
     # (b) mono dHU vs c_Fe at 3 mono energies
     axb = fig.add_subplot(gs[1])
@@ -139,8 +142,8 @@ def fig_physics():
         axb.plot(cfe, dHU, color=col, lw=1.8, label=f"{Emono:.0f} keV")
     axb.set_xlabel(r"tumor iron $c_{\mathrm{Fe}}$ [mg/ml]")
     axb.set_ylabel(r"mono. iron contrast $\Delta$HU")
-    axb.legend(title="mono energy", fontsize=8, title_fontsize=8)
-    axb.set_title("(b) Monoenergetic iron contrast", fontsize=10, loc="left")
+    axb.legend(title="mono energy", fontsize=11, title_fontsize=11)
+    axb.set_title("(b) Monoenergetic iron contrast", fontsize=13, loc="left")
 
     _save(fig, "fig_physics")
     # headline: dHU at 60 keV for 1 mg Fe/ml
@@ -211,7 +214,7 @@ def fig_phantom_recon():
     for a, key in zip(ax.ravel(), order):
         hu, c = _to_hu(panels[key], sp)
         im = a.imshow(hu, cmap="gray", vmin=-WIN, vmax=WIN)
-        a.set_title(f"{key[0]} - {key[1]}", fontsize=11)
+        a.set_title(f"{key[0]} - {key[1]}", fontsize=14)
         a.axis("off")
     # label the highest-iron insert on the top-left panel
     hu, c = _to_hu(panels[("EID", "noise-free")], sp)
@@ -219,12 +222,12 @@ def fig_phantom_recon():
         if ins.get("c_fe", 0) and ins["c_fe"] > 0:
             cx, cy = ins["center_mm"]
             ax[0, 0].text(cx / sp + c, cy / sp + c + 16, f"{ins['c_fe']:.1f}",
-                          color="#ffd23b", fontsize=7, ha="center", va="center")
+                          color="#ffd23b", fontsize=9, ha="center", va="center")
     cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02, shrink=0.85)
-    cbar.set_label("HU (iron window)", fontsize=9)
+    cbar.set_label("HU (iron window)", fontsize=12)
     fig.suptitle("Study A phantom (cellular loading, density $10^9$/cm$^3$, high dose)\n"
                  f"70 kVp / Al 5.0 optimum  ·  window [$-${WIN}, {WIN}] HU  ·  bone omitted for display",
-                 fontsize=10, y=0.99)
+                 fontsize=13, y=0.99)
     _save(fig, "fig_phantom_recon")
 
 
@@ -247,7 +250,7 @@ def fig_studyA_cnr():
                 color=col, ms=4, alpha=0.35, mfc="none", label=f"{det} (low dose)")
 
     ax.axhline(5, color=ROSE_C, lw=1.4, ls="--")
-    ax.text(ax.get_xlim()[1], 5, " Rose CNR = 5", color=ROSE_C, fontsize=8,
+    ax.text(ax.get_xlim()[1], 5, " Rose CNR = 5", color=ROSE_C, fontsize=11,
             va="bottom", ha="right")
 
     # SPION I fresh (I_113_0h) marker: its c_Fe across the density range
@@ -262,8 +265,8 @@ def fig_studyA_cnr():
 
     ax.set_xlabel(r"tumor iron $c_{\mathrm{Fe}}$ [mg/ml]")
     ax.set_ylabel("CNR")
-    ax.set_title("Study A - cellular loading (70 kVp / Al 5.0 optimum)", fontsize=10)
-    ax.legend(fontsize=7.5, loc="upper left")
+    ax.set_title("Study A - cellular loading (70 kVp / Al 5.0 optimum)", fontsize=13)
+    ax.legend(fontsize=10, loc="upper left")
     ax.set_ylim(bottom=0)
     _save(fig, "fig_studyA_cnr")
 
@@ -314,16 +317,16 @@ def fig_density_montage():
             im = ax[i, j].imshow(hu, cmap="gray", vmin=-WIN, vmax=WIN)
             ax[i, j].axis("off")
             if i == 0:
-                ax[i, j].set_title(dens_lab[dk], fontsize=11)
+                ax[i, j].set_title(dens_lab[dk], fontsize=14)
             if j == 0:
                 ax[i, j].text(-0.06, 0.5, det, transform=ax[i, j].transAxes,
-                              rotation=90, va="center", ha="center", fontsize=12,
+                              rotation=90, va="center", ha="center", fontsize=15,
                               fontweight="bold")
     cbar = fig.colorbar(im, ax=ax, fraction=0.022, pad=0.02, shrink=0.8)
-    cbar.set_label("HU (iron window)", fontsize=9)
+    cbar.set_label("HU (iron window)", fontsize=12)
     fig.suptitle("Study A recon vs. tumor cell density (noise-free, 70 kVp / Al 5.0)\n"
                  f"iron scales with density  ·  window [$-${WIN}, {WIN}] HU  ·  bone omitted for display",
-                 fontsize=10, y=0.99)
+                 fontsize=13, y=0.99)
     _save(fig, "fig_density_montage")
 
 
@@ -346,12 +349,12 @@ def fig_studyB():
                     label=f"{det} ({sname})")
 
     ax.axhline(5, color=ROSE_C, lw=1.4, ls="--")
-    ax.text(ax.get_xlim()[1], 5, " Rose CNR = 5", color=ROSE_C, fontsize=8,
+    ax.text(ax.get_xlim()[1], 5, " Rose CNR = 5", color=ROSE_C, fontsize=11,
             va="bottom", ha="right")
     ax.set_xlabel("vessel-local iron concentration [mg Fe/ml]")
     ax.set_ylabel("CNR")
-    ax.set_title("Study B - fresh vascular injection (high dose)", fontsize=10)
-    ax.legend(fontsize=7.5, ncol=2, loc="upper left")
+    ax.set_title("Study B - fresh vascular injection (high dose)", fontsize=13)
+    ax.legend(fontsize=10, ncol=2, loc="upper left")
     ax.set_ylim(bottom=0)
     _save(fig, "fig_studyB")
 
@@ -383,11 +386,11 @@ def fig_spectral():
             ax.plot([p["kvp"] for p in pts], [p["cnr"] for p in pts], "o-",
                     color=col, ms=4, lw=1.5, label=fl.replace("Al", "Al "))
         ax.set_xlabel("tube voltage [kVp]")
-        ax.set_title(det, fontsize=11)
+        ax.set_title(det, fontsize=14)
         ax.set_xticks(kvps)
         ax.set_ylim(0, ymax)
     axes[0].set_ylabel(r"CNR at $c_{\mathrm{Fe}}\approx$1.09 mg/ml")
-    axes[0].legend(title="Al filter", fontsize=8, title_fontsize=8)
+    axes[0].legend(title="Al filter", fontsize=11, title_fontsize=11)
 
     # mark the 70 kVp / Al5 optimum on the PCD panel
     optpt = [r for r in sw if r["detector"] == "PCD" and r["filter"] == "Al5.0"
@@ -399,10 +402,10 @@ def fig_spectral():
         # place the label in the open upper-right area, clear of the curve
         # (raised ~1 cm vs. the previous crowded position, below the panel title)
         axes[1].annotate("optimum\n70 kVp / Al 5.0", xy=(70.0, cval),
-                         xytext=(103, cval + 0.02 * ymax), fontsize=8, color=OPT_C,
+                         xytext=(103, cval + 0.02 * ymax), fontsize=11, color=OPT_C,
                          ha="center", va="center",
                          arrowprops=dict(arrowstyle="->", color=OPT_C, lw=1.2))
-    fig.suptitle("Spectral shaping sweep: tube voltage x Al filtration", fontsize=10, y=1.0)
+    fig.suptitle("Spectral shaping sweep: tube voltage x Al filtration", fontsize=13, y=1.0)
     fig.tight_layout()
     _save(fig, "fig_spectral")
     return cval if optpt else None
@@ -449,23 +452,28 @@ def fig_eid_vs_pcd():
     ax.bar(x - wd / 2, opt_vals, wd, color=OPT_C, label="optimum (70 kVp / Al 5)")
     ax.bar(x + wd / 2, bas_vals, wd, color=BASE_C, label="baseline (90 kVp / Al 2.5)")
     ax.axhline(1.0, color="#333", lw=1.0, ls="--")
-    ax.text(len(cfgs) - 0.5, 1.0, " PCD = EID", fontsize=8, va="bottom", ha="right",
+    ax.text(len(cfgs) - 0.5, 1.0, " PCD = EID", fontsize=11, va="bottom", ha="right",
             color="#333")
+
+    # Headroom so the section labels sit in a clear band above every bar and the
+    # (now larger) legend drops just below that band without colliding.
+    top = max(v for v in opt_vals + bas_vals if v is not None) * 1.20
+    ax.set_ylim(top=top)
 
     nA = len(ra_o)
     ax.axvline(nA - 0.5, color="#ccc", lw=1.0)
-    ax.text((nA - 1) / 2, ax.get_ylim()[1] * 0.97, "Study A", ha="center",
-            va="top", fontsize=9, color="#555")
-    ax.text((nA + len(cfgs) - 1) / 2, ax.get_ylim()[1] * 0.97, "Study B",
-            ha="center", va="top", fontsize=9, color="#555")
+    ax.text((nA - 1) / 2, top * 0.98, "Study A", ha="center",
+            va="top", fontsize=12, color="#555")
+    ax.text((nA + len(cfgs) - 1) / 2, top * 0.98, "Study B", ha="center",
+            va="top", fontsize=12, color="#555")
 
     ax.set_xticks(x)
     ax.set_xticklabels([c.replace("_", " ") for c in cfgs], rotation=40, ha="right",
-                       fontsize=7.5)
+                       fontsize=10)
     ax.set_ylabel("PCD / EID CNR ratio")
     ax.set_title("Photon-counting CNR gain over energy-integrating (bone off, high dose)",
-                 fontsize=10)
-    ax.legend(fontsize=8, loc="upper right")
+                 fontsize=13)
+    ax.legend(fontsize=11, loc="upper right", bbox_to_anchor=(1.0, 0.88))
     _save(fig, "fig_eid_vs_pcd")
 
     allr = [v for v in opt_vals if v is not None]
